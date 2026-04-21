@@ -9,7 +9,7 @@ compliance in multi-agent orchestration (Tarkus → Qhorus → Claudony).
 Gaps are stated honestly. Where a gap is uncomfortable, that is the point — it is the
 thing to fix.
 
-**Last assessed:** 2026-04-16 against `quarkus-ledger` v1.0.0-SNAPSHOT.
+**Last assessed:** 2026-04-21 against `quarkus-ledger` v1.0.0-SNAPSHOT.
 
 ---
 
@@ -59,30 +59,25 @@ AI agents may produce decisions with legal or financial consequences. If an agen
 collapses. A trust system built on mutable logs is not a trust system.
 
 **Current state:**
-Strong. `LedgerHashChain` computes a SHA-256 chain per `subjectId`:
+Strong. Each entry carries an RFC 9162 Merkle leaf hash (`digest`):
 
 ```
-hash = SHA-256(subjectId | seqNum | entryType | actorId | actorRole | occurredAt | prevHash)
+leaf = SHA-256(0x00 | subjectId | seqNum | entryType | actorId | actorRole | occurredAt)
 ```
 
-Note: `planRef` was removed from the canonical form (V1002) — it now lives in
-`ComplianceSupplement`. Supplement fields are deliberately excluded from the chain.
+Entries accumulate into a Merkle Mountain Range (stored frontier). Any modification
+to any entry changes its leaf hash and invalidates the tree root. The canonical form is
+deliberately domain-agnostic — subclass fields (`commandType`, `toolName`, etc.) and
+supplement fields are excluded, so the chain works identically for all consumers.
 
-Each entry's hash covers the previous entry's hash, so any modification to any entry
-in the chain invalidates all subsequent hashes. The canonical form is deliberately
-domain-agnostic — subclass fields (`commandType`, `toolName`, etc.) are excluded,
-so the chain works identically for all consumers.
+`LedgerVerificationService.verify(subjectId)` recomputes the full MMR from stored entries
+and compares against the stored frontier. `inclusionProof(entryId)` produces a compact
+O(log N) proof verifiable without database access.
 
-**Gap:**
-`LedgerHashChain.verify()` exists as a pure static utility but is not exposed as a
-service. An external auditor wanting to verify chain integrity must have direct database
-access and write their own verification code. The chain is tamper-evident but not
-independently verifiable without system internals. See Axiom 4 (Verifiability) for
-the related gap.
-
-**How to incorporate:**
-No change needed to the core chain mechanism. The gap closes when a verification
-endpoint is exposed (medium-term roadmap).
+**Gap (closed):**
+`LedgerVerificationService` provides `verify(subjectId)`, `treeRoot(subjectId)`, and
+`inclusionProof(entryId)` as a CDI bean — no database credentials or schema knowledge
+needed by an external verifier. See Axiom 4 (Verifiability) for the full treatment.
 
 ---
 
@@ -177,11 +172,9 @@ credentials, the verification is not independent. For GDPR conformity assessment
 EU AI Act compliance, the audit trail must be provably intact without trusting the
 party being audited.
 
-**Current state:**
-Partial. `LedgerHashChain.verify(entries)` is a correct implementation of chain
-verification, but it requires the caller to fetch the entries from the database and
-invoke the method directly. There is no HTTP endpoint, no service method exposed via
-CDI, and no documentation of how a third party would perform verification.
+**Previous state:**
+The original hash chain required callers to fetch entries and call a static utility
+directly — no CDI service, no documented third-party verification path.
 
 **Status:** ✅ Addressed (#11)
 
