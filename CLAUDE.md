@@ -156,6 +156,8 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │           │   ├── InclusionProof.java       — Merkle inclusion proof value type
 │           │   └── ProofStep.java            — single sibling node in a proof path
 │           ├── LedgerErasureService.java    — GDPR Art.17 erasure (CDI bean)
+│           ├── RetentionEligibilityChecker.java — pure utility: checks retention window eligibility per entry
+│           ├── LedgerRetentionJob.java      — @Scheduled daily retention sweep (EU AI Act Art.12)
 │           ├── DecayFunction.java           — SPI: attestation decay weight (ageInDays, verdict) → weight
 │           ├── ExponentialDecayFunction.java — @DefaultBean: 2^(-age/halfLife) × valence multiplier (FLAGGED slower decay)
 │           ├── TrustScoreComputer.java      — Bayesian Beta trust scoring; delegates decay to DecayFunction (pure Java)
