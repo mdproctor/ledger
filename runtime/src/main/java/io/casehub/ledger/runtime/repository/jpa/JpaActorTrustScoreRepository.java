@@ -122,4 +122,11 @@ public class JpaActorTrustScoreRepository implements ActorTrustScoreRepository {
         return em.createNamedQuery("ActorTrustScore.findAll", ActorTrustScore.class)
                 .getResultList();
     }
+
+    @Override
+    public List<ActorTrustScore> findAllByLastComputedAtAfter(final Instant since) {
+        return em.createNamedQuery("ActorTrustScore.findAllByLastComputedAtAfter", ActorTrustScore.class)
+                .setParameter("since", since)
+                .getResultList();
+    }
 }
