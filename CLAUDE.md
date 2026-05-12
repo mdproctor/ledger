@@ -31,6 +31,17 @@ Run `add-dir /Users/mdproctor/claude/casehub/ledger` before any other work.
 - `blog/` — project diary entries with INDEX.md
 - `design/` — epic journal (created by `epic` at branch start)
 
+## Git Discipline
+
+Two git repositories are active in every session:
+- **Workspace** (`/Users/mdproctor/claude/public/casehub/ledger`) — methodology artifacts: handover, blog, specs, plans, ADRs
+- **Project repo** (`/Users/mdproctor/claude/casehub/ledger`) — source code
+
+Before any git operation, run `git rev-parse --show-toplevel` to confirm which repo is currently active. Do not assume — the session may have opened in either. cd to the correct repo before staging:
+- Source code commits → project repo
+- Methodology artifacts → workspace
+
+
 ## Rules
 
 - All methodology artifacts go here, not in the project repo
@@ -247,6 +258,19 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   │   ├── TrustScoreDeltaPayload.java     — changed actors only (strategy: incremental cache)
 │       │   │   ├── TrustScoreComputedAt.java       — lightweight notification (strategy: signal only)
 │       │   │   └── TrustScoreDelta.java            — single actor score change value type
+│       │   ├── federation/
+│       │   │   ├── TrustExportPayload.java         — record: exportedAt, exportingDeployment, actors
+│       │   │   ├── ActorExport.java                — record: actorId, actorType, globalScore, capabilityScores, dimensionScores
+│       │   │   ├── GlobalScoreExport.java          — record: Bayesian Beta global trust score fields
+│       │   │   ├── CapabilityScoreExport.java      — record: capability-scoped Bayesian Beta score fields
+│       │   │   ├── DimensionScoreExport.java       — record: continuous quality dimension score (score, sampleCount)
+│       │   │   ├── TrustExportService.java         — CDI bean: exportAll / exportActor / exportDelta read-model
+│       │   │   ├── TrustImportService.java         — SPI: importTrust(TrustExportPayload); implementation is the merge strategy
+│       │   │   ├── NoOpTrustImportService.java     — @DefaultBean no-op (trust import is opt-in)
+│       │   │   ├── JpaTrustImportService.java      — @Alternative: seed-if-absent for all score types
+│       │   │   ├── TrustBootstrapSource.java       — SPI: fetchPriorTrust(actorId) → Optional<TrustExportPayload>
+│       │   │   ├── NoOpTrustBootstrapSource.java   — @DefaultBean no-op (bootstrapping is opt-in)
+│       │   │   └── TrustBootstrapService.java      — CDI bean: bootstrapIfNew(Set<actorId>) — wired into TrustScoreJob pre-pass
 │       │   └── intercept/
 │       │       ├── ProvenanceCapture.java           — CDI interceptor binding (@InterceptorBinding); attributes sourceEntityType, sourceEntitySystem
 │       │       ├── ProvenanceCaptureInterceptor.java — CDI interceptor: pushes ProvenanceContext before proceed, pops in finally
