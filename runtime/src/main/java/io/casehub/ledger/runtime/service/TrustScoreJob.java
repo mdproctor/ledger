@@ -25,6 +25,7 @@ import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
+import io.casehub.ledger.runtime.service.federation.TrustBootstrapService;
 import io.casehub.ledger.runtime.service.routing.TrustScoreRoutingPublisher;
 import io.quarkus.scheduler.Scheduled;
 
@@ -65,6 +66,9 @@ public class TrustScoreJob {
     AttestationAggregator attestationAggregator;
 
     @Inject
+    TrustBootstrapService bootstrapService;
+
+    @Inject
     @LedgerPersistenceUnit
     EntityManager em;
 
@@ -98,13 +102,24 @@ public class TrustScoreJob {
             previousSnapshot = Map.of();
         }
 
-        final TrustScoreComputer computer = new TrustScoreComputer(decayFunction);
-        final Instant now = Instant.now();
-
         final List<LedgerEntry> allEvents = ledgerRepo.findAllEvents();
         final Map<String, List<LedgerEntry>> byActor = allEvents.stream()
                 .filter(e -> e.actorId != null)
                 .collect(Collectors.groupingBy(e -> e.actorId));
+
+        if (config.trustScore().bootstrap().enabled()) {
+            final Set<String> existingActors = trustRepo.findAll().stream()
+                    .map(s -> s.actorId)
+                    .collect(Collectors.toSet());
+            final Set<String> newActors = new LinkedHashSet<>(byActor.keySet());
+            newActors.removeAll(existingActors);
+            if (!newActors.isEmpty()) {
+                bootstrapService.bootstrapIfNew(newActors);
+            }
+        }
+
+        final TrustScoreComputer computer = new TrustScoreComputer(decayFunction);
+        final Instant now = Instant.now();
 
         final Set<UUID> entryIds = allEvents.stream()
                 .map(e -> e.id)

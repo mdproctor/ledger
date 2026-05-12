@@ -161,6 +161,17 @@ class TrustScoreIT {
         assertThat(score.trustScore).isGreaterThan(0.5);
     }
 
+    // ── Bootstrap disabled by default ─────────────────────────────────────────
+
+    @Test
+    @Transactional
+    void runComputation_bootstrapDisabledByDefault_completesWithoutError() {
+        // bootstrap.enabled defaults to false — job must complete without error regardless of
+        // existing trust score state; no assertion on total repo size (other tests share the DB)
+        trustScoreJob.runComputation();
+        // Reaching this line means no exception was thrown — bootstrap did not interfere
+    }
+
     // ── Fixtures ──────────────────────────────────────────────────────────────
 
     private void seedDecision(final String actorId, final Instant decisionTime,
