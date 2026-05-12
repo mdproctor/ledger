@@ -26,6 +26,11 @@ class ActorTypeResolverTest {
         assertThat(ActorTypeResolver.resolve("agent:worker-1")).isEqualTo(ActorType.AGENT);
     }
 
+    @Test
+    void a2aRole_agent_isAgent() {
+        assertThat(ActorTypeResolver.resolve("agent")).isEqualTo(ActorType.AGENT);
+    }
+
     // ── SYSTEM ────────────────────────────────────────────────────────────────
 
     @Test
@@ -58,5 +63,12 @@ class ActorTypeResolverTest {
     @Test
     void emailAddress_isHuman() {
         assertThat(ActorTypeResolver.resolve("alice@example.com")).isEqualTo(ActorType.HUMAN);
+    }
+
+    @Test
+    void a2aRole_user_isHuman() {
+        // Passes with or without the explicit rule — catch-all also returns HUMAN.
+        // The explicit rule exists to document the intentional A2A mapping.
+        assertThat(ActorTypeResolver.resolve("user")).isEqualTo(ActorType.HUMAN);
     }
 }
