@@ -11,53 +11,55 @@ Run `add-dir /Users/mdproctor/claude/casehub/ledger` before any other work.
 
 | Skill | Writes to |
 |-------|-----------|
-| brainstorming (specs) | `specs/` |
+| brainstorming (specs) | `specs/` (workspace staging) |
 | writing-plans (plans) | `plans/` |
 | handover | `HANDOFF.md` |
 | idea-log | `IDEAS.md` |
 | design-snapshot | `snapshots/` |
 | java-update-design / update-primary-doc | `design/JOURNAL.md` (created by `epic`) |
-| adr | `adr/` |
+| adr | `adr/` (workspace staging) |
 | write-blog | `blog/` |
 
 ## Structure
 
 - `HANDOFF.md` — session handover (single file, overwritten each session)
 - `IDEAS.md` — idea log (single file)
-- `specs/` — brainstorming / design specs (superpowers output)
-- `plans/` — implementation plans (superpowers output)
+- `specs/` — brainstorming / design specs (staging; promoted to project `docs/specs/` at epic close)
+- `plans/` — implementation plans (ephemeral; stay in workspace only)
 - `snapshots/` — design snapshots with INDEX.md (auto-pruned, max 10)
-- `adr/` — architecture decision records with INDEX.md
+- `adr/` — architecture decision records (staging; promoted to project `docs/adr/` at epic close)
 - `blog/` — project diary entries with INDEX.md
 - `design/` — epic journal (created by `epic` at branch start)
 
 ## Git Discipline
 
 Two git repositories are active in every session:
-- **Workspace** (`/Users/mdproctor/claude/public/casehub/ledger`) — methodology artifacts: handover, blog, specs, plans, ADRs
-- **Project repo** (`/Users/mdproctor/claude/casehub/ledger`) — source code
+- **Workspace** (`/Users/mdproctor/claude/public/casehub/ledger`) — staging area for specs and ADRs; permanent home for blog, handover, plans, snapshots
+- **Project repo** (`/Users/mdproctor/claude/casehub/ledger`) — source code + promoted specs (`docs/specs/`) + promoted ADRs (`docs/adr/`)
 
 Before any git operation, run `git rev-parse --show-toplevel` to confirm which repo is currently active. Do not assume — the session may have opened in either. cd to the correct repo before staging:
 - Source code commits → project repo
-- Methodology artifacts → workspace
-
+- Specs and ADRs → workspace first, then promote to project repo at epic close
 
 ## Rules
 
-- All methodology artifacts go here, not in the project repo
-- Promotion to project repo is always explicit — never automatic
-- Workspace branches mirror project branches — switch both together
+- **Specs and ADRs are project knowledge** — final home is the project repo under `docs/specs/` and `docs/adr/`
+- The workspace `specs/` and `adr/` directories are staging areas only — skills write there first
+- **Promotion at epic close**: copy spec/ADR files to project repo, commit there; leave workspace copies in place
+- Plans (`plans/`) are ephemeral — workspace only, never promoted
+- Blog, handover, snapshots, design journal — workspace only, never promoted
 
 ## Routing
 
-| Artifact   | Destination | Notes |
-|------------|-------------|-------|
-| adr        | workspace   | |
-| blog       | workspace   | |
-| design     | workspace   | |
-| snapshots  | workspace   | |
-| specs      | workspace   | |
-| handover   | workspace   | |
+| Artifact | Initial destination | Final destination | When promoted |
+|----------|---------------------|-------------------|---------------|
+| specs    | workspace `specs/`  | project `docs/specs/` | epic close |
+| adr      | workspace `adr/`    | project `docs/adr/`   | epic close |
+| plans    | workspace `plans/`  | — (workspace only)    | never |
+| blog     | workspace `blog/`   | — (workspace only)    | never |
+| design   | workspace `design/` | — (workspace only)    | never |
+| snapshots | workspace `snapshots/` | — (workspace only) | never |
+| handover | workspace root      | — (workspace only)    | never |
 
 ---
 
