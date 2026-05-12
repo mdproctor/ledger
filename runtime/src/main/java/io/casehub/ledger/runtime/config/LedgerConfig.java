@@ -318,6 +318,47 @@ public interface LedgerConfig {
         }
 
         /**
+         * Trust export settings — deployment identity for exported payloads.
+         *
+         * @return the export sub-configuration
+         */
+        ExportConfig export();
+
+        /**
+         * Trust bootstrap settings — seed Beta(α,β) from an external source on first registration.
+         *
+         * @return the bootstrap sub-configuration
+         */
+        BootstrapConfig bootstrap();
+
+        /** Trust export settings. */
+        interface ExportConfig {
+
+            /**
+             * Opaque identifier for this deployment included in exported trust payloads.
+             * Informational only — consumers may use it to filter out their own exports when
+             * importing from an aggregator. Empty when not configured.
+             *
+             * @return deployment identifier, or empty if not configured
+             */
+            java.util.Optional<String> deploymentId();
+        }
+
+        /** Trust bootstrap settings. */
+        interface BootstrapConfig {
+
+            /**
+             * When {@code true}, a batch pre-pass at the start of each {@link TrustScoreJob}
+             * run calls {@link io.casehub.ledger.runtime.service.federation.TrustBootstrapService}
+             * for actors with no existing trust score. Off by default — zero overhead when disabled.
+             *
+             * @return {@code true} if trust bootstrapping is enabled; {@code false} by default
+             */
+            @WithDefault("false")
+            boolean enabled();
+        }
+
+        /**
          * Recomputation interval for trust scores expressed as a Quarkus duration string
          * (e.g. {@code "24h"}, {@code "6h"}, {@code "1h"}). Default is {@code "24h"} (nightly).
          *
