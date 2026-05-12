@@ -107,6 +107,12 @@ public class TrustScoreJob {
                 .filter(e -> e.actorId != null)
                 .collect(Collectors.groupingBy(e -> e.actorId));
 
+        // Bootstrap pre-pass: seed trust scores for actors appearing for the first time.
+        // findAll() loads all score rows to extract existing actor IDs. At production scale
+        // a findDistinctActorIds() query would avoid loading full entity graphs here.
+        // Writes join the outer @Transactional — rollback on computation failure also
+        // rolls back bootstrap seeds (intentional atomicity; use REQUIRES_NEW if independent
+        // durability is needed).
         if (config.trustScore().bootstrap().enabled()) {
             final Set<String> existingActors = trustRepo.findAll().stream()
                     .map(s -> s.actorId)

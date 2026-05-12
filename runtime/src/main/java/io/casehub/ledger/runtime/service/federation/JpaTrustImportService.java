@@ -18,6 +18,23 @@ import jakarta.transaction.Transactional;
  * This ensures bootstrap seeds are written once and never overwrite locally-computed scores.
  *
  * <p>
+ * <b>Existence check:</b> The check uses {@link ActorTrustScoreRepository#findByActorId},
+ * which queries for a GLOBAL row only. This is intentional — the computation pass in
+ * {@link io.casehub.ledger.runtime.service.TrustScoreJob} always writes a GLOBAL row first,
+ * so GLOBAL presence is the canonical signal that an actor has been processed locally.
+ * An actor with CAPABILITY or DIMENSION rows but no GLOBAL row is abnormal state that
+ * this import will seed over, which is correct behaviour (the seeded GLOBAL row will
+ * be overwritten on the next computation run).
+ *
+ * <p>
+ * <b>Transaction semantics:</b> {@code importTrust} is {@code @Transactional}. When called
+ * from {@link io.casehub.ledger.runtime.service.TrustScoreJob#runComputation()}, which is
+ * also {@code @Transactional}, the inner annotation joins the outer transaction (JTA default).
+ * Bootstrap writes and computation writes are therefore atomic — a job failure rolls back
+ * both. If bootstrap seeds should be independently durable (survive a computation failure),
+ * use {@code @Transactional(REQUIRES_NEW)} in a custom implementation.
+ *
+ * <p>
  * Activate via:
  * {@code quarkus.arc.selected-alternatives=io.casehub.ledger.runtime.service.federation.JpaTrustImportService}
  * (alongside any other selected alternatives already configured).
