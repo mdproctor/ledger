@@ -26,6 +26,8 @@ import jakarta.persistence.UniqueConstraint;
 @NamedQuery(name = "ActorTrustScore.findGlobalByActorId", query = "SELECT s FROM ActorTrustScore s WHERE s.actorId = :actorId AND s.scoreType = :scoreType AND s.scopeKey IS NULL")
 @NamedQuery(name = "ActorTrustScore.findByActorIdAndScoreType", query = "SELECT s FROM ActorTrustScore s WHERE s.actorId = :actorId AND s.scoreType = :scoreType")
 @NamedQuery(name = "ActorTrustScore.findByActorIdAndTypeAndKey", query = "SELECT s FROM ActorTrustScore s WHERE s.actorId = :actorId AND s.scoreType = :scoreType AND s.scopeKey = :scopeKey")
+@NamedQuery(name = "ActorTrustScore.findAllByLastComputedAtAfter",
+        query = "SELECT s FROM ActorTrustScore s WHERE s.lastComputedAt > :since")
 public class ActorTrustScore extends io.casehub.ledger.api.model.ActorTrustScore {
 
 }

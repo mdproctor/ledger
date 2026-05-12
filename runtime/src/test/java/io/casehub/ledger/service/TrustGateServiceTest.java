@@ -113,6 +113,11 @@ class TrustGateServiceTest {
         public List<ActorTrustScore> findAll() {
             return score != null ? List.of(score) : List.of();
         }
+
+        @Override
+        public List<ActorTrustScore> findAllByLastComputedAtAfter(final Instant since) {
+            return List.of();
+        }
     }
 
     // ── meetsThreshold (global) ───────────────────────────────────────────────
