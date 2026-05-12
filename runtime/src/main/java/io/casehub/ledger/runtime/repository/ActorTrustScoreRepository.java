@@ -51,4 +51,11 @@ public interface ActorTrustScoreRepository {
      * Return all computed trust scores across all actors and score types.
      */
     List<ActorTrustScore> findAll();
+
+    /**
+     * Return all trust scores (across all actors and score types) whose
+     * {@code lastComputedAt} timestamp is strictly after {@code since}.
+     * Used by {@link io.casehub.ledger.runtime.service.federation.TrustExportService#exportDelta}.
+     */
+    List<ActorTrustScore> findAllByLastComputedAtAfter(Instant since);
 }
