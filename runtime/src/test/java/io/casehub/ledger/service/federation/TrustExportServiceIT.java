@@ -40,9 +40,9 @@ class TrustExportServiceIT {
         final String low  = "export-low-"  + System.nanoTime();
         final Instant now = Instant.now();
 
-        trustRepo.upsert(high, ScoreType.GLOBAL, null, ActorType.AGENT,
+        trustRepo.upsert(high, ScoreType.GLOBAL, null, null, ActorType.AGENT,
                 0.85, 10, 1, 8.0, 2.0, 9, 1, now);
-        trustRepo.upsert(low, ScoreType.GLOBAL, null, ActorType.AGENT,
+        trustRepo.upsert(low, ScoreType.GLOBAL, null, null, ActorType.AGENT,
                 0.30, 5, 3, 2.0, 3.0, 2, 3, now);
 
         final var payload = exportService.exportAll(0.5);
@@ -58,9 +58,9 @@ class TrustExportServiceIT {
         final String b = "export-zero-b-" + System.nanoTime();
         final Instant now = Instant.now();
 
-        trustRepo.upsert(a, ScoreType.GLOBAL, null, ActorType.AGENT,
+        trustRepo.upsert(a, ScoreType.GLOBAL, null, null, ActorType.AGENT,
                 0.1, 2, 1, 1.0, 2.0, 1, 1, now);
-        trustRepo.upsert(b, ScoreType.GLOBAL, null, ActorType.HUMAN,
+        trustRepo.upsert(b, ScoreType.GLOBAL, null, null, ActorType.HUMAN,
                 0.9, 8, 0, 7.0, 1.0, 8, 0, now);
 
         final var payload = exportService.exportAll(0.0);
@@ -74,7 +74,7 @@ class TrustExportServiceIT {
         final String capOnly = "export-caponly-" + System.nanoTime();
         final Instant now = Instant.now();
 
-        trustRepo.upsert(capOnly, ScoreType.CAPABILITY, "security-review", ActorType.AGENT,
+        trustRepo.upsert(capOnly, ScoreType.CAPABILITY, "security-review", null, ActorType.AGENT,
                 0.9, 5, 0, 4.0, 1.0, 5, 0, now);
 
         final var payload = exportService.exportAll(0.0);
@@ -90,11 +90,11 @@ class TrustExportServiceIT {
         final String actorId = "export-actor-" + System.nanoTime();
         final Instant now = Instant.now();
 
-        trustRepo.upsert(actorId, ScoreType.GLOBAL, null, ActorType.AGENT,
+        trustRepo.upsert(actorId, ScoreType.GLOBAL, null, null, ActorType.AGENT,
                 0.80, 10, 1, 8.0, 2.0, 9, 1, now);
-        trustRepo.upsert(actorId, ScoreType.CAPABILITY, "security-review", ActorType.AGENT,
+        trustRepo.upsert(actorId, ScoreType.CAPABILITY, "security-review", null, ActorType.AGENT,
                 0.90, 6, 0, 5.0, 1.0, 6, 0, now);
-        trustRepo.upsert(actorId, ScoreType.DIMENSION, "thoroughness", ActorType.AGENT,
+        trustRepo.upsert(actorId, ScoreType.DIMENSION, null, "thoroughness", ActorType.AGENT,
                 0.75, 6, 0, 0.0, 0.0, 5, 1, now);
 
         final var result = exportService.exportActor(actorId);
@@ -136,9 +136,9 @@ class TrustExportServiceIT {
         final String changed = "export-delta-new-"  + System.nanoTime();
         final String stable  = "export-delta-old-"  + System.nanoTime();
 
-        trustRepo.upsert(stable, ScoreType.GLOBAL, null, ActorType.AGENT,
+        trustRepo.upsert(stable, ScoreType.GLOBAL, null, null, ActorType.AGENT,
                 0.7, 5, 0, 4.0, 1.0, 5, 0, since.minusSeconds(10));
-        trustRepo.upsert(changed, ScoreType.GLOBAL, null, ActorType.AGENT,
+        trustRepo.upsert(changed, ScoreType.GLOBAL, null, null, ActorType.AGENT,
                 0.8, 8, 1, 6.0, 2.0, 7, 1, since.plusSeconds(10));
 
         final var payload = exportService.exportDelta(since);
@@ -154,7 +154,7 @@ class TrustExportServiceIT {
         final String actorId = "export-delta-none-" + System.nanoTime();
         final Instant now = Instant.now();
 
-        trustRepo.upsert(actorId, ScoreType.GLOBAL, null, ActorType.AGENT,
+        trustRepo.upsert(actorId, ScoreType.GLOBAL, null, null, ActorType.AGENT,
                 0.7, 5, 0, 4.0, 1.0, 5, 0, now);
 
         final var payload = exportService.exportDelta(since);

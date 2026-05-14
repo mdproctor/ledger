@@ -67,11 +67,11 @@ class TrustScoreCapabilityIT {
         assertThat(capScores).hasSize(2);
 
         final ActorTrustScore secScore = capScores.stream()
-                .filter(s -> "security-review".equals(s.scopeKey)).findFirst().orElseThrow();
+                .filter(s -> "security-review".equals(s.capabilityKey)).findFirst().orElseThrow();
         assertThat(secScore.trustScore).isGreaterThan(0.6);
 
         final ActorTrustScore styleScore = capScores.stream()
-                .filter(s -> "style-review".equals(s.scopeKey)).findFirst().orElseThrow();
+                .filter(s -> "style-review".equals(s.capabilityKey)).findFirst().orElseThrow();
         assertThat(styleScore.trustScore).isLessThan(0.5);
     }
 
@@ -92,9 +92,9 @@ class TrustScoreCapabilityIT {
         final ActorTrustScore global = trustRepo.findByActorId(actorId).orElseThrow();
         final List<ActorTrustScore> caps = trustRepo.findByActorIdAndScoreType(actorId, ScoreType.CAPABILITY);
 
-        final double secScore = caps.stream().filter(s -> "security-review".equals(s.scopeKey))
+        final double secScore = caps.stream().filter(s -> "security-review".equals(s.capabilityKey))
                 .findFirst().orElseThrow().trustScore;
-        final double styleScore = caps.stream().filter(s -> "style-review".equals(s.scopeKey))
+        final double styleScore = caps.stream().filter(s -> "style-review".equals(s.capabilityKey))
                 .findFirst().orElseThrow().trustScore;
 
         // Global must be between style (low) and security (high) scores since it includes all
@@ -116,9 +116,9 @@ class TrustScoreCapabilityIT {
 
         trustScoreJob.runComputation();
 
-        final var secScore = trustRepo.findByActorIdAndTypeAndKey(actorId, ScoreType.CAPABILITY, "security-review")
+        final var secScore = trustRepo.findCapabilityScore(actorId, "security-review")
                 .orElseThrow();
-        final var styleScore = trustRepo.findByActorIdAndTypeAndKey(actorId, ScoreType.CAPABILITY, "style-review")
+        final var styleScore = trustRepo.findCapabilityScore(actorId, "style-review")
                 .orElseThrow();
 
         assertThat(secScore.trustScore).isCloseTo(0.75, within(0.1));

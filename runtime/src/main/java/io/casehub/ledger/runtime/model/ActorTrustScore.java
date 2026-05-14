@@ -9,24 +9,36 @@ import jakarta.persistence.UniqueConstraint;
  * Bayesian Beta trust score for a decision-making actor, scoped by score type.
  *
  * <p>
- * One row per {@code (actor_id, score_type, scope_key)} triple:
- * <ul>
- * <li>{@code GLOBAL} — one row per actor; classic score across all decisions. {@code scope_key} is null.</li>
- * <li>{@code CAPABILITY} — one row per (actor, capability tag). See ADR 0008.</li>
- * <li>{@code DIMENSION} — one row per (actor, trust dimension); decay-weighted average of continuous quality scores. See #62.</li>
- * </ul>
- *
- * <p>
+ * One row per {@code (actor_id, capability_key, dimension_key)} triple.
  * Plain {@code @Entity} — queries via {@code @NamedQuery} + EntityManager.
  */
 @Entity
-@Table(name = "actor_trust_score", uniqueConstraints = @UniqueConstraint(name = "uq_actor_trust_score_key", columnNames = {
-        "actor_id", "score_type", "scope_key" }))
-@NamedQuery(name = "ActorTrustScore.findAll", query = "SELECT s FROM ActorTrustScore s")
-@NamedQuery(name = "ActorTrustScore.findGlobalByActorId", query = "SELECT s FROM ActorTrustScore s WHERE s.actorId = :actorId AND s.scoreType = :scoreType AND s.scopeKey IS NULL")
-@NamedQuery(name = "ActorTrustScore.findByActorIdAndScoreType", query = "SELECT s FROM ActorTrustScore s WHERE s.actorId = :actorId AND s.scoreType = :scoreType")
-@NamedQuery(name = "ActorTrustScore.findByActorIdAndTypeAndKey", query = "SELECT s FROM ActorTrustScore s WHERE s.actorId = :actorId AND s.scoreType = :scoreType AND s.scopeKey = :scopeKey")
-@NamedQuery(name = "ActorTrustScore.findAllByLastComputedAtAfter",
+@Table(name = "actor_trust_score", uniqueConstraints = @UniqueConstraint(
+        name = "uq_actor_trust_score_key",
+        columnNames = {"actor_id", "capability_key", "dimension_key"}))
+@NamedQuery(
+        name = "ActorTrustScore.findAll",
+        query = "SELECT s FROM ActorTrustScore s")
+@NamedQuery(
+        name = "ActorTrustScore.findGlobalByActorId",
+        query = "SELECT s FROM ActorTrustScore s WHERE s.actorId = :actorId AND s.scoreType = :scoreType AND s.capabilityKey IS NULL AND s.dimensionKey IS NULL")
+@NamedQuery(
+        name = "ActorTrustScore.findByActorIdAndScoreType",
+        query = "SELECT s FROM ActorTrustScore s WHERE s.actorId = :actorId AND s.scoreType = :scoreType")
+@NamedQuery(
+        name = "ActorTrustScore.findCapabilityByActorIdAndTag",
+        query = "SELECT s FROM ActorTrustScore s WHERE s.actorId = :actorId AND s.scoreType = :scoreType AND s.capabilityKey = :capabilityKey AND s.dimensionKey IS NULL")
+@NamedQuery(
+        name = "ActorTrustScore.findDimensionByActorIdAndKey",
+        query = "SELECT s FROM ActorTrustScore s WHERE s.actorId = :actorId AND s.scoreType = :scoreType AND s.capabilityKey IS NULL AND s.dimensionKey = :dimensionKey")
+@NamedQuery(
+        name = "ActorTrustScore.findCapabilityDimensionByKeys",
+        query = "SELECT s FROM ActorTrustScore s WHERE s.actorId = :actorId AND s.scoreType = :scoreType AND s.capabilityKey = :capabilityKey AND s.dimensionKey = :dimensionKey")
+@NamedQuery(
+        name = "ActorTrustScore.findCapabilityDimensionsByCapability",
+        query = "SELECT s FROM ActorTrustScore s WHERE s.actorId = :actorId AND s.scoreType = :scoreType AND s.capabilityKey = :capabilityKey")
+@NamedQuery(
+        name = "ActorTrustScore.findAllByLastComputedAtAfter",
         query = "SELECT s FROM ActorTrustScore s WHERE s.lastComputedAt > :since")
 public class ActorTrustScore extends io.casehub.ledger.api.model.ActorTrustScore {
 

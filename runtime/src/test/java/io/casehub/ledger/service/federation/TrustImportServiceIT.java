@@ -57,11 +57,11 @@ class TrustImportServiceIT {
 
         final var caps = trustRepo.findByActorIdAndScoreType(actorId, ScoreType.CAPABILITY);
         assertThat(caps).hasSize(1);
-        assertThat(caps.get(0).scopeKey).isEqualTo("security-review");
+        assertThat(caps.get(0).capabilityKey).isEqualTo("security-review");
 
         final var dims = trustRepo.findByActorIdAndScoreType(actorId, ScoreType.DIMENSION);
         assertThat(dims).hasSize(1);
-        assertThat(dims.get(0).scopeKey).isEqualTo("thoroughness");
+        assertThat(dims.get(0).dimensionKey).isEqualTo("thoroughness");
         assertThat(dims.get(0).trustScore).isEqualTo(0.75);
     }
 
@@ -73,7 +73,7 @@ class TrustImportServiceIT {
         final String actorId = "import-existing-" + System.nanoTime();
         final Instant ts = Instant.now();
 
-        trustRepo.upsert(actorId, ScoreType.GLOBAL, null, ActorType.AGENT,
+        trustRepo.upsert(actorId, ScoreType.GLOBAL, null, null, ActorType.AGENT,
                 0.50, 3, 1, 2.0, 1.0, 2, 1, ts);
 
         final var payload = payloadFor(actorId,
@@ -94,7 +94,7 @@ class TrustImportServiceIT {
         final String fresh    = "import-mixed-new-" + System.nanoTime();
         final Instant ts = Instant.now();
 
-        trustRepo.upsert(existing, ScoreType.GLOBAL, null, ActorType.AGENT,
+        trustRepo.upsert(existing, ScoreType.GLOBAL, null, null, ActorType.AGENT,
                 0.60, 5, 0, 3.0, 2.0, 5, 0, ts);
 
         final var existingExport = actorExport(existing,
@@ -130,6 +130,6 @@ class TrustImportServiceIT {
 
     private ActorExport actorExport(final String actorId, final GlobalScoreExport global,
             final List<CapabilityScoreExport> caps, final List<DimensionScoreExport> dims) {
-        return new ActorExport(actorId, ActorType.AGENT, global, caps, dims);
+        return new ActorExport(actorId, ActorType.AGENT, global, caps, dims, List.of());
     }
 }

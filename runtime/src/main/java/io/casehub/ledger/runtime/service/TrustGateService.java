@@ -15,14 +15,8 @@ import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
  * CDI bean for trust threshold enforcement.
  *
  * <p>
- * Provides a single query point for checking whether an actor meets a minimum trust
- * threshold before a work assignment is made. Consumers call
- * {@link #meetsThreshold(String, double)} rather than querying {@link ActorTrustScoreRepository}
- * directly — this ensures threshold logic stays in one place.
- *
- * <p>
- * The capability overload queries the CAPABILITY score first and falls back to the global
- * score when no capability-specific score has been computed yet (#61).
+ * Single query point for trust decisions. Consumers call these methods rather than querying
+ * {@link ActorTrustScoreRepository} directly — threshold and fallback logic stays in one place.
  */
 @ApplicationScoped
 public class TrustGateService {
@@ -34,15 +28,7 @@ public class TrustGateService {
         this.repository = repository;
     }
 
-    /**
-     * Returns {@code true} if the actor's global trust score meets or exceeds {@code minTrust}.
-     * Returns {@code false} if the actor has no computed score — not-yet-evaluated actors are
-     * not trusted by default.
-     *
-     * @param actorId the actor identity string
-     * @param minTrust minimum trust score in [0.0, 1.0]
-     * @return {@code true} if the actor meets the threshold
-     */
+    /** Returns true if the actor's global trust score meets or exceeds {@code minTrust}. */
     public boolean meetsThreshold(final String actorId, final double minTrust) {
         return repository.findByActorId(actorId)
                 .map(s -> s.trustScore >= minTrust)
@@ -50,82 +36,70 @@ public class TrustGateService {
     }
 
     /**
-     * Returns {@code true} if the actor's trust score for the given capability meets
-     * {@code minTrust}.
-     *
-     * <p>
-     * Queries the {@code CAPABILITY} score for {@code capabilityTag} first; falls back to the
-     * global score when no capability-specific score has been computed yet.
-     *
-     * @param actorId the actor identity string
-     * @param capabilityTag the capability tag (e.g. {@code "security-review"})
-     * @param minTrust minimum trust score in [0.0, 1.0]
-     * @return {@code true} if the actor meets the threshold for this capability
+     * Returns true if the actor's CAPABILITY score for {@code capabilityTag} meets {@code minTrust}.
+     * Falls back to the global score when no capability-specific score has been computed.
      */
     public boolean meetsThreshold(final String actorId, final String capabilityTag,
             final double minTrust) {
-        return repository
-                .findByActorIdAndTypeAndKey(actorId, ScoreType.CAPABILITY, capabilityTag)
+        return repository.findCapabilityScore(actorId, capabilityTag)
                 .map(s -> s.trustScore >= minTrust)
                 .orElseGet(() -> meetsThreshold(actorId, minTrust));
     }
 
     /**
-     * Returns the actor's current global trust score, or {@link Optional#empty()} if no score
-     * has been computed yet.
-     *
-     * @param actorId the actor identity string
-     * @return the trust score in [0.0, 1.0], or empty
+     * Returns true if the actor's CAPABILITY_DIMENSION quality score for the given
+     * capability+dimension meets {@code minScore}. Returns false if no score exists.
      */
+    public boolean meetsQualityThreshold(final String actorId, final String capabilityTag,
+            final String dimension, final double minScore) {
+        return repository.findCapabilityDimension(actorId, capabilityTag, dimension)
+                .map(s -> s.trustScore >= minScore)
+                .orElse(false);
+    }
+
+    /** Returns the actor's global trust score, or empty if not yet computed. */
     public Optional<Double> currentScore(final String actorId) {
         return repository.findByActorId(actorId).map(s -> s.trustScore);
     }
 
-    /**
-     * Returns the actor's trust score for the given capability, or {@link Optional#empty()} if
-     * no capability-specific score has been computed yet.
-     *
-     * @param actorId the actor identity string
-     * @param capabilityTag the capability tag (e.g. {@code "security-review"})
-     * @return the capability trust score in [0.0, 1.0], or empty
-     */
+    /** Returns the actor's CAPABILITY score for the given tag, or empty if not yet computed. */
     public Optional<Double> currentScore(final String actorId, final String capabilityTag) {
-        return repository
-                .findByActorIdAndTypeAndKey(actorId, ScoreType.CAPABILITY, capabilityTag)
+        return repository.findCapabilityScore(actorId, capabilityTag).map(s -> s.trustScore);
+    }
+
+    /** Returns the actor's CAPABILITY_DIMENSION quality score, or empty if not yet computed. */
+    public Optional<Double> qualityScore(final String actorId, final String capabilityTag,
+            final String dimension) {
+        return repository.findCapabilityDimension(actorId, capabilityTag, dimension)
                 .map(s -> s.trustScore);
     }
 
     /**
-     * Returns all dimension trust scores for the given actor, keyed by dimension name.
-     * Returns an empty map if no dimension scores have been computed yet.
-     *
-     * @param actorId the actor identity string
-     * @return dimension name → score in [0.0, 1.0] for each DIMENSION row
+     * Returns all DIMENSION scores for the actor, keyed by dimension name.
+     * Empty map if no dimension scores have been computed.
      */
     public Map<String, Double> dimensionScores(final String actorId) {
         return repository.findByActorIdAndScoreType(actorId, ScoreType.DIMENSION).stream()
-                .collect(Collectors.toMap(s -> s.scopeKey, s -> s.trustScore));
+                .collect(Collectors.toMap(s -> s.dimensionKey, s -> s.trustScore));
     }
 
-    /**
-     * Returns the trust score for a specific dimension, or empty if not yet computed.
-     *
-     * @param actorId the actor identity string
-     * @param dimension the dimension name (e.g. {@code "review-thoroughness"})
-     * @return the dimension score in [0.0, 1.0], or empty
-     */
+    /** Returns the DIMENSION score for a specific dimension, or empty if not yet computed. */
     public Optional<Double> dimensionScore(final String actorId, final String dimension) {
-        return repository.findByActorIdAndTypeAndKey(actorId, ScoreType.DIMENSION, dimension)
-                .map(s -> s.trustScore);
+        return repository.findDimensionScore(actorId, dimension).map(s -> s.trustScore);
     }
 
     /**
-     * Returns the full {@link ActorTrustScore} entity for the given actor, or empty if no score
-     * has been computed yet. Use this when the caller needs metrics beyond the scalar score
-     * (e.g. decisionCount, overturnedCount, attestation counts).
-     *
-     * @param actorId the actor identity string
-     * @return the full score entity, or empty
+     * Returns all CAPABILITY_DIMENSION quality scores for the actor scoped to
+     * {@code capabilityTag}, keyed by dimension name. Empty map if none computed.
+     */
+    public Map<String, Double> qualityScores(final String actorId, final String capabilityTag) {
+        return repository.findCapabilityDimensions(actorId, capabilityTag).stream()
+                .collect(Collectors.toMap(s -> s.dimensionKey, s -> s.trustScore));
+    }
+
+    /**
+     * Returns the full {@link ActorTrustScore} entity for the actor's GLOBAL row, or empty.
+     * Use when the caller needs metrics beyond the scalar score (alpha, beta, decisionCount, etc.).
      */
     public Optional<ActorTrustScore> findScore(final String actorId) {
         return repository.findByActorId(actorId);
