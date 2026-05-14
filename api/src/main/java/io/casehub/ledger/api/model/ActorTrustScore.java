@@ -13,24 +13,32 @@ import jakarta.persistence.MappedSuperclass;
  * Bayesian Beta trust score for a decision-making actor, scoped by score type.
  *
  * <p>
- * One row per {@code (actor_id, score_type, scope_key)} triple:
+ * One row per {@code (actor_id, capability_key, dimension_key)} triple:
  * <ul>
- * <li>{@code GLOBAL} — one row per actor; classic score across all decisions. {@code scope_key} is null.</li>
- * <li>{@code CAPABILITY} — one row per (actor, capability tag). See ADR 0008.</li>
- * <li>{@code DIMENSION} — one row per (actor, trust dimension); decay-weighted average of continuous quality scores. See #62.</li>
+ * <li>{@code GLOBAL} — capability_key null, dimension_key null. Classic score across all decisions.</li>
+ * <li>{@code CAPABILITY} — capability_key set, dimension_key null. Scoped binary trust. See ADR 0008.</li>
+ * <li>{@code DIMENSION} — capability_key null, dimension_key set. Cross-capability quality score. See #62.</li>
+ * <li>{@code CAPABILITY_DIMENSION} — both keys set. Per-capability quality dimension score. See #76.</li>
  * </ul>
+ *
+ * <p>
+ * Binary scores (GLOBAL, CAPABILITY) use Bayesian Beta statistics.
+ * Continuous scores (DIMENSION, CAPABILITY_DIMENSION) use decay-weighted average; alpha and beta
+ * are stored as 0.0 for these rows. See #78 for the ADR documenting this distinction.
  */
 @MappedSuperclass
 public class ActorTrustScore {
 
-    /** Score type discriminator — determines what scope_key means. */
+    /** Score type discriminator — determines which key columns are non-null. */
     public enum ScoreType {
-        /** Classic cross-decision score. scope_key is null. */
+        /** Classic cross-decision score. capability_key and dimension_key are null. */
         GLOBAL,
-        /** Capability-scoped score. scope_key is the capability tag (e.g. "security-review"). See ADR 0008. */
+        /** Capability-scoped binary trust. capability_key is set; dimension_key is null. See ADR 0008. */
         CAPABILITY,
-        /** Dimension-scoped score. scope_key is the dimension name (e.g. "thoroughness"). See #62. */
-        DIMENSION
+        /** Cross-capability quality dimension. capability_key is null; dimension_key is set. See #62. */
+        DIMENSION,
+        /** Per-capability quality dimension. Both capability_key and dimension_key are set. See #76. */
+        CAPABILITY_DIMENSION
     }
 
     @Id
@@ -44,9 +52,13 @@ public class ActorTrustScore {
     @Column(name = "score_type", nullable = false)
     public ScoreType scoreType = ScoreType.GLOBAL;
 
-    /** Null for GLOBAL rows; capability tag for CAPABILITY; dimension name for DIMENSION. */
-    @Column(name = "scope_key")
-    public String scopeKey;
+    /** Capability tag for CAPABILITY and CAPABILITY_DIMENSION rows; null for GLOBAL and DIMENSION. */
+    @Column(name = "capability_key")
+    public String capabilityKey;
+
+    /** Quality dimension name for DIMENSION and CAPABILITY_DIMENSION rows; null for GLOBAL and CAPABILITY. */
+    @Column(name = "dimension_key")
+    public String dimensionKey;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "actor_type")
@@ -55,11 +67,11 @@ public class ActorTrustScore {
     @Column(name = "trust_score")
     public double trustScore;
 
-    /** Bayesian Beta α parameter. Not used for DIMENSION rows (stored as 0.0). */
+    /** Bayesian Beta α parameter. Stored as 0.0 for DIMENSION and CAPABILITY_DIMENSION rows. */
     @Column(name = "alpha_value")
     public double alpha;
 
-    /** Bayesian Beta β parameter. Not used for DIMENSION rows (stored as 0.0). */
+    /** Bayesian Beta β parameter. Stored as 0.0 for DIMENSION and CAPABILITY_DIMENSION rows. */
     @Column(name = "beta_value")
     public double beta;
 

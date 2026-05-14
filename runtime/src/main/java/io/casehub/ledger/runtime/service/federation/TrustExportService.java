@@ -58,6 +58,7 @@ public class TrustExportService {
         scores.addAll(trustRepo.findByActorIdAndScoreType(actorId, ScoreType.GLOBAL));
         scores.addAll(trustRepo.findByActorIdAndScoreType(actorId, ScoreType.CAPABILITY));
         scores.addAll(trustRepo.findByActorIdAndScoreType(actorId, ScoreType.DIMENSION));
+        scores.addAll(trustRepo.findByActorIdAndScoreType(actorId, ScoreType.CAPABILITY_DIMENSION));
         if (scores.isEmpty()) {
             return Optional.empty();
         }
@@ -112,17 +113,23 @@ public class TrustExportService {
 
         final List<CapabilityScoreExport> capabilities = scores.stream()
                 .filter(s -> s.scoreType == ScoreType.CAPABILITY)
-                .map(s -> new CapabilityScoreExport(s.scopeKey, s.alpha, s.beta, s.trustScore,
+                .map(s -> new CapabilityScoreExport(s.capabilityKey, s.alpha, s.beta, s.trustScore,
                         s.decisionCount, s.attestationPositive, s.attestationNegative,
                         s.lastComputedAt))
                 .collect(Collectors.toList());
 
         final List<DimensionScoreExport> dimensions = scores.stream()
                 .filter(s -> s.scoreType == ScoreType.DIMENSION)
-                .map(s -> new DimensionScoreExport(s.scopeKey, s.trustScore,
+                .map(s -> new DimensionScoreExport(s.dimensionKey, s.trustScore,
                         s.attestationPositive + s.attestationNegative, s.lastComputedAt))
                 .collect(Collectors.toList());
 
-        return new ActorExport(actorId, actorType, global, capabilities, dimensions);
+        final List<CapabilityDimensionScoreExport> capabilityDimensions = scores.stream()
+                .filter(s -> s.scoreType == ScoreType.CAPABILITY_DIMENSION)
+                .map(s -> new CapabilityDimensionScoreExport(s.capabilityKey, s.dimensionKey,
+                        s.trustScore, s.attestationPositive + s.attestationNegative, s.lastComputedAt))
+                .collect(Collectors.toList());
+
+        return new ActorExport(actorId, actorType, global, capabilities, dimensions, capabilityDimensions);
     }
 }

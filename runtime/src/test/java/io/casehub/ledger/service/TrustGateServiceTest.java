@@ -52,17 +52,16 @@ class TrustGateServiceTest {
         capability.id = UUID.randomUUID();
         capability.actorId = actorId;
         capability.scoreType = ScoreType.CAPABILITY;
-        capability.scopeKey = capabilityTag;
+        capability.capabilityKey = capabilityTag;
         capability.actorType = ActorType.AGENT;
         capability.trustScore = capabilityScore;
         capability.lastComputedAt = Instant.now();
 
         return new StubRepository(global) {
             @Override
-            public Optional<ActorTrustScore> findByActorIdAndTypeAndKey(
-                    final String id, final ScoreType type, final String scopeKey) {
-                if (actorId.equals(id) && ScoreType.CAPABILITY.equals(type)
-                        && capabilityTag.equals(scopeKey)) {
+            public Optional<ActorTrustScore> findCapabilityScore(
+                    final String id, final String tag) {
+                if (actorId.equals(id) && capabilityTag.equals(tag)) {
                     return Optional.of(capability);
                 }
                 return Optional.empty();
@@ -85,9 +84,24 @@ class TrustGateServiceTest {
         }
 
         @Override
-        public Optional<ActorTrustScore> findByActorIdAndTypeAndKey(
-                final String actorId, final ScoreType scoreType, final String scopeKey) {
+        public Optional<ActorTrustScore> findCapabilityScore(final String actorId, final String capabilityTag) {
             return Optional.empty();
+        }
+
+        @Override
+        public Optional<ActorTrustScore> findDimensionScore(final String actorId, final String dimension) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<ActorTrustScore> findCapabilityDimension(final String actorId,
+                final String capabilityTag, final String dimension) {
+            return Optional.empty();
+        }
+
+        @Override
+        public List<ActorTrustScore> findCapabilityDimensions(final String actorId, final String capabilityTag) {
+            return List.of();
         }
 
         @Override
@@ -97,7 +111,8 @@ class TrustGateServiceTest {
         }
 
         @Override
-        public void upsert(final String actorId, final ScoreType scoreType, final String scopeKey,
+        public void upsert(final String actorId, final ScoreType scoreType,
+                final String capabilityKey, final String dimensionKey,
                 final ActorType actorType, final double trustScore,
                 final int decisionCount, final int overturnedCount,
                 final double alpha, final double beta,
@@ -236,7 +251,7 @@ class TrustGateServiceTest {
                     s.id = UUID.randomUUID();
                     s.actorId = actorId;
                     s.scoreType = ScoreType.DIMENSION;
-                    s.scopeKey = e.getKey();
+                    s.dimensionKey = e.getKey();
                     s.actorType = ActorType.AGENT;
                     s.trustScore = e.getValue();
                     s.lastComputedAt = Instant.now();
@@ -245,12 +260,12 @@ class TrustGateServiceTest {
             }
 
             @Override
-            public Optional<ActorTrustScore> findByActorIdAndTypeAndKey(
-                    final String id, final ScoreType type, final String scopeKey) {
-                if (!actorId.equals(id) || type != ScoreType.DIMENSION) {
+            public Optional<ActorTrustScore> findDimensionScore(
+                    final String id, final String dimension) {
+                if (!actorId.equals(id)) {
                     return Optional.empty();
                 }
-                final Double score = dimensionScores.get(scopeKey);
+                final Double score = dimensionScores.get(dimension);
                 if (score == null) {
                     return Optional.empty();
                 }
@@ -258,7 +273,7 @@ class TrustGateServiceTest {
                 s.id = UUID.randomUUID();
                 s.actorId = actorId;
                 s.scoreType = ScoreType.DIMENSION;
-                s.scopeKey = scopeKey;
+                s.dimensionKey = dimension;
                 s.actorType = ActorType.AGENT;
                 s.trustScore = score;
                 s.lastComputedAt = Instant.now();
@@ -313,5 +328,134 @@ class TrustGateServiceTest {
         final TrustGateService gate = new TrustGateService(emptyRepo());
 
         assertThat(gate.dimensionScore("ghost", "thoroughness")).isEmpty();
+    }
+
+    private static ActorTrustScoreRepository repoWithCapabilityDimension(
+            final String actorId,
+            final String capabilityTag,
+            final Map<String, Double> dimensionScores) {
+        return new StubRepository(null) {
+            @Override
+            public Optional<ActorTrustScore> findCapabilityDimension(
+                    final String id, final String cap, final String dim) {
+                if (!actorId.equals(id) || !capabilityTag.equals(cap)) {
+                    return Optional.empty();
+                }
+                final Double score = dimensionScores.get(dim);
+                if (score == null) {
+                    return Optional.empty();
+                }
+                final ActorTrustScore s = new ActorTrustScore();
+                s.id = UUID.randomUUID();
+                s.actorId = actorId;
+                s.scoreType = ScoreType.CAPABILITY_DIMENSION;
+                s.capabilityKey = cap;
+                s.dimensionKey = dim;
+                s.actorType = ActorType.AGENT;
+                s.trustScore = score;
+                s.lastComputedAt = Instant.now();
+                return Optional.of(s);
+            }
+
+            @Override
+            public List<ActorTrustScore> findCapabilityDimensions(
+                    final String id, final String cap) {
+                if (!actorId.equals(id) || !capabilityTag.equals(cap)) {
+                    return List.of();
+                }
+                return dimensionScores.entrySet().stream().map(e -> {
+                    final ActorTrustScore s = new ActorTrustScore();
+                    s.id = UUID.randomUUID();
+                    s.actorId = actorId;
+                    s.scoreType = ScoreType.CAPABILITY_DIMENSION;
+                    s.capabilityKey = capabilityTag;
+                    s.dimensionKey = e.getKey();
+                    s.actorType = ActorType.AGENT;
+                    s.trustScore = e.getValue();
+                    s.lastComputedAt = Instant.now();
+                    return s;
+                }).collect(Collectors.toList());
+            }
+        };
+    }
+
+    // ── qualityScore ──────────────────────────────────────────────────────────
+
+    @Test
+    void qualityScore_returnsScore_whenCompositeExists() {
+        final TrustGateService gate = new TrustGateService(
+                repoWithCapabilityDimension("actor-cd", "security-review",
+                        Map.of("thoroughness", 0.92)));
+
+        assertThat(gate.qualityScore("actor-cd", "security-review", "thoroughness")).isPresent();
+        assertThat(gate.qualityScore("actor-cd", "security-review", "thoroughness").get())
+                .isEqualTo(0.92);
+    }
+
+    @Test
+    void qualityScore_returnsEmpty_whenNotComputed() {
+        final TrustGateService gate = new TrustGateService(emptyRepo());
+
+        assertThat(gate.qualityScore("ghost", "security-review", "thoroughness")).isEmpty();
+    }
+
+    @Test
+    void qualityScore_returnsEmpty_whenCapabilityMismatch() {
+        final TrustGateService gate = new TrustGateService(
+                repoWithCapabilityDimension("actor-cd2", "security-review",
+                        Map.of("thoroughness", 0.92)));
+
+        assertThat(gate.qualityScore("actor-cd2", "architecture-review", "thoroughness")).isEmpty();
+    }
+
+    // ── qualityScores ─────────────────────────────────────────────────────────
+
+    @Test
+    void qualityScores_returnsAllDimensionsForCapability() {
+        final TrustGateService gate = new TrustGateService(
+                repoWithCapabilityDimension("actor-qs", "security-review",
+                        Map.of("thoroughness", 0.9, "false-positive-rate", 0.1)));
+
+        final Map<String, Double> scores = gate.qualityScores("actor-qs", "security-review");
+        assertThat(scores).hasSize(2);
+        assertThat(scores.get("thoroughness")).isEqualTo(0.9);
+        assertThat(scores.get("false-positive-rate")).isEqualTo(0.1);
+    }
+
+    @Test
+    void qualityScores_returnsEmptyMap_whenNoneComputed() {
+        final TrustGateService gate = new TrustGateService(emptyRepo());
+
+        assertThat(gate.qualityScores("ghost", "security-review")).isEmpty();
+    }
+
+    // ── meetsQualityThreshold ─────────────────────────────────────────────────
+
+    @Test
+    void meetsQualityThreshold_true_whenScoreMeetsMin() {
+        final TrustGateService gate = new TrustGateService(
+                repoWithCapabilityDimension("actor-mqt", "security-review",
+                        Map.of("thoroughness", 0.8)));
+
+        assertThat(gate.meetsQualityThreshold("actor-mqt", "security-review", "thoroughness", 0.75))
+                .isTrue();
+    }
+
+    @Test
+    void meetsQualityThreshold_false_whenScoreBelowMin() {
+        final TrustGateService gate = new TrustGateService(
+                repoWithCapabilityDimension("actor-mqt2", "security-review",
+                        Map.of("thoroughness", 0.6)));
+
+        assertThat(gate.meetsQualityThreshold("actor-mqt2", "security-review", "thoroughness", 0.75))
+                .isFalse();
+    }
+
+    @Test
+    void meetsQualityThreshold_false_whenNoScoreExists() {
+        final TrustGateService gate = new TrustGateService(emptyRepo());
+
+        assertThat(gate.meetsQualityThreshold("ghost", "security-review", "thoroughness", 0.0))
+                .isFalse();
     }
 }

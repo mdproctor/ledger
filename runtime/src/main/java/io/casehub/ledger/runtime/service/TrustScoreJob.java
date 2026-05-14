@@ -168,7 +168,7 @@ public class TrustScoreJob {
                 final Map<UUID, List<LedgerAttestation>> capByEntry = capEntry.getValue();
 
                 final TrustScoreComputer.ActorScore capScore = computer.compute(decisions, capByEntry, now);
-                trustRepo.upsert(actorId, ActorTrustScore.ScoreType.CAPABILITY, capabilityTag,
+                trustRepo.upsert(actorId, ActorTrustScore.ScoreType.CAPABILITY, capabilityTag, null,
                         actorType, capScore.trustScore(),
                         capScore.decisionCount(), capScore.overturnedCount(),
                         capScore.alpha(), capScore.beta(),
@@ -197,12 +197,48 @@ public class TrustScoreJob {
                     final int dimDecisionCount = (int) dimAttestations.stream()
                             .map(a -> a.ledgerEntryId).distinct().count();
 
-                    trustRepo.upsert(actorId, ActorTrustScore.ScoreType.DIMENSION, dimension,
+                    trustRepo.upsert(actorId, ActorTrustScore.ScoreType.DIMENSION, null, dimension,
                             actorType, dimScore,
                             dimDecisionCount, 0,
                             0.0, 0.0,
                             dimPositive, dimNegative, now);
                 });
+            }
+
+            // ── CAPABILITY_DIMENSION pass ─────────────────────────────────────────────
+            // Attestations tagged with both a non-GLOBAL capabilityTag and a trustDimension.
+            // Uses raw actorAttestations (not aggregated synthetics) — same as dimension pass.
+            final Map<String, Map<String, List<LedgerAttestation>>> byCapabilityAndDimension =
+                    actorAttestations.stream()
+                            .filter(a -> a.trustDimension != null
+                                    && a.dimensionScore != null
+                                    && a.capabilityTag != null
+                                    && !CapabilityTag.GLOBAL.equals(a.capabilityTag))
+                            .collect(Collectors.groupingBy(
+                                    a -> a.capabilityTag,
+                                    Collectors.groupingBy(a -> a.trustDimension)));
+
+            for (final Map.Entry<String, Map<String, List<LedgerAttestation>>> capEntry :
+                    byCapabilityAndDimension.entrySet()) {
+                final String capabilityTag = capEntry.getKey();
+                for (final Map.Entry<String, List<LedgerAttestation>> dimEntry :
+                        capEntry.getValue().entrySet()) {
+                    final String dimension = dimEntry.getKey();
+                    final List<LedgerAttestation> compositeAttestations = dimEntry.getValue();
+
+                    computer.computeDimensionScore(compositeAttestations, now).ifPresent(score -> {
+                        final int cdPositive = (int) compositeAttestations.stream()
+                                .filter(a -> a.dimensionScore >= 0.5).count();
+                        final int cdNegative = (int) compositeAttestations.stream()
+                                .filter(a -> a.dimensionScore < 0.5).count();
+                        final int cdDecisionCount = (int) compositeAttestations.stream()
+                                .map(a -> a.ledgerEntryId).distinct().count();
+
+                        trustRepo.upsert(actorId, ActorTrustScore.ScoreType.CAPABILITY_DIMENSION,
+                                capabilityTag, dimension, actorType, score,
+                                cdDecisionCount, 0, 0.0, 0.0, cdPositive, cdNegative, now);
+                    });
+                }
             }
 
             // ── Global pass ────────────────────────────────────────────────────────────
@@ -220,7 +256,7 @@ public class TrustScoreJob {
                     globalScoreStrategy.derive(capabilityScores, actorAttestations)
                             .orElse(globalScore);
 
-            trustRepo.upsert(actorId, ActorTrustScore.ScoreType.GLOBAL, null,
+            trustRepo.upsert(actorId, ActorTrustScore.ScoreType.GLOBAL, null, null,
                     actorType, finalScore.trustScore(),
                     finalScore.decisionCount(), finalScore.overturnedCount(),
                     finalScore.alpha(), finalScore.beta(),

@@ -21,15 +21,15 @@ import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
  *
  * <p>
  * Upsert is a find-then-update to remain compatible with H2 and PostgreSQL without
- * database-specific SQL. The unique constraint (actor_id, score_type, scope_key) with
- * NULLS NOT DISTINCT prevents duplicate GLOBAL rows at the database level.
+ * database-specific SQL. The unique constraint (actor_id, capability_key, dimension_key) with
+ * NULLS NOT DISTINCT prevents duplicate rows at the database level.
  *
  * <p>
- * Upsert assumption: each {@code (actorId, scoreType, scopeKey)} triple is upserted at most
- * once per transaction. Calling {@code upsert()} twice for the same triple in a single
- * transaction may produce a duplicate row if Hibernate does not flush before the second
- * find. Under the default {@code FlushModeType.AUTO}, named queries trigger a flush, so
- * this is safe in practice. Do not disable auto-flush in a context that calls upsert.
+ * Upsert assumption: each {@code (actorId, scoreType, capabilityKey, dimensionKey)} combination
+ * is upserted at most once per transaction. Calling {@code upsert()} twice for the same key in
+ * a single transaction may produce a duplicate row if Hibernate does not flush before the second
+ * find. Under the default {@code FlushModeType.AUTO}, named queries trigger a flush, so this is
+ * safe in practice.
  */
 @ApplicationScoped
 public class JpaActorTrustScoreRepository implements ActorTrustScoreRepository {
@@ -48,26 +48,44 @@ public class JpaActorTrustScoreRepository implements ActorTrustScoreRepository {
     }
 
     @Override
-    public Optional<ActorTrustScore> findByActorIdAndTypeAndKey(
-            final String actorId, final ScoreType scoreType, final String scopeKey) {
-        if (scopeKey == null) {
-            if (scoreType != ScoreType.GLOBAL) {
-                throw new IllegalArgumentException(
-                        "scopeKey must not be null for score type " + scoreType
-                                + " — null scopeKey is only valid for GLOBAL scores");
-            }
-            return em.createNamedQuery("ActorTrustScore.findGlobalByActorId", ActorTrustScore.class)
-                    .setParameter("actorId", actorId)
-                    .setParameter("scoreType", scoreType)
-                    .getResultStream()
-                    .findFirst();
-        }
-        return em.createNamedQuery("ActorTrustScore.findByActorIdAndTypeAndKey", ActorTrustScore.class)
+    public Optional<ActorTrustScore> findCapabilityScore(final String actorId, final String capabilityTag) {
+        return em.createNamedQuery("ActorTrustScore.findCapabilityByActorIdAndTag", ActorTrustScore.class)
                 .setParameter("actorId", actorId)
-                .setParameter("scoreType", scoreType)
-                .setParameter("scopeKey", scopeKey)
+                .setParameter("scoreType", ScoreType.CAPABILITY)
+                .setParameter("capabilityKey", capabilityTag)
                 .getResultStream()
                 .findFirst();
+    }
+
+    @Override
+    public Optional<ActorTrustScore> findDimensionScore(final String actorId, final String dimension) {
+        return em.createNamedQuery("ActorTrustScore.findDimensionByActorIdAndKey", ActorTrustScore.class)
+                .setParameter("actorId", actorId)
+                .setParameter("scoreType", ScoreType.DIMENSION)
+                .setParameter("dimensionKey", dimension)
+                .getResultStream()
+                .findFirst();
+    }
+
+    @Override
+    public Optional<ActorTrustScore> findCapabilityDimension(final String actorId,
+            final String capabilityTag, final String dimension) {
+        return em.createNamedQuery("ActorTrustScore.findCapabilityDimensionByKeys", ActorTrustScore.class)
+                .setParameter("actorId", actorId)
+                .setParameter("scoreType", ScoreType.CAPABILITY_DIMENSION)
+                .setParameter("capabilityKey", capabilityTag)
+                .setParameter("dimensionKey", dimension)
+                .getResultStream()
+                .findFirst();
+    }
+
+    @Override
+    public List<ActorTrustScore> findCapabilityDimensions(final String actorId, final String capabilityTag) {
+        return em.createNamedQuery("ActorTrustScore.findCapabilityDimensionsByCapability", ActorTrustScore.class)
+                .setParameter("actorId", actorId)
+                .setParameter("scoreType", ScoreType.CAPABILITY_DIMENSION)
+                .setParameter("capabilityKey", capabilityTag)
+                .getResultList();
     }
 
     @Override
@@ -81,20 +99,22 @@ public class JpaActorTrustScoreRepository implements ActorTrustScoreRepository {
 
     @Override
     @Transactional
-    public void upsert(final String actorId, final ScoreType scoreType, final String scopeKey,
+    public void upsert(final String actorId, final ScoreType scoreType,
+            final String capabilityKey, final String dimensionKey,
             final ActorType actorType, final double trustScore,
             final int decisionCount, final int overturnedCount,
             final double alpha, final double beta,
             final int attestationPositive, final int attestationNegative,
             final Instant lastComputedAt) {
 
-        ActorTrustScore score = findByActorIdAndTypeAndKey(actorId, scoreType, scopeKey).orElse(null);
+        ActorTrustScore score = findExisting(actorId, scoreType, capabilityKey, dimensionKey);
         if (score == null) {
             score = new ActorTrustScore();
             score.id = UUID.randomUUID();
             score.actorId = actorId;
             score.scoreType = scoreType;
-            score.scopeKey = scopeKey;
+            score.capabilityKey = capabilityKey;
+            score.dimensionKey = dimensionKey;
         }
         score.actorType = actorType;
         score.trustScore = trustScore;
@@ -106,6 +126,16 @@ public class JpaActorTrustScoreRepository implements ActorTrustScoreRepository {
         score.attestationNegative = attestationNegative;
         score.lastComputedAt = lastComputedAt;
         em.merge(score);
+    }
+
+    private ActorTrustScore findExisting(final String actorId, final ScoreType scoreType,
+            final String capabilityKey, final String dimensionKey) {
+        return switch (scoreType) {
+            case GLOBAL -> findByActorId(actorId).orElse(null);
+            case CAPABILITY -> findCapabilityScore(actorId, capabilityKey).orElse(null);
+            case DIMENSION -> findDimensionScore(actorId, dimensionKey).orElse(null);
+            case CAPABILITY_DIMENSION -> findCapabilityDimension(actorId, capabilityKey, dimensionKey).orElse(null);
+        };
     }
 
     @Override

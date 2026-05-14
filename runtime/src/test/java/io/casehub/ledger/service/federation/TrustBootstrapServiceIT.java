@@ -70,7 +70,7 @@ class TrustBootstrapServiceIT {
         final Instant ts = Instant.now();
 
         final var global = new GlobalScoreExport(7.0, 3.0, 0.70, 10, 7, 3, ts);
-        final var actor = new ActorExport(actorId, ActorType.AGENT, global, List.of(), List.of());
+        final var actor = new ActorExport(actorId, ActorType.AGENT, global, List.of(), List.of(), List.of());
         CapturingBootstrapSource.RESPONSE = new TrustExportPayload(ts, "", List.of(actor));
 
         bootstrapService.bootstrapIfNew(Set.of(actorId));

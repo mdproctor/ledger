@@ -92,8 +92,8 @@ class TrustScoreAggregationIT {
 
         trustScoreJob.runComputation();
 
-        final ActorTrustScore codeReviewScore = trustRepo.findByActorIdAndTypeAndKey(actorId, ScoreType.CAPABILITY, "code-review").orElseThrow();
-        final ActorTrustScore securityScore = trustRepo.findByActorIdAndTypeAndKey(actorId, ScoreType.CAPABILITY, "security-review").orElseThrow();
+        final ActorTrustScore codeReviewScore = trustRepo.findCapabilityScore(actorId, "code-review").orElseThrow();
+        final ActorTrustScore securityScore = trustRepo.findCapabilityScore(actorId, "security-review").orElseThrow();
 
         assertThat(codeReviewScore.trustScore).isGreaterThan(0.5);
         assertThat(securityScore.trustScore).isLessThan(0.5);

@@ -1,9 +1,11 @@
 package io.casehub.ledger.service.federation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -14,6 +16,7 @@ import io.casehub.ledger.api.model.ActorTrustScore.ScoreType;
 import io.casehub.ledger.api.model.ActorType;
 import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
 import io.casehub.ledger.runtime.service.federation.ActorExport;
+import io.casehub.ledger.runtime.service.federation.CapabilityDimensionScoreExport;
 import io.casehub.ledger.runtime.service.federation.CapabilityScoreExport;
 import io.casehub.ledger.runtime.service.federation.DimensionScoreExport;
 import io.casehub.ledger.runtime.service.federation.GlobalScoreExport;
@@ -57,11 +60,11 @@ class TrustImportServiceIT {
 
         final var caps = trustRepo.findByActorIdAndScoreType(actorId, ScoreType.CAPABILITY);
         assertThat(caps).hasSize(1);
-        assertThat(caps.get(0).scopeKey).isEqualTo("security-review");
+        assertThat(caps.get(0).capabilityKey).isEqualTo("security-review");
 
         final var dims = trustRepo.findByActorIdAndScoreType(actorId, ScoreType.DIMENSION);
         assertThat(dims).hasSize(1);
-        assertThat(dims.get(0).scopeKey).isEqualTo("thoroughness");
+        assertThat(dims.get(0).dimensionKey).isEqualTo("thoroughness");
         assertThat(dims.get(0).trustScore).isEqualTo(0.75);
     }
 
@@ -73,7 +76,7 @@ class TrustImportServiceIT {
         final String actorId = "import-existing-" + System.nanoTime();
         final Instant ts = Instant.now();
 
-        trustRepo.upsert(actorId, ScoreType.GLOBAL, null, ActorType.AGENT,
+        trustRepo.upsert(actorId, ScoreType.GLOBAL, null, null, ActorType.AGENT,
                 0.50, 3, 1, 2.0, 1.0, 2, 1, ts);
 
         final var payload = payloadFor(actorId,
@@ -94,7 +97,7 @@ class TrustImportServiceIT {
         final String fresh    = "import-mixed-new-" + System.nanoTime();
         final Instant ts = Instant.now();
 
-        trustRepo.upsert(existing, ScoreType.GLOBAL, null, ActorType.AGENT,
+        trustRepo.upsert(existing, ScoreType.GLOBAL, null, null, ActorType.AGENT,
                 0.60, 5, 0, 3.0, 2.0, 5, 0, ts);
 
         final var existingExport = actorExport(existing,
@@ -118,6 +121,31 @@ class TrustImportServiceIT {
         // no assertion needed beyond "no exception"
     }
 
+    // ── capability_dimension seeding ──────────────────────────────────────
+
+    @Test
+    @Transactional
+    void importTrust_seedsCapabilityDimensionScores() {
+        final String actorId = "agent-import-cd-" + UUID.randomUUID();
+        final Instant now = Instant.now();
+
+        final CapabilityDimensionScoreExport cd = new CapabilityDimensionScoreExport(
+                "security-review", "thoroughness", 0.88, 5, now);
+        final ActorExport actor = new ActorExport(
+                actorId, ActorType.AGENT,
+                new GlobalScoreExport(2.0, 1.0, 0.67, 3, 3, 0, now),
+                List.of(),
+                List.of(),
+                List.of(cd));
+        final TrustExportPayload payload = new TrustExportPayload(now, "remote", List.of(actor));
+
+        importService.importTrust(payload);
+
+        final var row = trustRepo.findCapabilityDimension(actorId, "security-review", "thoroughness");
+        assertThat(row).isPresent();
+        assertThat(row.get().trustScore).isCloseTo(0.88, within(0.001));
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────
 
     private TrustExportPayload payloadFor(final String actorId,
@@ -130,6 +158,6 @@ class TrustImportServiceIT {
 
     private ActorExport actorExport(final String actorId, final GlobalScoreExport global,
             final List<CapabilityScoreExport> caps, final List<DimensionScoreExport> dims) {
-        return new ActorExport(actorId, ActorType.AGENT, global, caps, dims);
+        return new ActorExport(actorId, ActorType.AGENT, global, caps, dims, List.of());
     }
 }
