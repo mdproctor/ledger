@@ -238,7 +238,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── DecayFunction.java           — SPI: attestation decay weight (ageInDays, verdict) → weight
 │       │   ├── ExponentialDecayFunction.java — @DefaultBean: 2^(-age/halfLife) × valence multiplier (FLAGGED slower decay)
 │       │   ├── TrustScoreComputer.java      — Bayesian Beta trust scoring (compute) + decay-weighted dimension average (computeDimensionScore); delegates decay to DecayFunction (pure Java)
-│       │   ├── TrustGateService.java        — CDI bean: trust threshold enforcement (meetsThreshold, currentScore, dimensionScores, dimensionScore)
+│       │   ├── TrustGateService.java        — CDI bean: trust threshold enforcement (meetsThreshold, currentScore, dimensionScores, dimensionScore, qualityScore, qualityScores, meetsQualityThreshold)
 │       │   ├── GlobalScoreStrategy.java          — SPI: select attestations / derive global trust score (ADR 0008)
 │       │   ├── AllAttestationsGlobalStrategy.java — @DefaultBean: all attestations → global Beta (Option B)
 │       │   ├── ExplicitGlobalAttestationsStrategy.java — @Alternative: only "*" attestations (Option A)
