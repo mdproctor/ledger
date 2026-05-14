@@ -1,7 +1,7 @@
 # ADR 0006 — ActorTrustScore Discriminator Model
 
 **Date:** 2026-04-28
-**Status:** Accepted
+**Status:** Superseded by ADR 0010
 **Refs:** #68
 
 ## Context
