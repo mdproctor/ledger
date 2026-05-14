@@ -1,9 +1,11 @@
 package io.casehub.ledger.service.federation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -14,6 +16,7 @@ import io.casehub.ledger.api.model.ActorTrustScore.ScoreType;
 import io.casehub.ledger.api.model.ActorType;
 import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
 import io.casehub.ledger.runtime.service.federation.ActorExport;
+import io.casehub.ledger.runtime.service.federation.CapabilityDimensionScoreExport;
 import io.casehub.ledger.runtime.service.federation.CapabilityScoreExport;
 import io.casehub.ledger.runtime.service.federation.DimensionScoreExport;
 import io.casehub.ledger.runtime.service.federation.GlobalScoreExport;
@@ -116,6 +119,31 @@ class TrustImportServiceIT {
         final var payload = new TrustExportPayload(Instant.now(), "", List.of());
         importService.importTrust(payload);
         // no assertion needed beyond "no exception"
+    }
+
+    // ── capability_dimension seeding ──────────────────────────────────────
+
+    @Test
+    @Transactional
+    void importTrust_seedsCapabilityDimensionScores() {
+        final String actorId = "agent-import-cd-" + UUID.randomUUID();
+        final Instant now = Instant.now();
+
+        final CapabilityDimensionScoreExport cd = new CapabilityDimensionScoreExport(
+                "security-review", "thoroughness", 0.88, 5, now);
+        final ActorExport actor = new ActorExport(
+                actorId, ActorType.AGENT,
+                new GlobalScoreExport(2.0, 1.0, 0.67, 3, 3, 0, now),
+                List.of(),
+                List.of(),
+                List.of(cd));
+        final TrustExportPayload payload = new TrustExportPayload(now, "remote", List.of(actor));
+
+        importService.importTrust(payload);
+
+        final var row = trustRepo.findCapabilityDimension(actorId, "security-review", "thoroughness");
+        assertThat(row).isPresent();
+        assertThat(row.get().trustScore).isCloseTo(0.88, within(0.001));
     }
 
     // ── helpers ───────────────────────────────────────────────────────────
