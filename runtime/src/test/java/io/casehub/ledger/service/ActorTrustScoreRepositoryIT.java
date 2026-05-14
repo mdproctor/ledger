@@ -223,4 +223,85 @@ class ActorTrustScoreRepositoryIT {
 
         assertThat(repo.findDimensionScore(actorId, "false-positive-rate")).isEmpty();
     }
+
+    // ── CAPABILITY_DIMENSION rows ──────────────────────────────────────────────
+
+    @Test
+    @Transactional
+    void upsert_capabilityDimension_storesRow() {
+        final String actorId = "actor-cd-" + System.nanoTime();
+        repo.upsert(actorId, ScoreType.CAPABILITY_DIMENSION, "security-review", "thoroughness",
+                ActorType.AGENT, 0.88, 5, 0, 0.0, 0.0, 4, 1, Instant.now());
+
+        final var result = repo.findCapabilityDimension(actorId, "security-review", "thoroughness");
+
+        assertThat(result).isPresent();
+        assertThat(result.get().trustScore).isEqualTo(0.88);
+        assertThat(result.get().scoreType).isEqualTo(ScoreType.CAPABILITY_DIMENSION);
+        assertThat(result.get().capabilityKey).isEqualTo("security-review");
+        assertThat(result.get().dimensionKey).isEqualTo("thoroughness");
+    }
+
+    @Test
+    @Transactional
+    void upsert_capabilityDimension_isIdempotent() {
+        final String actorId = "actor-cd-idem-" + System.nanoTime();
+        repo.upsert(actorId, ScoreType.CAPABILITY_DIMENSION, "security-review", "thoroughness",
+                ActorType.AGENT, 0.5, 2, 0, 0.0, 0.0, 2, 0, Instant.now());
+        repo.upsert(actorId, ScoreType.CAPABILITY_DIMENSION, "security-review", "thoroughness",
+                ActorType.AGENT, 0.9, 10, 0, 0.0, 0.0, 10, 0, Instant.now());
+
+        final var results = repo.findByActorIdAndScoreType(actorId, ScoreType.CAPABILITY_DIMENSION);
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).trustScore).isEqualTo(0.9);
+    }
+
+    @Test
+    @Transactional
+    void findCapabilityDimension_returnsEmpty_whenKeyMismatches() {
+        final String actorId = "actor-cd-mismatch-" + System.nanoTime();
+        repo.upsert(actorId, ScoreType.CAPABILITY_DIMENSION, "security-review", "thoroughness",
+                ActorType.AGENT, 0.8, 3, 0, 0.0, 0.0, 3, 0, Instant.now());
+
+        assertThat(repo.findCapabilityDimension(actorId, "architecture-review", "thoroughness"))
+                .isEmpty();
+        assertThat(repo.findCapabilityDimension(actorId, "security-review", "false-positive-rate"))
+                .isEmpty();
+    }
+
+    @Test
+    @Transactional
+    void findCapabilityDimensions_returnsAllForCapability() {
+        final String actorId = "actor-cd-multi-" + System.nanoTime();
+        repo.upsert(actorId, ScoreType.CAPABILITY_DIMENSION, "security-review", "thoroughness",
+                ActorType.AGENT, 0.9, 5, 0, 0.0, 0.0, 5, 0, Instant.now());
+        repo.upsert(actorId, ScoreType.CAPABILITY_DIMENSION, "security-review", "false-positive-rate",
+                ActorType.AGENT, 0.1, 3, 2, 0.0, 0.0, 1, 2, Instant.now());
+        repo.upsert(actorId, ScoreType.CAPABILITY_DIMENSION, "architecture-review", "thoroughness",
+                ActorType.AGENT, 0.6, 4, 0, 0.0, 0.0, 4, 0, Instant.now());
+
+        final var secResults = repo.findCapabilityDimensions(actorId, "security-review");
+        assertThat(secResults).hasSize(2);
+        assertThat(secResults).extracting(s -> s.dimensionKey)
+                .containsExactlyInAnyOrder("thoroughness", "false-positive-rate");
+
+        final var archResults = repo.findCapabilityDimensions(actorId, "architecture-review");
+        assertThat(archResults).hasSize(1);
+        assertThat(archResults.get(0).capabilityKey).isEqualTo("architecture-review");
+    }
+
+    @Test
+    @Transactional
+    void findByActorId_global_notAffectedByCapabilityDimensionRows() {
+        final String actorId = "actor-cd-global-iso-" + System.nanoTime();
+        repo.upsert(actorId, ScoreType.GLOBAL, null, null, ActorType.AGENT,
+                0.7, 5, 0, 2.5, 1.0, 5, 0, Instant.now());
+        repo.upsert(actorId, ScoreType.CAPABILITY_DIMENSION, "security-review", "thoroughness",
+                ActorType.AGENT, 0.9, 3, 0, 0.0, 0.0, 3, 0, Instant.now());
+
+        final var global = repo.findByActorId(actorId);
+        assertThat(global).isPresent();
+        assertThat(global.get().scoreType).isEqualTo(ScoreType.GLOBAL);
+        assertThat(global.get().trustScore).isEqualTo(0.7);
+    }
 }

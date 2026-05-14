@@ -22,7 +22,7 @@ import jakarta.persistence.MappedSuperclass;
  * </ul>
  *
  * <p>
- * Binary scores (GLOBAL, CAPABILITY, CAPABILITY_DIMENSION) use Bayesian Beta statistics.
+ * Binary scores (GLOBAL, CAPABILITY) use Bayesian Beta statistics.
  * Continuous scores (DIMENSION, CAPABILITY_DIMENSION) use decay-weighted average; alpha and beta
  * are stored as 0.0 for these rows. See #78 for the ADR documenting this distinction.
  */
