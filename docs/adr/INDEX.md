@@ -10,3 +10,4 @@
 | [0006](0006-actor-trust-score-discriminator-model.md) | ActorTrustScore discriminator model | Accepted | 2026-04-28 |
 | [0007](0007-decay-function-spi.md) | DecayFunction SPI extraction | Accepted | 2026-04-28 |
 | [0008](0008-global-score-strategy-spi.md) | GlobalScoreStrategy SPI — pluggable global trust score aggregation | Accepted | 2026-05-03 |
+| [0009](0009-continuous-scores-decay-weighted-average.md) | Continuous quality dimension scores use decay-weighted average, not Bayesian Beta | Accepted | 2026-05-14 |
