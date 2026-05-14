@@ -201,7 +201,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       ├── model/
 │       │   ├── LedgerEntry.java             — abstract base entity (JOINED inheritance)
 │       │   ├── LedgerAttestation.java       — peer attestation entity
-│       │   ├── ActorTrustScore.java         — trust score entity; discriminator model (GLOBAL|CAPABILITY|DIMENSION) × scope_key
+│       │   ├── ActorTrustScore.java         — trust score entity; four ScoreType values (GLOBAL|CAPABILITY|DIMENSION|CAPABILITY_DIMENSION) × two-column key (capability_key, dimension_key); see ADR 0010
 │       │   ├── LedgerMerkleFrontier.java    — Merkle frontier node entity (log₂(N) rows per subject)
 │       │   ├── LedgerEntryArchiveRecord.java — archive snapshot record for retention-deleted entries (V1003)
 │       │   ├── LedgerEntryType.java         — COMMAND | EVENT | ATTESTATION (api module)
@@ -262,10 +262,11 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   │   └── TrustScoreDelta.java            — single actor score change value type
 │       │   ├── federation/
 │       │   │   ├── TrustExportPayload.java         — record: exportedAt, exportingDeployment, actors
-│       │   │   ├── ActorExport.java                — record: actorId, actorType, globalScore, capabilityScores, dimensionScores
+│       │   │   ├── ActorExport.java                — record: actorId, actorType, globalScore, capabilityScores, dimensionScores, capabilityDimensionScores
 │       │   │   ├── GlobalScoreExport.java          — record: Bayesian Beta global trust score fields
 │       │   │   ├── CapabilityScoreExport.java      — record: capability-scoped Bayesian Beta score fields
 │       │   │   ├── DimensionScoreExport.java       — record: continuous quality dimension score (score, sampleCount)
+│       │   │   ├── CapabilityDimensionScoreExport.java — record: per-capability quality dimension score (capabilityTag, dimension, score, sampleCount)
 │       │   │   ├── TrustExportService.java         — CDI bean: exportAll / exportActor / exportDelta read-model
 │       │   │   ├── TrustImportService.java         — SPI: importTrust(TrustExportPayload); implementation is the merge strategy
 │       │   │   ├── NoOpTrustImportService.java     — @DefaultBean no-op (trust import is opt-in)
@@ -287,7 +288,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │           └── LedgerPrivacyProducer.java   — CDI producer for both SPIs (@DefaultBean)
 │   └── src/main/resources/db/migration/
 │       ├── V1000__ledger_base_schema.sql    — ledger_entry + ledger_attestation tables
-│       ├── V1001__actor_trust_score.sql     — actor_trust_score discriminator model (UUID PK, score_type GLOBAL|CAPABILITY|DIMENSION, scope_key, NULLS NOT DISTINCT)
+│       ├── V1001__actor_trust_score.sql     — actor_trust_score two-column key model (UUID PK, score_type GLOBAL|CAPABILITY|DIMENSION|CAPABILITY_DIMENSION, capability_key + dimension_key, CHECK constraint, NULLS NOT DISTINCT)
 │       ├── V1002__ledger_supplement.sql     — supplement tables + drops moved columns
 │       ├── V1003__ledger_entry_archive.sql  — ledger_entry_archive table
 │       └── V1004__actor_identity.sql        — actor_identity pseudonymisation table
