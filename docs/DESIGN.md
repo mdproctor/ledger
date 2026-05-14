@@ -65,7 +65,7 @@ from base entries — trust scoring works across all consumers.
 |---|---|---|
 | `ledger_entry` | V1000 | Base audit record (discriminator column: `dtype`) |
 | `ledger_attestation` | V1000 | Peer verdicts — FK to `ledger_entry.id` |
-| `actor_trust_score` | V1001 | Trust scores — discriminator model `(actor_id, score_type, scope_key)` |
+| `actor_trust_score` | V1001 | Trust scores — keyed by `(actor_id, capability_key, dimension_key)`; `score_type` discriminator for indexed queries |
 | `ledger_supplement_compliance` | V1002 | ComplianceSupplement joined table |
 | `ledger_supplement_provenance` | V1002 | ProvenanceSupplement joined table |
 | `ledger_entry_archive` | V1003 | Archive records before retention deletion |
@@ -240,11 +240,14 @@ decisions accumulate into a Beta distribution: `α` for positive verdicts (SOUND
 `weight = 2^(-ageInDays / decayHalfLifeDays)` using the attestation's own timestamp.
 Prior is Beta(1,1) → score 0.5 with no history. Score = α/(α+β).
 
-`ActorTrustScore` uses a discriminator model keyed by `(actor_id, score_type, scope_key)`.
-`score_type` is `GLOBAL` (classic cross-decision Beta score), `CAPABILITY` (scoped to a
-capability tag — ✅ #61), or `DIMENSION` (scoped to a trust dimension — ✅ #62).
-`scope_key` is null for GLOBAL rows; the unique constraint uses `NULLS NOT DISTINCT` to
-enforce one GLOBAL row per actor. `TrustScoreJob` writes GLOBAL rows (via `GlobalScoreStrategy` SPI — ✅ #61), CAPABILITY rows (✅ #61), and DIMENSION rows (✅ #62).
+`ActorTrustScore` uses a two-column key model: `(actor_id, capability_key, dimension_key)`.
+`score_type` is a discriminator for indexed queries: `GLOBAL` (both keys null), `CAPABILITY`
+(capability_key set, dimension_key null — ✅ #61), `DIMENSION` (capability_key null, dimension_key
+set — ✅ #62), or `CAPABILITY_DIMENSION` (both keys set — ✅ #76).
+The unique constraint `NULLS NOT DISTINCT (actor_id, capability_key, dimension_key)` enforces
+one GLOBAL row per actor. A CHECK constraint ties the score_type to the nullity of the key
+columns, making the schema self-enforcing. `TrustScoreJob` runs four passes per actor: capability,
+dimension, capability-dimension, global.
 
 `LedgerAttestation.capabilityTag` (✅ #60) — nullable-free `"*"` sentinel (`CapabilityTag.GLOBAL`) marks cross-capability attestations. Capability-specific attestations carry an explicit tag (e.g. `"security-review"`). Three new SPI query methods allow `TrustScoreJob` (#61) to retrieve per-actor, per-capability attestation history.
 
@@ -259,11 +262,21 @@ A dimension attestation carries a continuous `dimensionScore` ∈ [0.0, 1.0] alo
 score = Σ(weight_i × confidence_i × dimensionScore_i) / Σ(weight_i × confidence_i)
 weight_i = 2^(-ageInDays_i / halfLifeDays)
 ```
-Pure time-based decay (no valence asymmetry) — `TrustScoreComputer.computeDimensionScore()`. Stored as `DIMENSION` rows in `actor_trust_score` (`scope_key = dimensionName`). The `alpha_value` and `beta_value` columns are not meaningful for DIMENSION rows (stored as 0.0). The dimension pass runs after the capability pass and before the global pass in `TrustScoreJob`.
+Pure time-based decay (no valence asymmetry) — `TrustScoreComputer.computeDimensionScore()`. Stored as `DIMENSION` rows in `actor_trust_score` (`dimension_key = dimensionName`, `capability_key = null`). The `alpha_value` and `beta_value` columns are not meaningful for DIMENSION rows (stored as 0.0). The dimension pass runs after the capability pass and before the capability-dimension pass in `TrustScoreJob`.
 
 **Audit counters:** `attestation_positive` counts dimension attestations with `dimensionScore >= 0.5`; `attestation_negative` counts `dimensionScore < 0.5`. These do not affect `trustScore` but appear in reporting.
 
 **Query surface:** `TrustGateService.dimensionScores(actorId)` → `Map<String, Double>` (all dimensions for an actor). `TrustGateService.dimensionScore(actorId, dimension)` → `Optional<Double>` (one specific dimension).
+
+### Capability-Dimension Composite Trust Scores (✅ #76)
+
+Composite scores answer "how thorough is this actor specifically when doing security reviews?" — the intersection of a capability tag and a quality dimension. Stored as `CAPABILITY_DIMENSION` rows (`capability_key = capabilityTag`, `dimension_key = dimensionName`).
+
+**Computation model:** Same decay-weighted average as DIMENSION scores, applied to attestations carrying both a non-GLOBAL `capabilityTag` and a `trustDimension`. The capability-dimension pass runs between the dimension pass and the global pass in `TrustScoreJob`.
+
+**Query surface:** `TrustGateService.qualityScore(actorId, capabilityTag, dimension)` → `Optional<Double>`. `TrustGateService.qualityScores(actorId, capabilityTag)` → `Map<String, Double>` (all dimensions for one capability). `TrustGateService.meetsQualityThreshold(actorId, capabilityTag, dimension, minScore)` → `boolean`.
+
+**Federation:** `CapabilityDimensionScoreExport` is included in `ActorExport` payloads from `TrustExportService`. `JpaTrustImportService` seeds CAPABILITY_DIMENSION rows on import.
 
 **Application responsibility:** dimension names are defined and stamped by consuming extensions — this library provides the storage and computation infrastructure only.
 
