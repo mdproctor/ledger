@@ -68,12 +68,12 @@ class TrustScoreDimensionIT {
         assertThat(dimScores).hasSize(2);
 
         final ActorTrustScore thoroughness = dimScores.stream()
-                .filter(s -> "review-thoroughness".equals(s.scopeKey)).findFirst().orElseThrow();
+                .filter(s -> "review-thoroughness".equals(s.dimensionKey)).findFirst().orElseThrow();
         assertThat(thoroughness.trustScore).isGreaterThan(0.7);
         assertThat(thoroughness.trustScore).isLessThan(1.0);
 
         final ActorTrustScore fpr = dimScores.stream()
-                .filter(s -> "false-positive-rate".equals(s.scopeKey)).findFirst().orElseThrow();
+                .filter(s -> "false-positive-rate".equals(s.dimensionKey)).findFirst().orElseThrow();
         assertThat(fpr.trustScore).isCloseTo(0.1, within(0.05));
     }
 
@@ -177,10 +177,10 @@ class TrustScoreDimensionIT {
         assertThat(global).isPresent();
         assertThat(global.get().scoreType).isEqualTo(ScoreType.GLOBAL);
 
-        final var capability = trustRepo.findByActorIdAndTypeAndKey(actorId, ScoreType.CAPABILITY, "security-review");
+        final var capability = trustRepo.findCapabilityScore(actorId, "security-review");
         assertThat(capability).isPresent();
 
-        final var dimension = trustRepo.findByActorIdAndTypeAndKey(actorId, ScoreType.DIMENSION, "thoroughness");
+        final var dimension = trustRepo.findDimensionScore(actorId, "thoroughness");
         assertThat(dimension).isPresent();
         assertThat(dimension.get().trustScore).isCloseTo(0.7, within(0.05));
     }

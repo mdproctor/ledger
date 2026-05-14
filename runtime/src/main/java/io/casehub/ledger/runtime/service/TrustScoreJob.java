@@ -168,7 +168,7 @@ public class TrustScoreJob {
                 final Map<UUID, List<LedgerAttestation>> capByEntry = capEntry.getValue();
 
                 final TrustScoreComputer.ActorScore capScore = computer.compute(decisions, capByEntry, now);
-                trustRepo.upsert(actorId, ActorTrustScore.ScoreType.CAPABILITY, capabilityTag,
+                trustRepo.upsert(actorId, ActorTrustScore.ScoreType.CAPABILITY, capabilityTag, null,
                         actorType, capScore.trustScore(),
                         capScore.decisionCount(), capScore.overturnedCount(),
                         capScore.alpha(), capScore.beta(),
@@ -197,7 +197,7 @@ public class TrustScoreJob {
                     final int dimDecisionCount = (int) dimAttestations.stream()
                             .map(a -> a.ledgerEntryId).distinct().count();
 
-                    trustRepo.upsert(actorId, ActorTrustScore.ScoreType.DIMENSION, dimension,
+                    trustRepo.upsert(actorId, ActorTrustScore.ScoreType.DIMENSION, null, dimension,
                             actorType, dimScore,
                             dimDecisionCount, 0,
                             0.0, 0.0,
@@ -220,7 +220,7 @@ public class TrustScoreJob {
                     globalScoreStrategy.derive(capabilityScores, actorAttestations)
                             .orElse(globalScore);
 
-            trustRepo.upsert(actorId, ActorTrustScore.ScoreType.GLOBAL, null,
+            trustRepo.upsert(actorId, ActorTrustScore.ScoreType.GLOBAL, null, null,
                     actorType, finalScore.trustScore(),
                     finalScore.decisionCount(), finalScore.overturnedCount(),
                     finalScore.alpha(), finalScore.beta(),

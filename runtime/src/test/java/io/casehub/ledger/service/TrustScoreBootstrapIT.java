@@ -51,7 +51,7 @@ class TrustScoreBootstrapIT {
             QUERIED.add(actorId);
             final Instant ts = Instant.now();
             final var global = new GlobalScoreExport(6.0, 2.0, SEED_SCORE, 8, 6, 2, ts);
-            final var actor = new ActorExport(actorId, ActorType.AGENT, global, List.of(), List.of());
+            final var actor = new ActorExport(actorId, ActorType.AGENT, global, List.of(), List.of(), List.of());
             return Optional.of(new TrustExportPayload(ts, "test-source", List.of(actor)));
         }
     }
@@ -94,7 +94,7 @@ class TrustScoreBootstrapIT {
 
         // Pre-seed a trust score so actor is "existing"
         trustRepo.upsert(actorId, io.casehub.ledger.api.model.ActorTrustScore.ScoreType.GLOBAL,
-                null, ActorType.AGENT, 0.60, 5, 0, 3.0, 2.0, 5, 0, Instant.now());
+                null, null, ActorType.AGENT, 0.60, 5, 0, 3.0, 2.0, 5, 0, Instant.now());
 
         // Write a ledger entry so actor appears in byActor map
         LedgerTestFixtures.seedDecision(actorId, Instant.now(), null, repo, em);

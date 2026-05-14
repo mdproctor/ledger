@@ -64,22 +64,29 @@ public class JpaTrustImportService implements TrustImportService {
     private void seedActor(final ActorExport actor, final Instant now) {
         if (actor.globalScore() != null) {
             final GlobalScoreExport g = actor.globalScore();
-            trustRepo.upsert(actor.actorId(), ScoreType.GLOBAL, null,
+            trustRepo.upsert(actor.actorId(), ScoreType.GLOBAL, null, null,
                     actor.actorType(), g.trustScore(),
                     g.decisionCount(), 0, g.alpha(), g.beta(),
                     g.attestationPositive(), g.attestationNegative(), now);
         }
         for (final CapabilityScoreExport c : actor.capabilityScores()) {
-            trustRepo.upsert(actor.actorId(), ScoreType.CAPABILITY, c.capabilityTag(),
+            trustRepo.upsert(actor.actorId(), ScoreType.CAPABILITY, c.capabilityTag(), null,
                     actor.actorType(), c.trustScore(),
                     c.decisionCount(), 0, c.alpha(), c.beta(),
                     c.attestationPositive(), c.attestationNegative(), now);
         }
         for (final DimensionScoreExport d : actor.dimensionScores()) {
-            trustRepo.upsert(actor.actorId(), ScoreType.DIMENSION, d.dimension(),
+            trustRepo.upsert(actor.actorId(), ScoreType.DIMENSION, null, d.dimension(),
                     actor.actorType(), d.score(),
                     d.sampleCount(), 0, 0.0, 0.0,
                     d.sampleCount(), 0, now);
+        }
+        for (final CapabilityDimensionScoreExport cd : actor.capabilityDimensionScores()) {
+            trustRepo.upsert(actor.actorId(), ScoreType.CAPABILITY_DIMENSION,
+                    cd.capabilityTag(), cd.dimension(),
+                    actor.actorType(), cd.score(),
+                    cd.sampleCount(), 0, 0.0, 0.0,
+                    cd.sampleCount(), 0, now);
         }
     }
 }

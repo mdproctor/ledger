@@ -10,5 +10,6 @@ public record ActorExport(
         ActorType actorType,
         GlobalScoreExport globalScore,
         List<CapabilityScoreExport> capabilityScores,
-        List<DimensionScoreExport> dimensionScores) {
+        List<DimensionScoreExport> dimensionScores,
+        List<CapabilityDimensionScoreExport> capabilityDimensionScores) {
 }

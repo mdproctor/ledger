@@ -52,17 +52,16 @@ class TrustGateServiceTest {
         capability.id = UUID.randomUUID();
         capability.actorId = actorId;
         capability.scoreType = ScoreType.CAPABILITY;
-        capability.scopeKey = capabilityTag;
+        capability.capabilityKey = capabilityTag;
         capability.actorType = ActorType.AGENT;
         capability.trustScore = capabilityScore;
         capability.lastComputedAt = Instant.now();
 
         return new StubRepository(global) {
             @Override
-            public Optional<ActorTrustScore> findByActorIdAndTypeAndKey(
-                    final String id, final ScoreType type, final String scopeKey) {
-                if (actorId.equals(id) && ScoreType.CAPABILITY.equals(type)
-                        && capabilityTag.equals(scopeKey)) {
+            public Optional<ActorTrustScore> findCapabilityScore(
+                    final String id, final String tag) {
+                if (actorId.equals(id) && capabilityTag.equals(tag)) {
                     return Optional.of(capability);
                 }
                 return Optional.empty();
@@ -85,9 +84,24 @@ class TrustGateServiceTest {
         }
 
         @Override
-        public Optional<ActorTrustScore> findByActorIdAndTypeAndKey(
-                final String actorId, final ScoreType scoreType, final String scopeKey) {
+        public Optional<ActorTrustScore> findCapabilityScore(final String actorId, final String capabilityTag) {
             return Optional.empty();
+        }
+
+        @Override
+        public Optional<ActorTrustScore> findDimensionScore(final String actorId, final String dimension) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<ActorTrustScore> findCapabilityDimension(final String actorId,
+                final String capabilityTag, final String dimension) {
+            return Optional.empty();
+        }
+
+        @Override
+        public List<ActorTrustScore> findCapabilityDimensions(final String actorId, final String capabilityTag) {
+            return List.of();
         }
 
         @Override
@@ -97,7 +111,8 @@ class TrustGateServiceTest {
         }
 
         @Override
-        public void upsert(final String actorId, final ScoreType scoreType, final String scopeKey,
+        public void upsert(final String actorId, final ScoreType scoreType,
+                final String capabilityKey, final String dimensionKey,
                 final ActorType actorType, final double trustScore,
                 final int decisionCount, final int overturnedCount,
                 final double alpha, final double beta,
@@ -236,7 +251,7 @@ class TrustGateServiceTest {
                     s.id = UUID.randomUUID();
                     s.actorId = actorId;
                     s.scoreType = ScoreType.DIMENSION;
-                    s.scopeKey = e.getKey();
+                    s.dimensionKey = e.getKey();
                     s.actorType = ActorType.AGENT;
                     s.trustScore = e.getValue();
                     s.lastComputedAt = Instant.now();
@@ -245,12 +260,12 @@ class TrustGateServiceTest {
             }
 
             @Override
-            public Optional<ActorTrustScore> findByActorIdAndTypeAndKey(
-                    final String id, final ScoreType type, final String scopeKey) {
-                if (!actorId.equals(id) || type != ScoreType.DIMENSION) {
+            public Optional<ActorTrustScore> findDimensionScore(
+                    final String id, final String dimension) {
+                if (!actorId.equals(id)) {
                     return Optional.empty();
                 }
-                final Double score = dimensionScores.get(scopeKey);
+                final Double score = dimensionScores.get(dimension);
                 if (score == null) {
                     return Optional.empty();
                 }
@@ -258,7 +273,7 @@ class TrustGateServiceTest {
                 s.id = UUID.randomUUID();
                 s.actorId = actorId;
                 s.scoreType = ScoreType.DIMENSION;
-                s.scopeKey = scopeKey;
+                s.dimensionKey = dimension;
                 s.actorType = ActorType.AGENT;
                 s.trustScore = score;
                 s.lastComputedAt = Instant.now();
