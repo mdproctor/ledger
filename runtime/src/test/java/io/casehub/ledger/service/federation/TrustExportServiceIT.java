@@ -1,8 +1,10 @@
 package io.casehub.ledger.service.federation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import java.time.Instant;
+import java.util.UUID;
 
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -12,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import io.casehub.ledger.api.model.ActorTrustScore.ScoreType;
 import io.casehub.ledger.api.model.ActorType;
 import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
+import io.casehub.ledger.runtime.service.federation.ActorExport;
 import io.casehub.ledger.runtime.service.federation.TrustExportService;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
@@ -170,5 +173,35 @@ class TrustExportServiceIT {
         final Instant before = Instant.now().minusSeconds(1);
         final var payload = exportService.exportAll(0.0);
         assertThat(payload.exportedAt()).isAfter(before);
+    }
+
+    // ── capabilityDimensionScores ─────────────────────────────────────────
+
+    @Test
+    @Transactional
+    void exportAll_includesCapabilityDimensionScores() {
+        final String actorId = "agent-export-cd-" + UUID.randomUUID();
+        final Instant now = Instant.now();
+
+        // Seed a GLOBAL row (required for exportAll threshold check)
+        trustRepo.upsert(actorId, ScoreType.GLOBAL, null, null,
+                ActorType.AGENT, 0.8, 5, 0, 3.0, 1.0, 5, 0, now);
+        // Seed a CAPABILITY_DIMENSION row
+        trustRepo.upsert(actorId, ScoreType.CAPABILITY_DIMENSION,
+                "security-review", "thoroughness",
+                ActorType.AGENT, 0.9, 3, 0, 0.0, 0.0, 3, 0, now);
+
+        final var payload = exportService.exportAll(0.0);
+
+        final ActorExport actor = payload.actors().stream()
+                .filter(a -> actorId.equals(a.actorId()))
+                .findFirst().orElseThrow();
+        assertThat(actor.capabilityDimensionScores()).hasSize(1);
+        assertThat(actor.capabilityDimensionScores().get(0).capabilityTag())
+                .isEqualTo("security-review");
+        assertThat(actor.capabilityDimensionScores().get(0).dimension())
+                .isEqualTo("thoroughness");
+        assertThat(actor.capabilityDimensionScores().get(0).score())
+                .isCloseTo(0.9, within(0.001));
     }
 }
