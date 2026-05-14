@@ -205,6 +205,42 @@ public class TrustScoreJob {
                 });
             }
 
+            // ── CAPABILITY_DIMENSION pass ─────────────────────────────────────────────
+            // Attestations tagged with both a non-GLOBAL capabilityTag and a trustDimension.
+            // Uses raw actorAttestations (not aggregated synthetics) — same as dimension pass.
+            final Map<String, Map<String, List<LedgerAttestation>>> byCapabilityAndDimension =
+                    actorAttestations.stream()
+                            .filter(a -> a.trustDimension != null
+                                    && a.dimensionScore != null
+                                    && a.capabilityTag != null
+                                    && !CapabilityTag.GLOBAL.equals(a.capabilityTag))
+                            .collect(Collectors.groupingBy(
+                                    a -> a.capabilityTag,
+                                    Collectors.groupingBy(a -> a.trustDimension)));
+
+            for (final Map.Entry<String, Map<String, List<LedgerAttestation>>> capEntry :
+                    byCapabilityAndDimension.entrySet()) {
+                final String capabilityTag = capEntry.getKey();
+                for (final Map.Entry<String, List<LedgerAttestation>> dimEntry :
+                        capEntry.getValue().entrySet()) {
+                    final String dimension = dimEntry.getKey();
+                    final List<LedgerAttestation> compositeAttestations = dimEntry.getValue();
+
+                    computer.computeDimensionScore(compositeAttestations, now).ifPresent(score -> {
+                        final int cdPositive = (int) compositeAttestations.stream()
+                                .filter(a -> a.dimensionScore >= 0.5).count();
+                        final int cdNegative = (int) compositeAttestations.stream()
+                                .filter(a -> a.dimensionScore < 0.5).count();
+                        final int cdDecisionCount = (int) compositeAttestations.stream()
+                                .map(a -> a.ledgerEntryId).distinct().count();
+
+                        trustRepo.upsert(actorId, ActorTrustScore.ScoreType.CAPABILITY_DIMENSION,
+                                capabilityTag, dimension, actorType, score,
+                                cdDecisionCount, 0, 0.0, 0.0, cdPositive, cdNegative, now);
+                    });
+                }
+            }
+
             // ── Global pass ────────────────────────────────────────────────────────────
             // selectAttestations filters by capabilityTag/etc. — synthetics preserve all fields.
             // Group directly by ledgerEntryId rather than using reference-equality set,
