@@ -2,6 +2,8 @@ package io.casehub.ledger.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,6 +21,7 @@ import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.service.LedgerMerkleTree;
 import io.casehub.ledger.runtime.service.LedgerVerificationService;
 import io.casehub.ledger.runtime.service.model.InclusionProof;
+import io.casehub.ledger.runtime.service.model.VerificationResult;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -140,5 +143,86 @@ class LedgerVerificationServiceIT {
         repo.save(stored);
 
         assertThat(verificationService.verify(sub)).isFalse();
+    }
+
+    // ── Agent signature verification ──────────────────────────────────────────
+
+    @Test
+    @Transactional
+    void verifyAgentSignature_unsignedEntry_returnsUnsigned() {
+        final UUID sub = UUID.randomUUID();
+        final TestEntry e = seedEntry(sub, 1, "unsigned-actor");
+
+        assertThat(verificationService.verifyAgentSignature(e.id))
+                .isEqualTo(VerificationResult.UNSIGNED);
+    }
+
+    @Test
+    @Transactional
+    void verifyAgentSignature_validSignature_returnsValid() throws Exception {
+        final KeyPair kp = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
+        final UUID sub = UUID.randomUUID();
+        final TestEntry e = seedEntry(sub, 1, "signed-actor");
+
+        final byte[] canonical = LedgerMerkleTree.canonicalBytes(e);
+        final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
+        sig.initSign(kp.getPrivate());
+        sig.update(canonical);
+        e.agentSignature = sig.sign();
+        e.agentPublicKey = kp.getPublic().getEncoded();
+        repo.save(e);
+
+        assertThat(verificationService.verifyAgentSignature(e.id))
+                .isEqualTo(VerificationResult.VALID);
+    }
+
+    @Test
+    @Transactional
+    void verifyAgentSignature_tamperedSignature_returnsInvalid() throws Exception {
+        final KeyPair kp = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
+        final UUID sub = UUID.randomUUID();
+        final TestEntry e = seedEntry(sub, 1, "signed-actor");
+
+        final byte[] canonical = LedgerMerkleTree.canonicalBytes(e);
+        final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
+        sig.initSign(kp.getPrivate());
+        sig.update(canonical);
+        final byte[] signature = sig.sign();
+        signature[0] ^= 0xFF;
+        e.agentSignature = signature;
+        e.agentPublicKey = kp.getPublic().getEncoded();
+        repo.save(e);
+
+        assertThat(verificationService.verifyAgentSignature(e.id))
+                .isEqualTo(VerificationResult.INVALID);
+    }
+
+    @Test
+    @Transactional
+    void verifyAgentSignature_unknownEntry_throwsIllegalArgument() {
+        final UUID nonexistent = UUID.randomUUID();
+        org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalArgumentException.class,
+                () -> verificationService.verifyAgentSignature(nonexistent));
+    }
+
+    @Test
+    @Transactional
+    void verifyAgentSignature_mutatedActorId_returnsInvalid() throws Exception {
+        final KeyPair kp = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
+        final UUID sub = UUID.randomUUID();
+        final TestEntry e = seedEntry(sub, 1, "original-actor");
+
+        final byte[] canonical = LedgerMerkleTree.canonicalBytes(e);
+        final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
+        sig.initSign(kp.getPrivate());
+        sig.update(canonical);
+        e.agentSignature = sig.sign();
+        e.agentPublicKey = kp.getPublic().getEncoded();
+        e.actorId = "impersonator-actor";
+        repo.save(e);
+
+        assertThat(verificationService.verifyAgentSignature(e.id))
+                .isEqualTo(VerificationResult.INVALID);
     }
 }
