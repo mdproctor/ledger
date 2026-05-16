@@ -106,6 +106,13 @@ public interface LedgerConfig {
      */
     HealthConfig health();
 
+    /**
+     * Per-actorId Ed25519 signing key configuration for bilateral entry signing.
+     *
+     * @return the agent signing sub-configuration
+     */
+    AgentSigningConfig agentSigning();
+
     /** Merkle Mountain Range and external publishing settings. */
     interface MerkleConfig {
 
@@ -440,6 +447,40 @@ public interface LedgerConfig {
          */
         @WithDefault("0.5")
         double flaggedPersistenceMultiplier();
+    }
+
+    /** Per-actorId bilateral signing key configuration. */
+    interface AgentSigningConfig {
+
+        /**
+         * Map of actorId → key file paths.
+         * Key: actorId (e.g. {@code "claude:reviewer@v1"}).
+         * Value: {@link ActorKeyConfig} with paths to the private and public key PEM files.
+         *
+         * <p>
+         * Example:
+         * <pre>
+         * casehub.ledger.agent-signing.keys."claude:reviewer@v1".private-key=/secrets/reviewer.private.pem
+         * casehub.ledger.agent-signing.keys."claude:reviewer@v1".public-key=/secrets/reviewer.public.pem
+         * </pre>
+         */
+        java.util.Map<String, ActorKeyConfig> keys();
+
+        /** PEM file paths for one actor's signing key pair. */
+        interface ActorKeyConfig {
+
+            /**
+             * Path to the PKCS#8 PEM file containing the Ed25519 private key.
+             * Generate with: {@code openssl genpkey -algorithm Ed25519 -out actor.private.pem}
+             */
+            String privateKey();
+
+            /**
+             * Path to the X.509 PEM file containing the Ed25519 public key.
+             * Generate with: {@code openssl pkey -in actor.private.pem -pubout -out actor.public.pem}
+             */
+            String publicKey();
+        }
     }
 
     /** Audit health check settings. */
