@@ -1,5 +1,8 @@
 package io.casehub.ledger.runtime.service;
 
+import java.security.KeyFactory;
+import java.security.PublicKey;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -14,6 +17,7 @@ import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.service.model.InclusionProof;
+import io.casehub.ledger.runtime.service.model.VerificationResult;
 
 /**
  * CDI bean exposing Merkle tree verification operations.
@@ -90,5 +94,37 @@ public class LedgerVerificationService {
         final String computed = LedgerMerkleTree.treeRoot(frontier);
         final String stored = treeRoot(subjectId);
         return computed.equals(stored);
+    }
+
+    /**
+     * Verifies the agent signature on the given entry.
+     *
+     * @param entryId the entry to verify
+     * @return {@link VerificationResult#UNSIGNED} if no signature stored;
+     *         {@link VerificationResult#VALID} if the signature verifies;
+     *         {@link VerificationResult#INVALID} if verification fails
+     * @throws IllegalArgumentException if the entry does not exist
+     */
+    @Transactional
+    public VerificationResult verifyAgentSignature(final UUID entryId) {
+        final LedgerEntry entry = ledgerRepo.findEntryById(entryId)
+                .orElseThrow(() -> new IllegalArgumentException("Entry not found: " + entryId));
+
+        if (entry.agentSignature == null) {
+            return VerificationResult.UNSIGNED;
+        }
+
+        try {
+            final KeyFactory kf = KeyFactory.getInstance("Ed25519");
+            final PublicKey pub = kf.generatePublic(new X509EncodedKeySpec(entry.agentPublicKey));
+
+            final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
+            sig.initVerify(pub);
+            sig.update(LedgerMerkleTree.canonicalBytes(entry));
+
+            return sig.verify(entry.agentSignature) ? VerificationResult.VALID : VerificationResult.INVALID;
+        } catch (final Exception e) {
+            return VerificationResult.INVALID;
+        }
     }
 }
