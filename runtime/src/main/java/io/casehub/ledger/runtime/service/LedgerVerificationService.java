@@ -12,6 +12,8 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
+import org.jboss.logging.Logger;
+
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
@@ -25,6 +27,8 @@ import io.casehub.ledger.runtime.service.model.VerificationResult;
  */
 @ApplicationScoped
 public class LedgerVerificationService {
+
+    private static final Logger LOG = Logger.getLogger(LedgerVerificationService.class);
 
     @Inject
     LedgerEntryRepository ledgerRepo;
@@ -112,6 +116,11 @@ public class LedgerVerificationService {
 
         if (entry.agentSignature == null) {
             return VerificationResult.UNSIGNED;
+        }
+
+        if (entry.agentPublicKey == null) {
+            LOG.warnf("Entry %s has agentSignature but no agentPublicKey — record is corrupt", entryId);
+            return VerificationResult.INVALID;
         }
 
         try {
