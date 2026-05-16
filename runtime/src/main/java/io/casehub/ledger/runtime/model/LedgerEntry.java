@@ -143,6 +143,25 @@ public abstract class LedgerEntry {
     @Column(name = "caused_by_entry_id")
     public UUID causedByEntryId;
 
+    // ── Agent signing ─────────────────────────────────────────────────────────
+
+    /**
+     * Ed25519 signature of {@link io.casehub.ledger.runtime.service.LedgerMerkleTree#canonicalBytes(LedgerEntry)}
+     * by the agent identified in {@link #actorId}.
+     * Null when the actor is not configured for bilateral signing.
+     */
+    @Column(name = "agent_signature")
+    public byte[] agentSignature;
+
+    /**
+     * X.509-encoded Ed25519 public key of the signing agent.
+     * Stored alongside the signature for self-contained verification —
+     * entries remain verifiable without any external key management system.
+     * Null when {@link #agentSignature} is null.
+     */
+    @Column(name = "agent_public_key")
+    public byte[] agentPublicKey;
+
     // ── Supplements ───────────────────────────────────────────────────────────
 
     /**
