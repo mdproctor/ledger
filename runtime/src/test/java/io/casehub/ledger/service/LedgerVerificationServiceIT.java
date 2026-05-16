@@ -199,6 +199,15 @@ class LedgerVerificationServiceIT {
 
     @Test
     @Transactional
+    void verifyAgentSignature_unknownEntry_throwsIllegalArgument() {
+        final UUID nonexistent = UUID.randomUUID();
+        org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalArgumentException.class,
+                () -> verificationService.verifyAgentSignature(nonexistent));
+    }
+
+    @Test
+    @Transactional
     void verifyAgentSignature_mutatedActorId_returnsInvalid() throws Exception {
         final KeyPair kp = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
         final UUID sub = UUID.randomUUID();

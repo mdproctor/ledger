@@ -92,16 +92,26 @@ class AgentSignatureEnricherTest {
     }
 
     @Test
-    void isIdempotent_calledTwice() {
+    void isIdempotent_secondCallIsNoOp() {
         enricher = new AgentSignatureEnricher(actorId -> Optional.of(testKeyPair));
 
         final TestEntry e = entry("claude:reviewer@v1");
         enricher.enrich(e);
         final byte[] firstSig = e.agentSignature.clone();
+        final byte[] firstKey = e.agentPublicKey.clone();
 
+        // Replace key provider with a different key — if re-signing occurred, the signature would differ
+        final KeyPair otherPair;
+        try {
+            otherPair = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+        enricher = new AgentSignatureEnricher(actorId -> Optional.of(otherPair));
         enricher.enrich(e);
 
         assertThat(e.agentSignature).isEqualTo(firstSig);
+        assertThat(e.agentPublicKey).isEqualTo(firstKey);
     }
 
     @Test

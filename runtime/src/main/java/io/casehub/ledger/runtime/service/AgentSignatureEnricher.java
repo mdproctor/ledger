@@ -36,7 +36,7 @@ public class AgentSignatureEnricher implements LedgerEntryEnricher {
 
     @Override
     public void enrich(final LedgerEntry entry) {
-        if (entry.actorId == null) return;
+        if (entry.actorId == null || entry.agentSignature != null) return;
         try {
             keyProvider.signingKeyPair(entry.actorId).ifPresent(kp -> sign(entry, kp));
         } catch (final Exception e) {
