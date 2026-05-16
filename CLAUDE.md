@@ -122,7 +122,7 @@ Domain logic is NOT in this extension — it lives in consumers via JPA JOINED s
 
 Each consumer defines its own subclass and its own Flyway migration for the subclass table.
 The base tables (`ledger_entry`, `ledger_attestation`, `actor_trust_score`) are defined here
-in V1000–V1004 and always present when `casehub-ledger` is on the classpath.
+in V1000–V1005 and always present when `casehub-ledger` is on the classpath.
 
 **Design documentation:** `docs/DESIGN.md` covers entity model, architecture, SPI contracts, and configuration. `docs/DESIGN-capabilities.md` covers Merkle MMR, PROV-DM export, agent identity model, and agent mesh topology.
 
@@ -199,7 +199,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │   └── src/main/java/io/casehub/ledger/runtime/
 │       ├── config/LedgerConfig.java         — @ConfigMapping(prefix = "casehub.ledger")
 │       ├── model/
-│       │   ├── LedgerEntry.java             — abstract base entity (JOINED inheritance)
+│       │   ├── LedgerEntry.java             — abstract base entity (JOINED inheritance); agentSignature + agentPublicKey for bilateral signing (V1005)
 │       │   ├── LedgerAttestation.java       — peer attestation entity
 │       │   ├── ActorTrustScore.java         — trust score entity; four ScoreType values (GLOBAL|CAPABILITY|DIMENSION|CAPABILITY_DIMENSION) × two-column key (capability_key, dimension_key); see ADR 0010
 │       │   ├── LedgerMerkleFrontier.java    — Merkle frontier node entity (log₂(N) rows per subject)
@@ -224,15 +224,19 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── TraceIdEnricher.java             — auto-populates traceId from active OTel span
 │       │   ├── OtelTraceIdProvider.java         — OTel span reader for TraceIdEnricher
 │       │   ├── LedgerTraceListener.java         — @EntityListeners runner: iterates LedgerEntryEnricher pipeline, non-fatal
-│       │   ├── LedgerMerkleTree.java            — Merkle Mountain Range algorithm (pure static)
-│       │   ├── LedgerVerificationService.java   — treeRoot / inclusionProof / verify (CDI bean)
+│       │   ├── LedgerMerkleTree.java            — Merkle Mountain Range algorithm (pure static); canonicalBytes() public static — shared by Merkle and agent signing
+│       │   ├── LedgerVerificationService.java   — treeRoot / inclusionProof / verify / verifyAgentSignature (CDI bean)
 │       │   ├── LedgerMerklePublisher.java       — Ed25519 signed tlog-checkpoint (opt-in CDI bean)
+│       │   ├── AgentKeyProvider.java            — SPI: per-actorId Ed25519 KeyPair for bilateral entry signing; see ADR 0011
+│       │   ├── ConfiguredAgentKeyProvider.java  — @DefaultBean: loads PKCS#8 private + X.509 public PEM per actorId from casehub.ledger.agent-signing.keys.*
+│       │   ├── AgentSignatureEnricher.java      — LedgerEntryEnricher: signs canonicalBytes() at @PrePersist via AgentKeyProvider
 │       │   ├── LedgerProvExportService.java      — W3C PROV-DM JSON-LD export (CDI bean)
 │       │   ├── LedgerProvSerializer.java         — PROV-DM serialisation utility
 │       │   ├── LedgerEntryArchiver.java          — archive record JSON serialisation for retention
 │       │   ├── model/
 │       │   │   ├── InclusionProof.java       — Merkle inclusion proof value type
-│       │   │   └── ProofStep.java            — single sibling node in a proof path
+│       │   │   ├── ProofStep.java            — single sibling node in a proof path
+│       │   │   └── VerificationResult.java  — UNSIGNED | VALID | INVALID (agent signature verification result)
 │       │   ├── RetentionEligibilityChecker.java — pure utility: checks retention window eligibility per entry
 │       │   ├── LedgerRetentionJob.java      — @Scheduled daily retention sweep (EU AI Act Art.12)
 │       │   ├── DecayFunction.java           — SPI: attestation decay weight (ageInDays, verdict) → weight
@@ -291,7 +295,8 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       ├── V1001__actor_trust_score.sql     — actor_trust_score two-column key model (UUID PK, score_type GLOBAL|CAPABILITY|DIMENSION|CAPABILITY_DIMENSION, capability_key + dimension_key, CHECK constraint, NULLS NOT DISTINCT)
 │       ├── V1002__ledger_supplement.sql     — supplement tables + drops moved columns
 │       ├── V1003__ledger_entry_archive.sql  — ledger_entry_archive table
-│       └── V1004__actor_identity.sql        — actor_identity pseudonymisation table
+│       ├── V1004__actor_identity.sql        — actor_identity pseudonymisation table
+│       └── V1005__agent_signature.sql       — agent_signature + agent_public_key BYTEA nullable on ledger_entry; CHECK constraint enforces pair nullability
 └── deployment/
     └── src/main/java/io/casehub/ledger/deployment/
         └── LedgerProcessor.java             — @BuildStep: FeatureBuildItem
@@ -356,7 +361,7 @@ casehub-work and casehub-qhorus are siblings — neither depends on the other. B
 ## Schema Convention
 
 **No existing installations** — there are no deployed instances of `casehub-ledger` in production.
-All schema changes go directly into the base migration files (V1000–V1004) or into a new base
+All schema changes go directly into the base migration files (V1000–V1005) or into a new base
 migration file. Do NOT create incremental migration scripts to evolve the schema. Rewrite the
 relevant migration file in place. Treat every schema change as a clean-slate design decision.
 
