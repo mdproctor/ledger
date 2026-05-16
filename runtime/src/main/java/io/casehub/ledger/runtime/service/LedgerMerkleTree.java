@@ -166,7 +166,7 @@ public final class LedgerMerkleTree {
         return internalHash(subtreeRoot(leaves, from, mid), subtreeRoot(leaves, mid, to));
     }
 
-    private static byte[] canonicalBytes(final LedgerEntry entry) {
+    public static byte[] canonicalBytes(final LedgerEntry entry) {
         final String canonical = String.join("|",
                 entry.subjectId != null ? entry.subjectId.toString() : "",
                 String.valueOf(entry.sequenceNumber),
