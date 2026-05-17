@@ -2,6 +2,7 @@ package io.casehub.ledger.runtime.service;
 
 import java.security.KeyFactory;
 import java.security.PublicKey;
+import java.security.Signature;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -128,13 +129,26 @@ public class LedgerVerificationService {
         try {
             final KeyFactory kf = KeyFactory.getInstance("Ed25519");
             final PublicKey pub = kf.generatePublic(new X509EncodedKeySpec(entry.agentPublicKey));
-            final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
+            final Signature sig = Signature.getInstance("Ed25519");
             sig.initVerify(pub);
             sig.update(LedgerMerkleTree.canonicalBytes(entry));
             return sig.verify(entry.agentSignature) ? VerificationResult.VALID : VerificationResult.INVALID;
         } catch (final Exception e) {
             return VerificationResult.INVALID;
         }
+    }
+
+    /**
+     * Returns the earliest compromise window effectiveSince that covers {@code occurredAt},
+     * or empty if the entry is not in any compromise window.
+     */
+    private Optional<Instant> compromisedEffectiveSince(
+            final String actorId, final String keyRef, final Instant occurredAt) {
+        return keyRotationService.compromisedWindows(actorId, keyRef)
+                .stream()
+                .filter(w -> !occurredAt.isBefore(w.effectiveSince()))
+                .map(CompromisedWindow::effectiveSince)
+                .min(Instant::compareTo);
     }
 
     /**
@@ -164,12 +178,8 @@ public class LedgerVerificationService {
         }
 
         if (entry.agentKeyRef != null && entry.actorId != null) {
-            final Optional<Instant> effectiveSince = keyRotationService
-                    .compromisedWindows(entry.actorId, entry.agentKeyRef)
-                    .stream()
-                    .filter(w -> !entry.occurredAt.isBefore(w.effectiveSince()))
-                    .map(CompromisedWindow::effectiveSince)
-                    .min(Instant::compareTo);
+            final Optional<Instant> effectiveSince =
+                    compromisedEffectiveSince(entry.actorId, entry.agentKeyRef, entry.occurredAt);
             if (effectiveSince.isPresent()) {
                 suspectEvent.fire(new AgentSignatureSuspectEvent(
                         entryId, entry.actorId, entry.agentKeyRef,
@@ -216,12 +226,8 @@ public class LedgerVerificationService {
                     }
 
                     // Blocking bridge — see #86 for reactive KeyRotationService
-                    final Optional<Instant> effectiveSince = keyRotationService
-                            .compromisedWindows(entry.actorId, entry.agentKeyRef)
-                            .stream()
-                            .filter(w -> !entry.occurredAt.isBefore(w.effectiveSince()))
-                            .map(CompromisedWindow::effectiveSince)
-                            .min(Instant::compareTo);
+                    final Optional<Instant> effectiveSince =
+                            compromisedEffectiveSince(entry.actorId, entry.agentKeyRef, entry.occurredAt);
 
                     if (effectiveSince.isPresent()) {
                         return Uni.createFrom().completionStage(

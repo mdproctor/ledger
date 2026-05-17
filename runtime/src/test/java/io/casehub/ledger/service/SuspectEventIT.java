@@ -31,6 +31,14 @@ import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 
+/**
+ * End-to-end integration tests for {@link AgentSignatureSuspectEvent} firing.
+ *
+ * <p>
+ * {@code @Transactional} on each test method rolls back DB state automatically.
+ * An isolated DB profile is not required — {@link AgentSuspectEventCapture#reset()}
+ * handles CDI bean state isolation between tests.
+ */
 @QuarkusTest
 class SuspectEventIT {
 
@@ -137,6 +145,8 @@ class SuspectEventIT {
         assertThat(event.entryId()).isEqualTo(e.id);
         assertThat(event.actorId()).isEqualTo("claude:reviewer@v1");
         assertThat(event.keyRef()).isEqualTo(testKey.keyRef());
+        assertThat(event.occurredAt()).isEqualTo(e.occurredAt);
+        assertThat(event.effectiveSince()).isNotNull().isBefore(e.occurredAt.plusSeconds(1));
     }
 
     @Test
