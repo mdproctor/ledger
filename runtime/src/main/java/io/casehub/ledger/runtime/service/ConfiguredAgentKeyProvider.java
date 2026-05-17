@@ -1,14 +1,8 @@
 package io.casehub.ledger.runtime.service;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.security.spec.X509EncodedKeySpec;
-import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -50,8 +44,8 @@ public class ConfiguredAgentKeyProvider implements AgentKeyProvider {
     void loadKeys() {
         config.agentSigning().keys().forEach((actorId, keyConfig) -> {
             try {
-                final PrivateKey priv = loadPrivateKey(keyConfig.privateKey());
-                final PublicKey pub = loadPublicKey(keyConfig.publicKey());
+                final PrivateKey priv = LedgerPemUtil.loadPrivateKey(keyConfig.privateKey());
+                final PublicKey pub = LedgerPemUtil.loadPublicKey(keyConfig.publicKey());
                 final SigningKey signingKey = SigningKey.of(new KeyPair(pub, priv));
                 signingKeys.put(actorId, signingKey);
                 LOG.infof("Loaded signing key for actor %s — keyRef: %s", actorId, signingKey.keyRef());
@@ -71,22 +65,4 @@ public class ConfiguredAgentKeyProvider implements AgentKeyProvider {
         return Optional.ofNullable(signingKeys.get(actorId));
     }
 
-    private static PrivateKey loadPrivateKey(final String pemPath) throws Exception {
-        final String pem = Files.readString(Path.of(pemPath));
-        final byte[] keyBytes = decodePem(pem, "PRIVATE KEY");
-        return KeyFactory.getInstance("Ed25519").generatePrivate(new PKCS8EncodedKeySpec(keyBytes));
-    }
-
-    private static PublicKey loadPublicKey(final String pemPath) throws Exception {
-        final String pem = Files.readString(Path.of(pemPath));
-        final byte[] keyBytes = decodePem(pem, "PUBLIC KEY");
-        return KeyFactory.getInstance("Ed25519").generatePublic(new X509EncodedKeySpec(keyBytes));
-    }
-
-    private static byte[] decodePem(final String pem, final String type) {
-        return Base64.getDecoder().decode(
-            pem.replace("-----BEGIN " + type + "-----", "")
-               .replace("-----END " + type + "-----", "")
-               .replaceAll("\\s", ""));
-    }
 }

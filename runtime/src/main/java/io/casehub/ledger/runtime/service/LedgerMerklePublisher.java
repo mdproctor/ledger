@@ -5,12 +5,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.Signature;
-import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Base64;
 import java.util.UUID;
 
@@ -81,7 +77,7 @@ public class LedgerMerklePublisher {
         try {
             final String keyId = publish.keyId();
             final String checkpoint = buildCheckpoint(subjectId, treeSize, treeRoot);
-            final PrivateKey privateKey = loadPrivateKey(publish.privateKey()
+            final PrivateKey privateKey = LedgerPemUtil.loadPrivateKey(publish.privateKey()
                     .orElseThrow(() -> new IllegalStateException(
                             "casehub.ledger.merkle.publish.private-key required when url is set")));
             final byte[] signature = signCheckpoint(checkpoint, privateKey);
@@ -105,17 +101,6 @@ public class LedgerMerklePublisher {
             LOG.warnf("Merkle checkpoint publish error for subject %s: %s",
                     subjectId, e.getMessage());
         }
-    }
-
-    private static PrivateKey loadPrivateKey(final String pemPath) throws Exception {
-        final String pem = Files.readString(Path.of(pemPath));
-        final String base64 = pem
-                .replace("-----BEGIN PRIVATE KEY-----", "")
-                .replace("-----END PRIVATE KEY-----", "")
-                .replaceAll("\\s", "");
-        final byte[] keyBytes = Base64.getDecoder().decode(base64);
-        final KeyFactory kf = KeyFactory.getInstance("Ed25519");
-        return kf.generatePrivate(new PKCS8EncodedKeySpec(keyBytes));
     }
 
     private static byte[] hexToBytes(final String hex) {
