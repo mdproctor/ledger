@@ -171,6 +171,14 @@ etc.). The chain covers provenance and timing; domain labels do not participate 
 tamper detection. This keeps the chain domain-agnostic — the same `LedgerMerkleTree`
 utility works for any subclass.
 
+### `AgentSignatureSuspectEvent` and sync/async verification parity
+
+`AgentSignatureSuspectEvent` follows the `LedgerGapDetected` pattern: plain CDI record, `Event<T>` injection, no annotations on the record — consumers choose `@Observes` (sync) or `@ObservesAsync` (async) independently of how the producer fires.
+
+The sync `verifyAgentSignature()` fires `event.fire()`; the reactive `verifyAgentSignatureAsync()` twin fires `event.fireAsync()`. Both paths share one event type; delivery semantics are a consumer concern. A `verifyCryptographic()` helper eliminates duplicate Ed25519 logic between the two paths; `compromisedEffectiveSince()` eliminates a structural null-check asymmetry found in code review.
+
+This epic also formalised **PP-20260517-15bf75** (ledger-sync-async-parity): all new ledger service methods must ship both blocking and reactive variants unless demonstrably unsuitable — triggered by discovering `verifyAgentSignature()` had no reactive twin. The reactive path currently uses a blocking bridge for `KeyRotationService.compromisedWindows()` pending #86 (full reactive `KeyRotationService`).
+
 ## Configuration
 
 The extension is configured under the `casehub.ledger` prefix via `application.properties` or environment variables.
