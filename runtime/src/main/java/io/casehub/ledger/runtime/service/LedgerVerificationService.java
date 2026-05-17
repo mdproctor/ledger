@@ -134,6 +134,8 @@ public class LedgerVerificationService {
             sig.update(LedgerMerkleTree.canonicalBytes(entry));
             return sig.verify(entry.agentSignature) ? VerificationResult.VALID : VerificationResult.INVALID;
         } catch (final Exception e) {
+            LOG.debugf("Ed25519 verify failed for entry %s (%s) — likely corrupt key data or JVM config issue",
+                    entry.id, e.getMessage());
             return VerificationResult.INVALID;
         }
     }
