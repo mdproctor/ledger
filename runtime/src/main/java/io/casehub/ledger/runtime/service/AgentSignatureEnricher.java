@@ -1,6 +1,5 @@
 package io.casehub.ledger.runtime.service;
 
-import java.security.KeyPair;
 import java.security.Signature;
 
 import jakarta.enterprise.context.ApplicationScoped;
@@ -38,21 +37,22 @@ public class AgentSignatureEnricher implements LedgerEntryEnricher {
     public void enrich(final LedgerEntry entry) {
         if (entry.actorId == null || entry.agentSignature != null) return;
         try {
-            keyProvider.signingKey(entry.actorId).ifPresent(sk -> sign(entry, sk.keyPair()));
+            keyProvider.signingKey(entry.actorId).ifPresent(sk -> sign(entry, sk));
         } catch (final Exception e) {
             LOG.warnf("AgentSignatureEnricher failed for actor %s — entry will be unsigned: %s",
                     entry.actorId, e.getMessage());
         }
     }
 
-    private static void sign(final LedgerEntry entry, final KeyPair kp) {
+    private static void sign(final LedgerEntry entry, final SigningKey sk) {
         try {
             final byte[] canonical = LedgerMerkleTree.canonicalBytes(entry);
             final Signature sig = Signature.getInstance("Ed25519");
-            sig.initSign(kp.getPrivate());
+            sig.initSign(sk.keyPair().getPrivate());
             sig.update(canonical);
             entry.agentSignature = sig.sign();
-            entry.agentPublicKey = kp.getPublic().getEncoded();
+            entry.agentPublicKey = sk.keyPair().getPublic().getEncoded();
+            entry.agentKeyRef = sk.keyRef();
         } catch (final Exception e) {
             throw new IllegalStateException("Ed25519 signing failed for actor " + entry.actorId, e);
         }

@@ -20,6 +20,7 @@ import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.service.LedgerMerkleTree;
 import io.casehub.ledger.runtime.service.LedgerVerificationService;
+import io.casehub.ledger.runtime.service.SigningKey;
 import io.casehub.ledger.runtime.service.model.InclusionProof;
 import io.casehub.ledger.runtime.service.model.VerificationResult;
 import io.casehub.ledger.service.supplement.TestEntry;
@@ -170,6 +171,7 @@ class LedgerVerificationServiceIT {
         sig.update(canonical);
         e.agentSignature = sig.sign();
         e.agentPublicKey = kp.getPublic().getEncoded();
+        e.agentKeyRef = SigningKey.of(kp).keyRef();
         repo.save(e);
 
         assertThat(verificationService.verifyAgentSignature(e.id))
@@ -191,6 +193,7 @@ class LedgerVerificationServiceIT {
         signature[0] ^= 0xFF;
         e.agentSignature = signature;
         e.agentPublicKey = kp.getPublic().getEncoded();
+        e.agentKeyRef = SigningKey.of(kp).keyRef();
         repo.save(e);
 
         assertThat(verificationService.verifyAgentSignature(e.id))
@@ -219,6 +222,7 @@ class LedgerVerificationServiceIT {
         sig.update(canonical);
         e.agentSignature = sig.sign();
         e.agentPublicKey = kp.getPublic().getEncoded();
+        e.agentKeyRef = SigningKey.of(kp).keyRef();
         e.actorId = "impersonator-actor";
         repo.save(e);
 

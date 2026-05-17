@@ -125,4 +125,25 @@ class AgentSignatureEnricherTest {
         assertThatCode(() -> enricher.enrich(e)).doesNotThrowAnyException();
         assertThat(e.agentSignature).isNull();
     }
+
+    @Test
+    void populatesAgentKeyRef_matchingSigningKeyRef() {
+        final SigningKey sk = SigningKey.of(testKeyPair);
+        enricher = new AgentSignatureEnricher(actorId -> Optional.of(sk));
+
+        final TestEntry e = entry("claude:reviewer@v1");
+        enricher.enrich(e);
+
+        assertThat(e.agentKeyRef).isEqualTo(sk.keyRef());
+    }
+
+    @Test
+    void agentKeyRef_isNullWhenUnsigned() {
+        enricher = new AgentSignatureEnricher(actorId -> Optional.empty());
+
+        final TestEntry e = entry("unknown-actor");
+        enricher.enrich(e);
+
+        assertThat(e.agentKeyRef).isNull();
+    }
 }

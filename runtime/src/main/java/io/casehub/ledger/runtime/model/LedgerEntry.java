@@ -162,6 +162,14 @@ public abstract class LedgerEntry {
     @Column(name = "agent_public_key")
     public byte[] agentPublicKey;
 
+    /**
+     * Self-derived identifier for the key generation that produced {@link #agentSignature}.
+     * Value: {@code Base64URL(SHA-256(agentPublicKey))} — computable from stored bytes.
+     * Null when {@link #agentSignature} is null.
+     */
+    @Column(name = "agent_key_ref")
+    public String agentKeyRef;
+
     // ── Supplements ───────────────────────────────────────────────────────────
 
     /**
