@@ -43,7 +43,7 @@ public class ConfiguredAgentKeyProvider implements AgentKeyProvider {
     @Inject
     LedgerConfig config;
 
-    private final Map<String, KeyPair> keyPairs = new ConcurrentHashMap<>();
+    private final Map<String, SigningKey> signingKeys = new ConcurrentHashMap<>();
     private final Set<String> failedActors = ConcurrentHashMap.newKeySet();
 
     @PostConstruct
@@ -52,8 +52,9 @@ public class ConfiguredAgentKeyProvider implements AgentKeyProvider {
             try {
                 final PrivateKey priv = loadPrivateKey(keyConfig.privateKey());
                 final PublicKey pub = loadPublicKey(keyConfig.publicKey());
-                keyPairs.put(actorId, new KeyPair(pub, priv));
-                LOG.infof("Loaded signing key pair for actor: %s", actorId);
+                final SigningKey signingKey = SigningKey.of(new KeyPair(pub, priv));
+                signingKeys.put(actorId, signingKey);
+                LOG.infof("Loaded signing key for actor %s — keyRef: %s", actorId, signingKey.keyRef());
             } catch (final Exception e) {
                 failedActors.add(actorId);
                 LOG.errorf("Failed to load signing key for actor %s: %s — entries for this actor will be unsigned",
@@ -63,11 +64,11 @@ public class ConfiguredAgentKeyProvider implements AgentKeyProvider {
     }
 
     @Override
-    public Optional<KeyPair> signingKeyPair(final String actorId) {
+    public Optional<SigningKey> signingKey(final String actorId) {
         if (failedActors.contains(actorId)) {
             LOG.warnf("Actor %s was configured for signing but key failed to load — entry will be unsigned", actorId);
         }
-        return Optional.ofNullable(keyPairs.get(actorId));
+        return Optional.ofNullable(signingKeys.get(actorId));
     }
 
     private static PrivateKey loadPrivateKey(final String pemPath) throws Exception {

@@ -18,6 +18,7 @@ import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.service.AgentKeyProvider;
 import io.casehub.ledger.runtime.service.AgentSignatureEnricher;
 import io.casehub.ledger.runtime.service.LedgerMerkleTree;
+import io.casehub.ledger.runtime.service.SigningKey;
 import io.casehub.ledger.service.supplement.TestEntry;
 
 class AgentSignatureEnricherTest {
@@ -46,7 +47,7 @@ class AgentSignatureEnricherTest {
     @Test
     void populatesSignatureAndPublicKey_whenActorHasKey() {
         final KeyPair kp = testKeyPair;
-        enricher = new AgentSignatureEnricher(actorId -> Optional.of(kp));
+        enricher = new AgentSignatureEnricher(actorId -> Optional.of(SigningKey.of(kp)));
 
         final TestEntry e = entry("claude:reviewer@v1");
         enricher.enrich(e);
@@ -58,7 +59,7 @@ class AgentSignatureEnricherTest {
 
     @Test
     void signatureVerifiesAgainstStoredPublicKey() throws Exception {
-        enricher = new AgentSignatureEnricher(actorId -> Optional.of(testKeyPair));
+        enricher = new AgentSignatureEnricher(actorId -> Optional.of(SigningKey.of(testKeyPair)));
 
         final TestEntry e = entry("claude:reviewer@v1");
         enricher.enrich(e);
@@ -82,7 +83,7 @@ class AgentSignatureEnricherTest {
 
     @Test
     void leavesFieldsNull_whenActorIdIsNull() {
-        enricher = new AgentSignatureEnricher(actorId -> Optional.of(testKeyPair));
+        enricher = new AgentSignatureEnricher(actorId -> Optional.of(SigningKey.of(testKeyPair)));
 
         final TestEntry e = entry(null);
         enricher.enrich(e);
@@ -93,7 +94,7 @@ class AgentSignatureEnricherTest {
 
     @Test
     void isIdempotent_secondCallIsNoOp() {
-        enricher = new AgentSignatureEnricher(actorId -> Optional.of(testKeyPair));
+        enricher = new AgentSignatureEnricher(actorId -> Optional.of(SigningKey.of(testKeyPair)));
 
         final TestEntry e = entry("claude:reviewer@v1");
         enricher.enrich(e);
@@ -107,7 +108,7 @@ class AgentSignatureEnricherTest {
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
-        enricher = new AgentSignatureEnricher(actorId -> Optional.of(otherPair));
+        enricher = new AgentSignatureEnricher(actorId -> Optional.of(SigningKey.of(otherPair)));
         enricher.enrich(e);
 
         assertThat(e.agentSignature).isEqualTo(firstSig);

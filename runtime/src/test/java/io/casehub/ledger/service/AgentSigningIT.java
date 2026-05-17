@@ -23,6 +23,7 @@ import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.service.AgentKeyProvider;
 import io.casehub.ledger.runtime.service.LedgerVerificationService;
+import io.casehub.ledger.runtime.service.SigningKey;
 import io.casehub.ledger.runtime.service.model.VerificationResult;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.InjectMock;
@@ -49,9 +50,9 @@ class AgentSigningIT {
     @BeforeEach
     void setUp() throws Exception {
         testKeyPair = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
-        when(agentKeyProvider.signingKeyPair(anyString())).thenReturn(Optional.empty());
-        when(agentKeyProvider.signingKeyPair("claude:reviewer@v1"))
-                .thenReturn(Optional.of(testKeyPair));
+        when(agentKeyProvider.signingKey(anyString())).thenReturn(Optional.empty());
+        when(agentKeyProvider.signingKey("claude:reviewer@v1"))
+                .thenReturn(Optional.of(SigningKey.of(testKeyPair)));
     }
 
     private TestEntry seedSigned(final UUID subjectId, final int seq) {
