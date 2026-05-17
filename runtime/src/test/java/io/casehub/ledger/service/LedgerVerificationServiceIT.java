@@ -14,10 +14,12 @@ import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.ActorType;
+import io.casehub.ledger.api.model.KeyRotationReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
+import io.casehub.ledger.runtime.service.KeyRotationService;
 import io.casehub.ledger.runtime.service.LedgerMerkleTree;
 import io.casehub.ledger.runtime.service.LedgerVerificationService;
 import io.casehub.ledger.runtime.service.SigningKey;
@@ -35,6 +37,8 @@ class LedgerVerificationServiceIT {
     LedgerEntryRepository repo;
     @Inject
     EntityManager em;
+    @Inject
+    KeyRotationService rotationService;
 
     private TestEntry seedEntry(UUID subjectId, int seq, String actorId) {
         TestEntry e = new TestEntry();
@@ -228,5 +232,83 @@ class LedgerVerificationServiceIT {
 
         assertThat(verificationService.verifyAgentSignature(e.id))
                 .isEqualTo(VerificationResult.INVALID);
+    }
+
+    @Test
+    @Transactional
+    void verifyAgentSignature_compromisedKey_afterEffectiveSince_returnsSuspect() throws Exception {
+        final java.security.KeyPairGenerator gen = java.security.KeyPairGenerator.getInstance("Ed25519");
+        final SigningKey sk = SigningKey.of(gen.generateKeyPair());
+        final UUID sub = UUID.randomUUID();
+
+        final TestEntry e = seedEntry(sub, 1, "claude:reviewer@v1");
+        final byte[] canonical = LedgerMerkleTree.canonicalBytes(e);
+        final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
+        sig.initSign(sk.keyPair().getPrivate());
+        sig.update(canonical);
+        e.agentSignature = sig.sign();
+        e.agentPublicKey = sk.keyPair().getPublic().getEncoded();
+        e.agentKeyRef = sk.keyRef();
+        repo.save(e);
+
+        // effectiveSince BEFORE the entry's occurredAt → entry is SUSPECT
+        final java.time.Instant compromisedSince = e.occurredAt.minusSeconds(60);
+        rotationService.recordRotation("claude:reviewer@v1", sk.keyRef(), null,
+                KeyRotationReason.COMPROMISED, compromisedSince);
+
+        assertThat(verificationService.verifyAgentSignature(e.id))
+                .isEqualTo(VerificationResult.SUSPECT);
+    }
+
+    @Test
+    @Transactional
+    void verifyAgentSignature_compromisedKey_beforeEffectiveSince_returnsValid() throws Exception {
+        final java.security.KeyPairGenerator gen = java.security.KeyPairGenerator.getInstance("Ed25519");
+        final SigningKey sk = SigningKey.of(gen.generateKeyPair());
+        final UUID sub = UUID.randomUUID();
+
+        final TestEntry e = seedEntry(sub, 1, "claude:reviewer@v1");
+        final byte[] canonical = LedgerMerkleTree.canonicalBytes(e);
+        final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
+        sig.initSign(sk.keyPair().getPrivate());
+        sig.update(canonical);
+        e.agentSignature = sig.sign();
+        e.agentPublicKey = sk.keyPair().getPublic().getEncoded();
+        e.agentKeyRef = sk.keyRef();
+        repo.save(e);
+
+        // effectiveSince AFTER the entry's occurredAt → entry is still VALID
+        final java.time.Instant compromisedSince = e.occurredAt.plusSeconds(3600);
+        rotationService.recordRotation("claude:reviewer@v1", sk.keyRef(), null,
+                KeyRotationReason.COMPROMISED, compromisedSince);
+
+        assertThat(verificationService.verifyAgentSignature(e.id))
+                .isEqualTo(VerificationResult.VALID);
+    }
+
+    @Test
+    @Transactional
+    void verifyAgentSignature_scheduledRotation_doesNotProduceSuspect() throws Exception {
+        final java.security.KeyPairGenerator gen = java.security.KeyPairGenerator.getInstance("Ed25519");
+        final SigningKey sk = SigningKey.of(gen.generateKeyPair());
+        final UUID sub = UUID.randomUUID();
+
+        final TestEntry e = seedEntry(sub, 1, "claude:reviewer@v1");
+        final byte[] canonical = LedgerMerkleTree.canonicalBytes(e);
+        final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
+        sig.initSign(sk.keyPair().getPrivate());
+        sig.update(canonical);
+        e.agentSignature = sig.sign();
+        e.agentPublicKey = sk.keyPair().getPublic().getEncoded();
+        e.agentKeyRef = sk.keyRef();
+        repo.save(e);
+
+        // SCHEDULED rotation — never produces SUSPECT regardless of effectiveSince
+        rotationService.recordRotation("claude:reviewer@v1", sk.keyRef(),
+                SigningKey.of(gen.generateKeyPair()).keyRef(),
+                KeyRotationReason.SCHEDULED, e.occurredAt.minusSeconds(60));
+
+        assertThat(verificationService.verifyAgentSignature(e.id))
+                .isEqualTo(VerificationResult.VALID);
     }
 }
