@@ -1,30 +1,37 @@
 package io.casehub.ledger.runtime.service;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import io.casehub.ledger.api.model.ActorType;
 import io.casehub.ledger.api.model.KeyRotationReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.KeyRotationEntry;
 import io.casehub.ledger.runtime.repository.KeyRotationRepository;
+import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.service.model.CompromisedWindow;
 
 /**
  * CDI bean for recording and querying signing key rotation events.
  *
  * <p>
- * Each rotation is persisted as a {@link KeyRotationEntry} — a first-class
- * immutable ledger entry in the tamper-evident chain, queryable per actor.
+ * Each rotation is persisted as a {@link KeyRotationEntry} via {@link LedgerEntryRepository#save},
+ * ensuring Merkle chain inclusion, pseudonymisation, and enricher pipeline execution.
  */
 @ApplicationScoped
 public class KeyRotationService {
 
     @Inject
     KeyRotationRepository repository;
+
+    @Inject
+    LedgerEntryRepository ledgerRepo;
 
     /**
      * Record a signing key rotation event.
@@ -46,17 +53,19 @@ public class KeyRotationService {
 
         final KeyRotationEntry entry = new KeyRotationEntry();
         entry.actorId = actorId;
+        entry.actorType = ActorType.SYSTEM;
         entry.actorRole = "KeyManager";
         entry.entryType = LedgerEntryType.COMMAND;
+        entry.subjectId = UUID.nameUUIDFromBytes(
+                actorId.getBytes(StandardCharsets.UTF_8));
         entry.previousKeyRef = previousKeyRef;
         entry.newKeyRef = newKeyRef;
         entry.reason = reason;
         entry.effectiveSince = effectiveSince;
-        return repository.save(entry);
+        return (KeyRotationEntry) ledgerRepo.save(entry);
     }
 
     /** All rotation events for an actor, ordered by {@code occurredAt} ascending. */
-    @Transactional
     public List<KeyRotationEntry> rotationHistory(final String actorId) {
         return repository.findByActorId(actorId);
     }
@@ -65,7 +74,6 @@ public class KeyRotationService {
      * Compromise windows for a specific actor and keyRef.
      * Used by {@link LedgerVerificationService} to detect SUSPECT signatures.
      */
-    @Transactional
     public List<CompromisedWindow> compromisedWindows(
             final String actorId, final String keyRef) {
         return repository.findCompromisedByActorIdAndKeyRef(actorId, keyRef)

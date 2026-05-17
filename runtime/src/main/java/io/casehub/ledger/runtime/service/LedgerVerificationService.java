@@ -109,7 +109,10 @@ public class LedgerVerificationService {
      *
      * @param entryId the entry to verify
      * @return {@link VerificationResult#UNSIGNED} if no signature stored;
-     *         {@link VerificationResult#VALID} if the signature verifies;
+     *         {@link VerificationResult#VALID} if the signature verifies and the key is not compromised;
+     *         {@link VerificationResult#SUSPECT} if the signature verifies but the key was subsequently
+     *         reported {@link io.casehub.ledger.api.model.KeyRotationReason#COMPROMISED} within the
+     *         applicable time window;
      *         {@link VerificationResult#INVALID} if verification fails
      * @throws IllegalArgumentException if the entry does not exist
      */

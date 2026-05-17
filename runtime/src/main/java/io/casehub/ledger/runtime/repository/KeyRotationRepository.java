@@ -5,26 +5,15 @@ import java.util.List;
 import io.casehub.ledger.runtime.model.KeyRotationEntry;
 
 /**
- * SPI for persisting and querying {@link KeyRotationEntry} records.
+ * SPI for querying {@link KeyRotationEntry} records.
+ * Rotation entries are persisted via {@link LedgerEntryRepository#save(io.casehub.ledger.runtime.model.LedgerEntry)},
+ * which ensures Merkle chain inclusion, pseudonymisation, and enricher pipeline execution.
  */
 public interface KeyRotationRepository {
 
-    /**
-     * Persist a key rotation entry.
-     *
-     * @param entry the entry to persist; must not be null
-     * @return the persisted entry (post-{@code @PrePersist})
-     */
-    KeyRotationEntry save(KeyRotationEntry entry);
-
-    /**
-     * All rotation events for an actor, ordered by {@code occurredAt} ascending.
-     */
+    /** All rotation events for an actor, ordered by {@code occurredAt} ascending. */
     List<KeyRotationEntry> findByActorId(String actorId);
 
-    /**
-     * All {@code COMPROMISED} rotation events for a specific actor and keyRef,
-     * ordered by {@code effectiveSince} ascending.
-     */
+    /** All COMPROMISED rotation events for a specific actor and keyRef, ordered by effectiveSince ascending. */
     List<KeyRotationEntry> findCompromisedByActorIdAndKeyRef(String actorId, String keyRef);
 }
