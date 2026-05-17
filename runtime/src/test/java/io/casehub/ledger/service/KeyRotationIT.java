@@ -101,19 +101,18 @@ class KeyRotationIT {
     @Test
     @Transactional
     void rotationHistory_recordsAllEvents() {
-        rotationService.recordRotation("claude:reviewer@v1",
+        final String actorId = "claude:reviewer@rotation-history-" + UUID.randomUUID();
+        rotationService.recordRotation(actorId,
                 currentKey.keyRef(), nextKey.keyRef(),
                 KeyRotationReason.SCHEDULED, Instant.now());
-        rotationService.recordRotation("claude:reviewer@v1",
+        rotationService.recordRotation(actorId,
                 nextKey.keyRef(), null,
                 KeyRotationReason.COMPROMISED, Instant.now());
 
-        final List<KeyRotationEntry> history =
-                rotationService.rotationHistory("claude:reviewer@v1");
-
-        assertThat(history).hasSizeGreaterThanOrEqualTo(2);
-        assertThat(history.stream().map(e -> e.reason))
-                .contains(KeyRotationReason.SCHEDULED, KeyRotationReason.COMPROMISED);
+        final List<KeyRotationEntry> history = rotationService.rotationHistory(actorId);
+        assertThat(history).hasSize(2);
+        assertThat(history.get(0).reason).isEqualTo(KeyRotationReason.SCHEDULED);
+        assertThat(history.get(1).reason).isEqualTo(KeyRotationReason.COMPROMISED);
     }
 
     @Test
