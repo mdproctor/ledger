@@ -122,7 +122,7 @@ Domain logic is NOT in this extension — it lives in consumers via JPA JOINED s
 
 Each consumer defines its own subclass and its own Flyway migration for the subclass table.
 The base tables (`ledger_entry`, `ledger_attestation`, `actor_trust_score`) are defined here
-in V1000–V1005 and always present when `casehub-ledger` is on the classpath.
+in V1000–V1007 and always present when `casehub-ledger` is on the classpath.
 
 **Design documentation:** `docs/DESIGN.md` covers entity model, architecture, SPI contracts, and configuration. `docs/DESIGN-capabilities.md` covers Merkle MMR, PROV-DM export, agent identity model, and agent mesh topology.
 
@@ -199,13 +199,15 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │   └── src/main/java/io/casehub/ledger/runtime/
 │       ├── config/LedgerConfig.java         — @ConfigMapping(prefix = "casehub.ledger")
 │       ├── model/
-│       │   ├── LedgerEntry.java             — abstract base entity (JOINED inheritance); agentSignature + agentPublicKey for bilateral signing (V1005)
+│       │   ├── LedgerEntry.java             — abstract base entity (JOINED inheritance); agentSignature + agentPublicKey + agentKeyRef for bilateral signing (V1005/V1006)
 │       │   ├── LedgerAttestation.java       — peer attestation entity
 │       │   ├── ActorTrustScore.java         — trust score entity; four ScoreType values (GLOBAL|CAPABILITY|DIMENSION|CAPABILITY_DIMENSION) × two-column key (capability_key, dimension_key); see ADR 0010
 │       │   ├── LedgerMerkleFrontier.java    — Merkle frontier node entity (log₂(N) rows per subject)
 │       │   ├── LedgerEntryArchiveRecord.java — archive snapshot record for retention-deleted entries (V1003)
+│       │   ├── KeyRotationEntry.java         — LedgerEntry subclass: key rotation/revocation event; subjectId=UUID.nameUUIDFromBytes(actorId); see ADR 0012
 │       │   ├── LedgerEntryType.java         — COMMAND | EVENT | ATTESTATION (api module)
 │       │   ├── ActorType.java               — HUMAN | AGENT | SYSTEM (api module)
+│       │   ├── KeyRotationReason.java       — SCHEDULED | COMPROMISED (api module); NIST SP 800-57 lifecycle distinction
 │       │   ├── AttestationVerdict.java      — SOUND | FLAGGED | ENDORSED | CHALLENGED (api module)
 │       │   ├── CapabilityTag.java           — sentinel constants: GLOBAL = "*" for cross-capability attestations (api module)
 │       │   ├── ActorIdentity.java           — token↔identity mapping for pseudonymisation
@@ -218,6 +220,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── LedgerEntryRepository.java        — blocking SPI (uses subjectId); findById → findEntryById
 │       │   ├── ReactiveLedgerEntryRepository.java — reactive SPI (Uni<T> return types)
 │       │   ├── ActorTrustScoreRepository.java     — SPI
+│       │   ├── KeyRotationRepository.java         — SPI: query-only (findByActorId, findCompromisedByActorIdAndKeyRef); save via LedgerEntryRepository
 │       │   └── jpa/                              — JPA implementations (EntityManager-based)
 │       ├── service/
 │       │   ├── LedgerEntryEnricher.java         — SPI: pluggable @PrePersist enrichment pipeline
@@ -227,16 +230,19 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── LedgerMerkleTree.java            — Merkle Mountain Range algorithm (pure static); canonicalBytes() public static — shared by Merkle and agent signing
 │       │   ├── LedgerVerificationService.java   — treeRoot / inclusionProof / verify / verifyAgentSignature (CDI bean)
 │       │   ├── LedgerMerklePublisher.java       — Ed25519 signed tlog-checkpoint (opt-in CDI bean)
-│       │   ├── AgentKeyProvider.java            — SPI: per-actorId Ed25519 KeyPair for bilateral entry signing; see ADR 0011
+│       │   ├── SigningKey.java                  — record: keyRef (Base64URL SHA-256 of public key) + KeyPair; self-derived, zero operator config
+│       │   ├── AgentKeyProvider.java            — SPI: per-actorId SigningKey for bilateral entry signing; signingKey(actorId) → Optional<SigningKey>; see ADR 0011
 │       │   ├── ConfiguredAgentKeyProvider.java  — @DefaultBean: loads PKCS#8 private + X.509 public PEM per actorId from casehub.ledger.agent-signing.keys.*
-│       │   ├── AgentSignatureEnricher.java      — LedgerEntryEnricher: signs canonicalBytes() at @PrePersist via AgentKeyProvider
+│       │   ├── AgentSignatureEnricher.java      — LedgerEntryEnricher: signs canonicalBytes() at @PrePersist, stores agentSignature + agentPublicKey + agentKeyRef
+│       │   ├── KeyRotationService.java          — CDI bean: recordRotation / rotationHistory / compromisedWindows; persists KeyRotationEntry via LedgerEntryRepository
 │       │   ├── LedgerProvExportService.java      — W3C PROV-DM JSON-LD export (CDI bean)
 │       │   ├── LedgerProvSerializer.java         — PROV-DM serialisation utility
 │       │   ├── LedgerEntryArchiver.java          — archive record JSON serialisation for retention
 │       │   ├── model/
 │       │   │   ├── InclusionProof.java       — Merkle inclusion proof value type
 │       │   │   ├── ProofStep.java            — single sibling node in a proof path
-│       │   │   └── VerificationResult.java  — UNSIGNED | VALID | INVALID (agent signature verification result)
+│       │   │   ├── VerificationResult.java  — UNSIGNED | VALID | INVALID | SUSPECT (agent signature verification result)
+│       │   │   └── CompromisedWindow.java   — record: keyRef + effectiveSince (time window for SUSPECT detection)
 │       │   ├── RetentionEligibilityChecker.java — pure utility: checks retention window eligibility per entry
 │       │   ├── LedgerRetentionJob.java      — @Scheduled daily retention sweep (EU AI Act Art.12)
 │       │   ├── DecayFunction.java           — SPI: attestation decay weight (ageInDays, verdict) → weight
@@ -296,7 +302,9 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       ├── V1002__ledger_supplement.sql     — supplement tables + drops moved columns
 │       ├── V1003__ledger_entry_archive.sql  — ledger_entry_archive table
 │       ├── V1004__actor_identity.sql        — actor_identity pseudonymisation table
-│       └── V1005__agent_signature.sql       — agent_signature + agent_public_key BYTEA nullable on ledger_entry; CHECK constraint enforces pair nullability
+│       ├── V1005__agent_signature.sql       — agent_signature + agent_public_key BYTEA nullable on ledger_entry; CHECK constraint enforces pair nullability
+│       ├── V1006__agent_key_ref.sql         — agent_key_ref TEXT on ledger_entry; CHECK enforces null iff agent_signature null
+│       └── V1007__key_rotation_entry.sql    — key_rotation_entry table (KeyRotationEntry subclass: previous_key_ref, new_key_ref, reason, effective_since)
 └── deployment/
     └── src/main/java/io/casehub/ledger/deployment/
         └── LedgerProcessor.java             — @BuildStep: FeatureBuildItem
@@ -361,7 +369,7 @@ casehub-work and casehub-qhorus are siblings — neither depends on the other. B
 ## Schema Convention
 
 **No existing installations** — there are no deployed instances of `casehub-ledger` in production.
-All schema changes go directly into the base migration files (V1000–V1005) or into a new base
+All schema changes go directly into the base migration files (V1000–V1007) or into a new base
 migration file. Do NOT create incremental migration scripts to evolve the schema. Rewrite the
 relevant migration file in place. Treat every schema change as a clean-slate design decision.
 
