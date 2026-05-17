@@ -38,7 +38,7 @@ public class AgentSignatureEnricher implements LedgerEntryEnricher {
     public void enrich(final LedgerEntry entry) {
         if (entry.actorId == null || entry.agentSignature != null) return;
         try {
-            keyProvider.signingKeyPair(entry.actorId).ifPresent(kp -> sign(entry, kp));
+            keyProvider.signingKey(entry.actorId).ifPresent(sk -> sign(entry, sk.keyPair()));
         } catch (final Exception e) {
             LOG.warnf("AgentSignatureEnricher failed for actor %s — entry will be unsigned: %s",
                     entry.actorId, e.getMessage());
