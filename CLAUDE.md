@@ -228,7 +228,8 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── OtelTraceIdProvider.java         — OTel span reader for TraceIdEnricher
 │       │   ├── LedgerTraceListener.java         — @EntityListeners runner: iterates LedgerEntryEnricher pipeline, non-fatal
 │       │   ├── LedgerMerkleTree.java            — Merkle Mountain Range algorithm (pure static); canonicalBytes() public static — shared by Merkle and agent signing
-│       │   ├── LedgerVerificationService.java   — treeRoot / inclusionProof / verify / verifyAgentSignature (CDI bean)
+│       │   ├── LedgerVerificationService.java   — treeRoot / inclusionProof / verify / verifyAgentSignature / verifyAgentSignatureAsync (CDI bean)
+│       │   ├── AgentSignatureSuspectEvent.java  — CDI event record fired when verifyAgentSignature[Async] returns SUSPECT; consumers use @Observes or @ObservesAsync
 │       │   ├── LedgerMerklePublisher.java       — Ed25519 signed tlog-checkpoint (opt-in CDI bean)
 │       │   ├── SigningKey.java                  — record: keyRef (Base64URL SHA-256 of public key) + KeyPair; self-derived, zero operator config
 │       │   ├── AgentKeyProvider.java            — SPI: per-actorId SigningKey for bilateral entry signing; signingKey(actorId) → Optional<SigningKey>; see ADR 0011

@@ -2,12 +2,16 @@ package io.casehub.ledger.runtime.service;
 
 import java.security.KeyFactory;
 import java.security.PublicKey;
+import java.security.Signature;
 import java.security.spec.X509EncodedKeySpec;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
@@ -18,9 +22,11 @@ import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
+import io.casehub.ledger.runtime.repository.ReactiveLedgerEntryRepository;
+import io.casehub.ledger.runtime.service.model.CompromisedWindow;
 import io.casehub.ledger.runtime.service.model.InclusionProof;
 import io.casehub.ledger.runtime.service.model.VerificationResult;
-import io.casehub.ledger.runtime.service.KeyRotationService;
+import io.smallrye.mutiny.Uni;
 
 /**
  * CDI bean exposing Merkle tree verification operations.
@@ -40,6 +46,12 @@ public class LedgerVerificationService {
 
     @Inject
     KeyRotationService keyRotationService;
+
+    @Inject
+    Event<AgentSignatureSuspectEvent> suspectEvent;
+
+    @Inject
+    ReactiveLedgerEntryRepository reactiveLedgerRepo;
 
     /** Return the current Merkle tree root for a subject. */
     @Transactional
@@ -105,6 +117,41 @@ public class LedgerVerificationService {
     }
 
     /**
+     * Ed25519 signature verification against stored public key bytes.
+     * Returns {@link VerificationResult#VALID} or {@link VerificationResult#INVALID}.
+     * Does NOT check compromise windows.
+     */
+    private VerificationResult verifyCryptographic(final LedgerEntry entry) {
+        if (entry.agentPublicKey == null) {
+            LOG.warnf("Entry %s has agentSignature but no agentPublicKey — record is corrupt", entry.id);
+            return VerificationResult.INVALID;
+        }
+        try {
+            final KeyFactory kf = KeyFactory.getInstance("Ed25519");
+            final PublicKey pub = kf.generatePublic(new X509EncodedKeySpec(entry.agentPublicKey));
+            final Signature sig = Signature.getInstance("Ed25519");
+            sig.initVerify(pub);
+            sig.update(LedgerMerkleTree.canonicalBytes(entry));
+            return sig.verify(entry.agentSignature) ? VerificationResult.VALID : VerificationResult.INVALID;
+        } catch (final Exception e) {
+            return VerificationResult.INVALID;
+        }
+    }
+
+    /**
+     * Returns the earliest compromise window effectiveSince that covers {@code occurredAt},
+     * or empty if the entry is not in any compromise window.
+     */
+    private Optional<Instant> compromisedEffectiveSince(
+            final String actorId, final String keyRef, final Instant occurredAt) {
+        return keyRotationService.compromisedWindows(actorId, keyRef)
+                .stream()
+                .filter(w -> !occurredAt.isBefore(w.effectiveSince()))
+                .map(CompromisedWindow::effectiveSince)
+                .min(Instant::compareTo);
+    }
+
+    /**
      * Verifies the agent signature on the given entry.
      *
      * @param entryId the entry to verify
@@ -112,7 +159,7 @@ public class LedgerVerificationService {
      *         {@link VerificationResult#VALID} if the signature verifies and the key is not compromised;
      *         {@link VerificationResult#SUSPECT} if the signature verifies but the key was subsequently
      *         reported {@link io.casehub.ledger.api.model.KeyRotationReason#COMPROMISED} within the
-     *         applicable time window;
+     *         applicable time window — fires {@link AgentSignatureSuspectEvent};
      *         {@link VerificationResult#INVALID} if verification fails
      * @throws IllegalArgumentException if the entry does not exist
      */
@@ -125,37 +172,72 @@ public class LedgerVerificationService {
             return VerificationResult.UNSIGNED;
         }
 
-        if (entry.agentPublicKey == null) {
-            LOG.warnf("Entry %s has agentSignature but no agentPublicKey — record is corrupt", entryId);
-            return VerificationResult.INVALID;
+        final VerificationResult cryptoResult = verifyCryptographic(entry);
+        if (cryptoResult != VerificationResult.VALID) {
+            return cryptoResult;
         }
 
-        try {
-            final KeyFactory kf = KeyFactory.getInstance("Ed25519");
-            final PublicKey pub = kf.generatePublic(new X509EncodedKeySpec(entry.agentPublicKey));
-
-            final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
-            sig.initVerify(pub);
-            sig.update(LedgerMerkleTree.canonicalBytes(entry));
-
-            if (!sig.verify(entry.agentSignature)) {
-                return VerificationResult.INVALID;
-            }
-        } catch (final Exception e) {
-            return VerificationResult.INVALID;
-        }
-
-        // Cryptographic check passed — check for compromise windows
         if (entry.agentKeyRef != null && entry.actorId != null) {
-            final boolean suspect = keyRotationService
-                    .compromisedWindows(entry.actorId, entry.agentKeyRef)
-                    .stream()
-                    .anyMatch(w -> !entry.occurredAt.isBefore(w.effectiveSince()));
-            if (suspect) {
+            final Optional<Instant> effectiveSince =
+                    compromisedEffectiveSince(entry.actorId, entry.agentKeyRef, entry.occurredAt);
+            if (effectiveSince.isPresent()) {
+                suspectEvent.fire(new AgentSignatureSuspectEvent(
+                        entryId, entry.actorId, entry.agentKeyRef,
+                        entry.occurredAt, effectiveSince.get()));
                 return VerificationResult.SUSPECT;
             }
         }
 
         return VerificationResult.VALID;
+    }
+
+    /**
+     * Reactive variant of {@link #verifyAgentSignature(UUID)}.
+     *
+     * <p>
+     * Uses {@link ReactiveLedgerEntryRepository} for the entry lookup.
+     * {@link KeyRotationService#compromisedWindows} is called via a blocking bridge
+     * pending full reactive {@link KeyRotationService} variants (see casehubio/ledger#86).
+     *
+     * <p>
+     * Fires {@link AgentSignatureSuspectEvent} asynchronously via {@code event.fireAsync()}
+     * when the result is {@link VerificationResult#SUSPECT}.
+     *
+     * @param entryId the entry to verify
+     * @return a {@link Uni} completing with UNSIGNED, VALID, INVALID, or SUSPECT
+     * @throws IllegalArgumentException if the entry does not exist
+     */
+    public Uni<VerificationResult> verifyAgentSignatureAsync(final UUID entryId) {
+        return reactiveLedgerRepo.findEntryById(entryId)
+                .map(opt -> opt.orElseThrow(
+                        () -> new IllegalArgumentException("Entry not found: " + entryId)))
+                .chain(entry -> {
+                    if (entry.agentSignature == null) {
+                        return Uni.createFrom().item(VerificationResult.UNSIGNED);
+                    }
+
+                    final VerificationResult cryptoResult = verifyCryptographic(entry);
+                    if (cryptoResult != VerificationResult.VALID) {
+                        return Uni.createFrom().item(cryptoResult);
+                    }
+
+                    if (entry.agentKeyRef == null || entry.actorId == null) {
+                        return Uni.createFrom().item(VerificationResult.VALID);
+                    }
+
+                    // Blocking bridge — see #86 for reactive KeyRotationService
+                    final Optional<Instant> effectiveSince =
+                            compromisedEffectiveSince(entry.actorId, entry.agentKeyRef, entry.occurredAt);
+
+                    if (effectiveSince.isPresent()) {
+                        return Uni.createFrom().completionStage(
+                                () -> suspectEvent.fireAsync(new AgentSignatureSuspectEvent(
+                                        entryId, entry.actorId, entry.agentKeyRef,
+                                        entry.occurredAt, effectiveSince.get())))
+                                .replaceWith(VerificationResult.SUSPECT);
+                    }
+
+                    return Uni.createFrom().item(VerificationResult.VALID);
+                });
     }
 }

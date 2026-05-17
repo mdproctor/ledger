@@ -19,6 +19,7 @@ import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
+import io.casehub.ledger.runtime.service.AgentSignatureSuspectEvent;
 import io.casehub.ledger.runtime.service.KeyRotationService;
 import io.casehub.ledger.runtime.service.LedgerMerkleTree;
 import io.casehub.ledger.runtime.service.LedgerVerificationService;
@@ -39,6 +40,8 @@ class LedgerVerificationServiceIT {
     EntityManager em;
     @Inject
     KeyRotationService rotationService;
+    @Inject
+    AgentSuspectEventCapture eventCapture;
 
     private TestEntry seedEntry(UUID subjectId, int seq, String actorId) {
         TestEntry e = new TestEntry();
@@ -310,5 +313,83 @@ class LedgerVerificationServiceIT {
 
         assertThat(verificationService.verifyAgentSignature(e.id))
                 .isEqualTo(VerificationResult.VALID);
+    }
+
+    @Test
+    @Transactional
+    void verifyAgentSignature_suspect_firesSuspectEvent() throws Exception {
+        eventCapture.reset();
+        final java.security.KeyPairGenerator gen = java.security.KeyPairGenerator.getInstance("Ed25519");
+        final SigningKey sk = SigningKey.of(gen.generateKeyPair());
+        final UUID sub = UUID.randomUUID();
+        final TestEntry e = seedEntry(sub, 1, "claude:reviewer@v1");
+        final byte[] canonical = LedgerMerkleTree.canonicalBytes(e);
+        final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
+        sig.initSign(sk.keyPair().getPrivate());
+        sig.update(canonical);
+        e.agentSignature = sig.sign();
+        e.agentPublicKey = sk.keyPair().getPublic().getEncoded();
+        e.agentKeyRef = sk.keyRef();
+        repo.save(e);
+
+        final java.time.Instant compromisedSince = e.occurredAt.minusSeconds(60);
+        rotationService.recordRotation("claude:reviewer@v1", sk.keyRef(), null,
+                KeyRotationReason.COMPROMISED, compromisedSince);
+
+        verificationService.verifyAgentSignature(e.id);
+
+        assertThat(eventCapture.syncEvents()).hasSize(1);
+        final AgentSignatureSuspectEvent event = eventCapture.syncEvents().get(0);
+        assertThat(event.entryId()).isEqualTo(e.id);
+        assertThat(event.actorId()).isEqualTo("claude:reviewer@v1");
+        assertThat(event.keyRef()).isEqualTo(sk.keyRef());
+        assertThat(event.occurredAt()).isEqualTo(e.occurredAt);
+        assertThat(event.effectiveSince()).isEqualTo(compromisedSince);
+    }
+
+    @Test
+    @Transactional
+    void verifyAgentSignature_valid_doesNotFireEvent() throws Exception {
+        eventCapture.reset();
+        final java.security.KeyPairGenerator gen = java.security.KeyPairGenerator.getInstance("Ed25519");
+        final SigningKey sk = SigningKey.of(gen.generateKeyPair());
+        final UUID sub = UUID.randomUUID();
+        final TestEntry e = seedEntry(sub, 1, "claude:reviewer@v1");
+        final byte[] canonical = LedgerMerkleTree.canonicalBytes(e);
+        final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
+        sig.initSign(sk.keyPair().getPrivate());
+        sig.update(canonical);
+        e.agentSignature = sig.sign();
+        e.agentPublicKey = sk.keyPair().getPublic().getEncoded();
+        e.agentKeyRef = sk.keyRef();
+        repo.save(e);
+
+        verificationService.verifyAgentSignature(e.id);
+
+        assertThat(eventCapture.syncEvents()).isEmpty();
+    }
+
+    @Test
+    @Transactional
+    void verifyAgentSignature_invalid_doesNotFireEvent() throws Exception {
+        eventCapture.reset();
+        final java.security.KeyPairGenerator gen = java.security.KeyPairGenerator.getInstance("Ed25519");
+        final SigningKey sk = SigningKey.of(gen.generateKeyPair());
+        final UUID sub = UUID.randomUUID();
+        final TestEntry e = seedEntry(sub, 1, "claude:reviewer@v1");
+        final byte[] canonical = LedgerMerkleTree.canonicalBytes(e);
+        final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
+        sig.initSign(sk.keyPair().getPrivate());
+        sig.update(canonical);
+        final byte[] signature = sig.sign();
+        signature[0] ^= 0xFF;
+        e.agentSignature = signature;
+        e.agentPublicKey = sk.keyPair().getPublic().getEncoded();
+        e.agentKeyRef = sk.keyRef();
+        repo.save(e);
+
+        verificationService.verifyAgentSignature(e.id);
+
+        assertThat(eventCapture.syncEvents()).isEmpty();
     }
 }
