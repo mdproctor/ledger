@@ -8,9 +8,17 @@ public enum VerificationResult {
     /** No agent signature is stored on this entry — the actor did not sign. */
     UNSIGNED,
 
-    /** Signature is present and verified against the stored public key and canonical bytes. */
+    /** Signature is present and cryptographically verified; key not compromised. */
     VALID,
 
-    /** Signature is present but verification failed — possible tampering or key mismatch. */
-    INVALID
+    /** Signature is present but cryptographic verification failed — possible tampering. */
+    INVALID,
+
+    /**
+     * Signature is cryptographically VALID but was produced by a key subsequently
+     * reported {@link io.casehub.ledger.api.model.KeyRotationReason#COMPROMISED}
+     * and the entry's {@code occurredAt} falls within the compromised window.
+     * The entry content is intact; the signing actor's trustworthiness is in question.
+     */
+    SUSPECT
 }
