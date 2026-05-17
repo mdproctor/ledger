@@ -21,9 +21,11 @@ import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
+import io.casehub.ledger.runtime.repository.ReactiveLedgerEntryRepository;
 import io.casehub.ledger.runtime.service.model.CompromisedWindow;
 import io.casehub.ledger.runtime.service.model.InclusionProof;
 import io.casehub.ledger.runtime.service.model.VerificationResult;
+import io.smallrye.mutiny.Uni;
 
 /**
  * CDI bean exposing Merkle tree verification operations.
@@ -46,6 +48,9 @@ public class LedgerVerificationService {
 
     @Inject
     Event<AgentSignatureSuspectEvent> suspectEvent;
+
+    @Inject
+    ReactiveLedgerEntryRepository reactiveLedgerRepo;
 
     /** Return the current Merkle tree root for a subject. */
     @Transactional
@@ -174,5 +179,59 @@ public class LedgerVerificationService {
         }
 
         return VerificationResult.VALID;
+    }
+
+    /**
+     * Reactive variant of {@link #verifyAgentSignature(UUID)}.
+     *
+     * <p>
+     * Uses {@link ReactiveLedgerEntryRepository} for the entry lookup.
+     * {@link KeyRotationService#compromisedWindows} is called via a blocking bridge
+     * pending full reactive {@link KeyRotationService} variants (see casehubio/ledger#86).
+     *
+     * <p>
+     * Fires {@link AgentSignatureSuspectEvent} asynchronously via {@code event.fireAsync()}
+     * when the result is {@link VerificationResult#SUSPECT}.
+     *
+     * @param entryId the entry to verify
+     * @return a {@link Uni} completing with UNSIGNED, VALID, INVALID, or SUSPECT
+     * @throws IllegalArgumentException if the entry does not exist
+     */
+    public Uni<VerificationResult> verifyAgentSignatureAsync(final UUID entryId) {
+        return reactiveLedgerRepo.findEntryById(entryId)
+                .map(opt -> opt.orElseThrow(
+                        () -> new IllegalArgumentException("Entry not found: " + entryId)))
+                .chain(entry -> {
+                    if (entry.agentSignature == null) {
+                        return Uni.createFrom().item(VerificationResult.UNSIGNED);
+                    }
+
+                    final VerificationResult cryptoResult = verifyCryptographic(entry);
+                    if (cryptoResult != VerificationResult.VALID) {
+                        return Uni.createFrom().item(cryptoResult);
+                    }
+
+                    if (entry.agentKeyRef == null || entry.actorId == null) {
+                        return Uni.createFrom().item(VerificationResult.VALID);
+                    }
+
+                    // Blocking bridge — see #86 for reactive KeyRotationService
+                    final Optional<Instant> effectiveSince = keyRotationService
+                            .compromisedWindows(entry.actorId, entry.agentKeyRef)
+                            .stream()
+                            .filter(w -> !entry.occurredAt.isBefore(w.effectiveSince()))
+                            .map(CompromisedWindow::effectiveSince)
+                            .min(Instant::compareTo);
+
+                    if (effectiveSince.isPresent()) {
+                        return Uni.createFrom().completionStage(
+                                () -> suspectEvent.fireAsync(new AgentSignatureSuspectEvent(
+                                        entryId, entry.actorId, entry.agentKeyRef,
+                                        entry.occurredAt, effectiveSince.get())))
+                                .replaceWith(VerificationResult.SUSPECT);
+                    }
+
+                    return Uni.createFrom().item(VerificationResult.VALID);
+                });
     }
 }
