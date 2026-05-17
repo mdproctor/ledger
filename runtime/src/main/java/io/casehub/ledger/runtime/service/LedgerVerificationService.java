@@ -20,6 +20,7 @@ import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.service.model.InclusionProof;
 import io.casehub.ledger.runtime.service.model.VerificationResult;
+import io.casehub.ledger.runtime.service.KeyRotationService;
 
 /**
  * CDI bean exposing Merkle tree verification operations.
@@ -36,6 +37,9 @@ public class LedgerVerificationService {
     @Inject
     @LedgerPersistenceUnit
     EntityManager em;
+
+    @Inject
+    KeyRotationService keyRotationService;
 
     /** Return the current Merkle tree root for a subject. */
     @Transactional
@@ -105,7 +109,10 @@ public class LedgerVerificationService {
      *
      * @param entryId the entry to verify
      * @return {@link VerificationResult#UNSIGNED} if no signature stored;
-     *         {@link VerificationResult#VALID} if the signature verifies;
+     *         {@link VerificationResult#VALID} if the signature verifies and the key is not compromised;
+     *         {@link VerificationResult#SUSPECT} if the signature verifies but the key was subsequently
+     *         reported {@link io.casehub.ledger.api.model.KeyRotationReason#COMPROMISED} within the
+     *         applicable time window;
      *         {@link VerificationResult#INVALID} if verification fails
      * @throws IllegalArgumentException if the entry does not exist
      */
@@ -131,9 +138,24 @@ public class LedgerVerificationService {
             sig.initVerify(pub);
             sig.update(LedgerMerkleTree.canonicalBytes(entry));
 
-            return sig.verify(entry.agentSignature) ? VerificationResult.VALID : VerificationResult.INVALID;
+            if (!sig.verify(entry.agentSignature)) {
+                return VerificationResult.INVALID;
+            }
         } catch (final Exception e) {
             return VerificationResult.INVALID;
         }
+
+        // Cryptographic check passed — check for compromise windows
+        if (entry.agentKeyRef != null && entry.actorId != null) {
+            final boolean suspect = keyRotationService
+                    .compromisedWindows(entry.actorId, entry.agentKeyRef)
+                    .stream()
+                    .anyMatch(w -> !entry.occurredAt.isBefore(w.effectiveSince()));
+            if (suspect) {
+                return VerificationResult.SUSPECT;
+            }
+        }
+
+        return VerificationResult.VALID;
     }
 }

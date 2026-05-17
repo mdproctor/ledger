@@ -1,17 +1,22 @@
 package io.casehub.ledger.runtime.service;
 
-import java.security.KeyPair;
 import java.util.Optional;
 
 import io.casehub.ledger.runtime.model.LedgerEntry;
 
 /**
- * SPI: supplies the Ed25519 {@link KeyPair} used to sign a {@link LedgerEntry}
+ * SPI: supplies the {@link SigningKey} used to sign a {@link LedgerEntry}
  * on behalf of a given actorId.
  *
  * <p>
  * Return {@link Optional#empty()} for actors that do not participate in
  * bilateral signing — those entries will be persisted unsigned.
+ *
+ * <p>
+ * The {@link SigningKey} carries a self-derived {@code keyRef}
+ * ({@code Base64URL(SHA-256(publicKey.getEncoded()))}) that is stored alongside
+ * the signature on each entry, enabling key-generation attribution and
+ * compromise detection.
  *
  * <p>
  * Implementations must be {@code @ApplicationScoped} CDI beans. The default
@@ -21,11 +26,11 @@ import io.casehub.ledger.runtime.model.LedgerEntry;
 public interface AgentKeyProvider {
 
     /**
-     * Returns the signing key pair for the given actorId, or empty if this
+     * Returns the signing key for the given actorId, or empty if this
      * actor does not sign ledger entries.
      *
      * @param actorId the actor identity string (e.g. {@code "claude:reviewer@v1"})
-     * @return signing key pair, or empty for unsigned actors
+     * @return signing key, or empty for unsigned actors
      */
-    Optional<KeyPair> signingKeyPair(String actorId);
+    Optional<SigningKey> signingKey(String actorId);
 }
