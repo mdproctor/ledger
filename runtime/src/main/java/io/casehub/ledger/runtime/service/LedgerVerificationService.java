@@ -3,11 +3,14 @@ package io.casehub.ledger.runtime.service;
 import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.spec.X509EncodedKeySpec;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
@@ -18,9 +21,9 @@ import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
+import io.casehub.ledger.runtime.service.model.CompromisedWindow;
 import io.casehub.ledger.runtime.service.model.InclusionProof;
 import io.casehub.ledger.runtime.service.model.VerificationResult;
-import io.casehub.ledger.runtime.service.KeyRotationService;
 
 /**
  * CDI bean exposing Merkle tree verification operations.
@@ -40,6 +43,9 @@ public class LedgerVerificationService {
 
     @Inject
     KeyRotationService keyRotationService;
+
+    @Inject
+    Event<AgentSignatureSuspectEvent> suspectEvent;
 
     /** Return the current Merkle tree root for a subject. */
     @Transactional
@@ -105,6 +111,28 @@ public class LedgerVerificationService {
     }
 
     /**
+     * Ed25519 signature verification against stored public key bytes.
+     * Returns {@link VerificationResult#VALID} or {@link VerificationResult#INVALID}.
+     * Does NOT check compromise windows.
+     */
+    private VerificationResult verifyCryptographic(final LedgerEntry entry) {
+        if (entry.agentPublicKey == null) {
+            LOG.warnf("Entry %s has agentSignature but no agentPublicKey — record is corrupt", entry.id);
+            return VerificationResult.INVALID;
+        }
+        try {
+            final KeyFactory kf = KeyFactory.getInstance("Ed25519");
+            final PublicKey pub = kf.generatePublic(new X509EncodedKeySpec(entry.agentPublicKey));
+            final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
+            sig.initVerify(pub);
+            sig.update(LedgerMerkleTree.canonicalBytes(entry));
+            return sig.verify(entry.agentSignature) ? VerificationResult.VALID : VerificationResult.INVALID;
+        } catch (final Exception e) {
+            return VerificationResult.INVALID;
+        }
+    }
+
+    /**
      * Verifies the agent signature on the given entry.
      *
      * @param entryId the entry to verify
@@ -112,7 +140,7 @@ public class LedgerVerificationService {
      *         {@link VerificationResult#VALID} if the signature verifies and the key is not compromised;
      *         {@link VerificationResult#SUSPECT} if the signature verifies but the key was subsequently
      *         reported {@link io.casehub.ledger.api.model.KeyRotationReason#COMPROMISED} within the
-     *         applicable time window;
+     *         applicable time window — fires {@link AgentSignatureSuspectEvent};
      *         {@link VerificationResult#INVALID} if verification fails
      * @throws IllegalArgumentException if the entry does not exist
      */
@@ -125,33 +153,22 @@ public class LedgerVerificationService {
             return VerificationResult.UNSIGNED;
         }
 
-        if (entry.agentPublicKey == null) {
-            LOG.warnf("Entry %s has agentSignature but no agentPublicKey — record is corrupt", entryId);
-            return VerificationResult.INVALID;
+        final VerificationResult cryptoResult = verifyCryptographic(entry);
+        if (cryptoResult != VerificationResult.VALID) {
+            return cryptoResult;
         }
 
-        try {
-            final KeyFactory kf = KeyFactory.getInstance("Ed25519");
-            final PublicKey pub = kf.generatePublic(new X509EncodedKeySpec(entry.agentPublicKey));
-
-            final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
-            sig.initVerify(pub);
-            sig.update(LedgerMerkleTree.canonicalBytes(entry));
-
-            if (!sig.verify(entry.agentSignature)) {
-                return VerificationResult.INVALID;
-            }
-        } catch (final Exception e) {
-            return VerificationResult.INVALID;
-        }
-
-        // Cryptographic check passed — check for compromise windows
         if (entry.agentKeyRef != null && entry.actorId != null) {
-            final boolean suspect = keyRotationService
+            final Optional<Instant> effectiveSince = keyRotationService
                     .compromisedWindows(entry.actorId, entry.agentKeyRef)
                     .stream()
-                    .anyMatch(w -> !entry.occurredAt.isBefore(w.effectiveSince()));
-            if (suspect) {
+                    .filter(w -> !entry.occurredAt.isBefore(w.effectiveSince()))
+                    .map(CompromisedWindow::effectiveSince)
+                    .min(Instant::compareTo);
+            if (effectiveSince.isPresent()) {
+                suspectEvent.fire(new AgentSignatureSuspectEvent(
+                        entryId, entry.actorId, entry.agentKeyRef,
+                        entry.occurredAt, effectiveSince.get()));
                 return VerificationResult.SUSPECT;
             }
         }
