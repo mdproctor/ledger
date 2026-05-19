@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPairGenerator;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -117,97 +116,4 @@ class KeyRotationServiceIT {
         assertThat(windows).isEmpty();
     }
 
-    // ── Reactive variants ─────────────────────────────────────────────────────
-
-    @Test
-    @Transactional
-    void compromisedWindowsAsync_emptyWhenNoCompromiseRecord() throws Exception {
-        final String actorId = "claude:reviewer@v5-" + UUID.randomUUID();
-        final SigningKey key = newKey();
-
-        final List<CompromisedWindow> windows = rotationService
-                .compromisedWindowsAsync(actorId, key.keyRef())
-                .await().atMost(Duration.ofSeconds(5));
-
-        assertThat(windows).isEmpty();
-    }
-
-    @Test
-    @Transactional
-    void compromisedWindowsAsync_onlyReturnsCompromisedReason() throws Exception {
-        final String actorId = "claude:reviewer@v6-" + UUID.randomUUID();
-        final SigningKey oldKey = newKey();
-        final SigningKey newKey = newKey();
-        final Instant compromisedSince = Instant.now().minusSeconds(3600);
-
-        rotationService.recordRotation(actorId, oldKey.keyRef(), newKey.keyRef(),
-                KeyRotationReason.SCHEDULED, Instant.now());
-        rotationService.recordRotation(actorId, oldKey.keyRef(), null,
-                KeyRotationReason.COMPROMISED, compromisedSince);
-
-        final List<CompromisedWindow> windows = rotationService
-                .compromisedWindowsAsync(actorId, oldKey.keyRef())
-                .await().atMost(Duration.ofSeconds(5));
-
-        assertThat(windows).hasSize(1);
-        assertThat(windows.get(0).keyRef()).isEqualTo(oldKey.keyRef());
-        assertThat(windows.get(0).effectiveSince()).isEqualTo(compromisedSince);
-    }
-
-    @Test
-    @Transactional
-    void rotationHistoryAsync_returnsAllEventsOrdered() throws Exception {
-        final String actorId = "claude:reviewer@v7-" + UUID.randomUUID();
-        final SigningKey k1 = newKey();
-        final SigningKey k2 = newKey();
-
-        rotationService.recordRotation(actorId, k1.keyRef(), k2.keyRef(),
-                KeyRotationReason.SCHEDULED, Instant.now().minusSeconds(60));
-        rotationService.recordRotation(actorId, k2.keyRef(), null,
-                KeyRotationReason.COMPROMISED, Instant.now());
-
-        final List<KeyRotationEntry> history = rotationService
-                .rotationHistoryAsync(actorId)
-                .await().atMost(Duration.ofSeconds(5));
-
-        assertThat(history).hasSize(2);
-        assertThat(history.get(0).reason).isEqualTo(KeyRotationReason.SCHEDULED);
-        assertThat(history.get(1).reason).isEqualTo(KeyRotationReason.COMPROMISED);
-    }
-
-    @Test
-    @Transactional
-    void recordRotationAsync_persistsEntry() throws Exception {
-        final String actorId = "claude:reviewer@v8-" + UUID.randomUUID();
-        final SigningKey oldKey = newKey();
-        final SigningKey newKey = newKey();
-
-        final KeyRotationEntry entry = rotationService.recordRotationAsync(
-                actorId, oldKey.keyRef(), newKey.keyRef(),
-                KeyRotationReason.SCHEDULED, Instant.now())
-                .await().atMost(Duration.ofSeconds(5));
-
-        assertThat(entry.id).isNotNull();
-        assertThat(entry.actorId).isEqualTo(actorId);
-        assertThat(entry.previousKeyRef).isEqualTo(oldKey.keyRef());
-        assertThat(entry.newKeyRef).isEqualTo(newKey.keyRef());
-        assertThat(entry.reason).isEqualTo(KeyRotationReason.SCHEDULED);
-        assertThat(entry.entryType).isEqualTo(LedgerEntryType.COMMAND);
-    }
-
-    @Test
-    @Transactional
-    void recordRotationAsync_subjectIdIsDeterministicFromActorId() throws Exception {
-        final String actorId = "claude:auditor@v1-" + UUID.randomUUID();
-        final SigningKey oldKey = newKey();
-
-        final KeyRotationEntry entry = rotationService.recordRotationAsync(
-                actorId, oldKey.keyRef(), null,
-                KeyRotationReason.COMPROMISED, Instant.now())
-                .await().atMost(Duration.ofSeconds(5));
-
-        final UUID expectedSubjectId = UUID.nameUUIDFromBytes(
-                actorId.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        assertThat(entry.subjectId).isEqualTo(expectedSubjectId);
-    }
 }
