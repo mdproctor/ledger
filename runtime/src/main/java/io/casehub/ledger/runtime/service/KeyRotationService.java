@@ -9,12 +9,16 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import io.smallrye.mutiny.Uni;
+
 import io.casehub.ledger.api.model.ActorType;
 import io.casehub.ledger.api.model.KeyRotationReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.KeyRotationEntry;
 import io.casehub.ledger.runtime.repository.KeyRotationRepository;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
+import io.casehub.ledger.runtime.repository.ReactiveLedgerEntryRepository;
+import io.casehub.ledger.runtime.repository.ReactiveKeyRotationRepository;
 import io.casehub.ledger.runtime.service.model.CompromisedWindow;
 
 /**
@@ -32,6 +36,12 @@ public class KeyRotationService {
 
     @Inject
     LedgerEntryRepository ledgerRepo;
+
+    @Inject
+    ReactiveKeyRotationRepository reactiveRepository;
+
+    @Inject
+    ReactiveLedgerEntryRepository reactiveLedgerRepo;
 
     /**
      * Record a signing key rotation event.
@@ -80,5 +90,40 @@ public class KeyRotationService {
                 .stream()
                 .map(e -> new CompromisedWindow(e.previousKeyRef, e.effectiveSince))
                 .toList();
+    }
+
+    /** Reactive variant of {@link #compromisedWindows(String, String)}. */
+    public Uni<List<CompromisedWindow>> compromisedWindowsAsync(
+            final String actorId, final String keyRef) {
+        return reactiveRepository.findCompromisedByActorIdAndKeyRef(actorId, keyRef)
+                .map(entries -> entries.stream()
+                        .map(e -> new CompromisedWindow(e.previousKeyRef, e.effectiveSince))
+                        .toList());
+    }
+
+    /** Reactive variant of {@link #rotationHistory(String)}. */
+    public Uni<List<KeyRotationEntry>> rotationHistoryAsync(final String actorId) {
+        return reactiveRepository.findByActorId(actorId);
+    }
+
+    /** Reactive variant of {@link #recordRotation(String, String, String, KeyRotationReason, Instant)}. */
+    public Uni<KeyRotationEntry> recordRotationAsync(
+            final String actorId,
+            final String previousKeyRef,
+            final String newKeyRef,
+            final KeyRotationReason reason,
+            final Instant effectiveSince) {
+
+        final KeyRotationEntry entry = new KeyRotationEntry();
+        entry.actorId = actorId;
+        entry.actorType = ActorType.SYSTEM;
+        entry.actorRole = "KeyManager";
+        entry.entryType = LedgerEntryType.COMMAND;
+        entry.subjectId = UUID.nameUUIDFromBytes(actorId.getBytes(StandardCharsets.UTF_8));
+        entry.previousKeyRef = previousKeyRef;
+        entry.newKeyRef = newKeyRef;
+        entry.reason = reason;
+        entry.effectiveSince = effectiveSince;
+        return reactiveLedgerRepo.save(entry).map(e -> (KeyRotationEntry) e);
     }
 }
