@@ -72,6 +72,19 @@ from base entries — trust scoring works across all consumers.
 | `actor_identity` | V1004 | Actor pseudonymisation token-to-identity mapping |
 | `ledger_merkle_frontier` | V1000 | Merkle Mountain Range frontier nodes (≤log₂(N) rows per subject) |
 
+### Reactive Key Rotation Repository
+
+`ReactiveKeyRotationRepository` is the reactive twin of `KeyRotationRepository`, following
+the same SPI-only pattern established by `ReactiveLedgerEntryRepository`: no production JPA
+implementation is bundled in `casehub-ledger`. The interface is persistence-agnostic —
+consumers provide their own implementation using whatever reactive stack they run (Hibernate
+Reactive, reactive MongoDB, etc.). The test suite resolves the injection via
+`BlockingReactiveKeyRotationRepository`, a `@DefaultBean` shim that wraps the H2/JDBC
+blocking impl with `Uni.createFrom().item()`. This keeps the reactive contract testable
+without a Vert.x datasource. `KeyRotationService` gained three reactive methods
+(`compromisedWindowsAsync`, `rotationHistoryAsync`, `recordRotationAsync`), completing
+PP-20260517-15bf75 for the key rotation domain.
+
 ---
 
 ## Supplements
@@ -178,6 +191,18 @@ utility works for any subclass.
 The sync `verifyAgentSignature()` fires `event.fire()`; the reactive `verifyAgentSignatureAsync()` twin fires `event.fireAsync()`. Both paths share one event type; delivery semantics are a consumer concern. A `verifyCryptographic()` helper eliminates duplicate Ed25519 logic between the two paths; `compromisedEffectiveSince()` eliminates a structural null-check asymmetry found in code review.
 
 This epic also formalised **PP-20260517-15bf75** (ledger-sync-async-parity): all new ledger service methods must ship both blocking and reactive variants unless demonstrably unsuitable — triggered by discovering `verifyAgentSignature()` had no reactive twin. The blocking bridge for `KeyRotationService.compromisedWindows()` was removed in #86 when `ReactiveKeyRotationRepository` and full reactive `KeyRotationService` variants shipped.
+
+### Reactive key rotation — design invariants
+
+The blocking bridge in `verifyAgentSignatureAsync` (introduced in #83 as a placeholder)
+was replaced with `compromisedEffectiveSinceAsync`, a private reactive helper that mirrors
+`compromisedEffectiveSince` exactly. Two invariants govern the implementation: the filter
+uses `.min(Instant::compareTo)` rather than `.findFirst()` — making it order-independent
+and correct regardless of the named query's `ORDER BY` — and `occurredAt` is not null-checked
+because it is `@Column(nullable = false)` with a `@PrePersist` fallback, matching the
+blocking path. `recordRotationAsync` carries no `@Transactional` annotation — reactive
+transaction management is the caller's responsibility, consistent with the reactive SPI
+contract established by `ReactiveLedgerEntryRepository`.
 
 ## Configuration
 
