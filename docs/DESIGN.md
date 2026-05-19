@@ -209,6 +209,21 @@ blocking path. `recordRotationAsync` carries no `@Transactional` annotation — 
 transaction management is the caller's responsibility, consistent with the reactive SPI
 contract established by `ReactiveLedgerEntryRepository`.
 
+### Reactive service tier gating — why `ExcludedTypeBuildItem`
+
+Three approaches were evaluated for making the reactive tier optional in JDBC-only consumers
+and rejected. `Instance<T>` optional injection moves the CDI failure from build time to
+runtime without addressing the underlying code smell — mixed-tier service beans remain. A
+`@DefaultBean` no-op in production would conflict with the `@DefaultBean` blocking test
+shims already present in test sources, causing CDI ambiguity in `@QuarkusTest`. `@IfBuildProperty`
+on runtime beans is unreliable in a Quarkus extension unless the property is formally declared
+as `@ConfigRoot(BUILD_TIME)` in the deployment module. The canonical extension pattern is
+`ExcludedTypeBuildItem` via `@BuildStep` in `LedgerProcessor`, driven by `LedgerBuildTimeConfig`
+declared `BUILD_TIME` — the gate is an augmentation-time decision, not a runtime one.
+`LedgerConfig.ReactiveConfig` is retained in the runtime config root solely to prevent
+`SRCFG00050` validation failures; the authoritative gate is `LedgerBuildTimeConfig`, not the
+runtime accessor.
+
 ## Configuration
 
 The extension is configured under the `casehub.ledger` prefix via `application.properties` or environment variables.
