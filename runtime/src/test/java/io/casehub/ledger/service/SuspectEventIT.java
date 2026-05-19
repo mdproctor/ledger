@@ -19,12 +19,12 @@ import org.junit.jupiter.api.Test;
 import io.casehub.ledger.api.model.ActorType;
 import io.casehub.ledger.api.model.KeyRotationReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.service.AgentKeyProvider;
 import io.casehub.ledger.runtime.service.AgentSignatureSuspectEvent;
 import io.casehub.ledger.runtime.service.KeyRotationService;
 import io.casehub.ledger.runtime.service.LedgerVerificationService;
+import io.casehub.ledger.runtime.service.ReactiveLedgerVerificationService;
 import io.casehub.ledger.runtime.service.SigningKey;
 import io.casehub.ledger.runtime.service.model.VerificationResult;
 import io.casehub.ledger.service.supplement.TestEntry;
@@ -44,6 +44,7 @@ class SuspectEventIT {
 
     @Inject LedgerEntryRepository repo;
     @Inject LedgerVerificationService verificationService;
+    @Inject ReactiveLedgerVerificationService reactiveVerificationService;
     @Inject KeyRotationService rotationService;
     @Inject AgentSuspectEventCapture eventCapture;
 
@@ -104,7 +105,7 @@ class SuspectEventIT {
         final TestEntry saved = (TestEntry) repo.save(e);
 
         final VerificationResult result =
-                verificationService.verifyAgentSignatureAsync(saved.id).await().indefinitely();
+                reactiveVerificationService.verifyAgentSignatureAsync(saved.id).await().indefinitely();
 
         assertThat(result).isEqualTo(VerificationResult.UNSIGNED);
         assertThat(eventCapture.syncEvents()).isEmpty();
@@ -117,7 +118,7 @@ class SuspectEventIT {
         final TestEntry e = seedSigned(sub, 1);
 
         final VerificationResult result =
-                verificationService.verifyAgentSignatureAsync(e.id).await().indefinitely();
+                reactiveVerificationService.verifyAgentSignatureAsync(e.id).await().indefinitely();
 
         assertThat(result).isEqualTo(VerificationResult.VALID);
         assertThat(eventCapture.syncEvents()).isEmpty();
@@ -133,7 +134,7 @@ class SuspectEventIT {
                 KeyRotationReason.COMPROMISED, e.occurredAt.minusSeconds(60));
 
         final VerificationResult result =
-                verificationService.verifyAgentSignatureAsync(e.id).await().indefinitely();
+                reactiveVerificationService.verifyAgentSignatureAsync(e.id).await().indefinitely();
 
         assertThat(result).isEqualTo(VerificationResult.SUSPECT);
 
@@ -152,15 +153,26 @@ class SuspectEventIT {
     @Test
     @Transactional
     void verifyAgentSignatureAsync_invalid_returnsInvalid() {
-        final UUID sub = UUID.randomUUID();
-        final TestEntry e = seedSigned(sub, 1);
+        // Build the entry with a fresh tampered signature array — avoids mutating a
+        // Hibernate-cached object whose in-place mutation could bleed across tests.
+        final TestEntry e = new TestEntry();
+        e.subjectId = UUID.randomUUID();
+        e.sequenceNumber = 1;
+        e.entryType = LedgerEntryType.EVENT;
+        e.actorId = "claude:reviewer@v1";
+        e.actorType = ActorType.AGENT;
+        e.actorRole = "Reviewer";
+        final TestEntry saved = (TestEntry) repo.save(e);
 
-        final LedgerEntry stored = repo.findEntryById(e.id).orElseThrow();
-        stored.agentSignature[0] ^= 0xFF;
-        repo.save(stored);
+        final byte[] tamperedSignature = new byte[64];
+        tamperedSignature[0] = (byte) 0xFF;
+        saved.agentSignature = tamperedSignature;
+        saved.agentPublicKey = testKey.keyPair().getPublic().getEncoded();
+        saved.agentKeyRef = testKey.keyRef();
+        repo.save(saved);
 
         final VerificationResult result =
-                verificationService.verifyAgentSignatureAsync(e.id).await().indefinitely();
+                reactiveVerificationService.verifyAgentSignatureAsync(saved.id).await().indefinitely();
 
         assertThat(result).isEqualTo(VerificationResult.INVALID);
         assertThat(eventCapture.syncEvents()).isEmpty();

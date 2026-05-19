@@ -1,0 +1,141 @@
+package io.casehub.ledger.service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.security.KeyPairGenerator;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+
+import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
+
+import org.junit.jupiter.api.Test;
+
+import io.casehub.ledger.api.model.KeyRotationReason;
+import io.casehub.ledger.api.model.LedgerEntryType;
+import io.casehub.ledger.runtime.model.KeyRotationEntry;
+import io.casehub.ledger.runtime.service.KeyRotationService;
+import io.casehub.ledger.runtime.service.ReactiveKeyRotationService;
+import io.casehub.ledger.runtime.service.SigningKey;
+import io.casehub.ledger.runtime.service.model.CompromisedWindow;
+import io.quarkus.test.junit.QuarkusTest;
+
+/**
+ * Integration tests for {@link ReactiveKeyRotationService}.
+ *
+ * <p>
+ * {@code @Transactional} on each test method is required for the <em>setup</em>
+ * operations that use the blocking {@link KeyRotationService} and
+ * {@link io.casehub.ledger.runtime.repository.LedgerEntryRepository} — those
+ * blocking saves need a JTA transaction context. The reactive calls under test
+ * ({@code await().atMost(...)}) go through the
+ * {@link BlockingReactiveKeyRotationRepository} test shim, which delegates to the
+ * blocking repo on the same thread and therefore participates in the same JTA
+ * transaction. In production the reactive path runs on an event loop thread
+ * outside any JTA context — callers are responsible for reactive transaction
+ * management.
+ */
+@QuarkusTest
+class ReactiveKeyRotationServiceIT {
+
+    @Inject
+    ReactiveKeyRotationService reactiveRotationService;
+
+    @Inject
+    KeyRotationService rotationService;
+
+    private SigningKey newKey() throws Exception {
+        return SigningKey.of(KeyPairGenerator.getInstance("Ed25519").generateKeyPair());
+    }
+
+    @Test
+    @Transactional
+    void compromisedWindowsAsync_emptyWhenNoCompromiseRecord() throws Exception {
+        final String actorId = "claude:reviewer@v10-" + UUID.randomUUID();
+        final SigningKey key = newKey();
+
+        final List<CompromisedWindow> windows = reactiveRotationService
+                .compromisedWindowsAsync(actorId, key.keyRef())
+                .await().atMost(Duration.ofSeconds(5));
+
+        assertThat(windows).isEmpty();
+    }
+
+    @Test
+    @Transactional
+    void compromisedWindowsAsync_onlyReturnsCompromisedReason() throws Exception {
+        final String actorId = "claude:reviewer@v11-" + UUID.randomUUID();
+        final SigningKey oldKey = newKey();
+        final SigningKey newKey = newKey();
+        final Instant compromisedSince = Instant.now().minusSeconds(3600);
+
+        rotationService.recordRotation(actorId, oldKey.keyRef(), newKey.keyRef(),
+                KeyRotationReason.SCHEDULED, Instant.now());
+        rotationService.recordRotation(actorId, oldKey.keyRef(), null,
+                KeyRotationReason.COMPROMISED, compromisedSince);
+
+        final List<CompromisedWindow> windows = reactiveRotationService
+                .compromisedWindowsAsync(actorId, oldKey.keyRef())
+                .await().atMost(Duration.ofSeconds(5));
+
+        assertThat(windows).hasSize(1);
+        assertThat(windows.get(0).keyRef()).isEqualTo(oldKey.keyRef());
+        assertThat(windows.get(0).effectiveSince()).isEqualTo(compromisedSince);
+    }
+
+    @Test
+    @Transactional
+    void rotationHistoryAsync_returnsAllEventsOrdered() throws Exception {
+        final String actorId = "claude:reviewer@v12-" + UUID.randomUUID();
+        final SigningKey k1 = newKey();
+        final SigningKey k2 = newKey();
+
+        rotationService.recordRotation(actorId, k1.keyRef(), k2.keyRef(),
+                KeyRotationReason.SCHEDULED, Instant.now().minusSeconds(60));
+        rotationService.recordRotation(actorId, k2.keyRef(), null,
+                KeyRotationReason.COMPROMISED, Instant.now());
+
+        final List<KeyRotationEntry> history = reactiveRotationService
+                .rotationHistoryAsync(actorId)
+                .await().atMost(Duration.ofSeconds(5));
+
+        assertThat(history).hasSize(2);
+        assertThat(history.get(0).reason).isEqualTo(KeyRotationReason.SCHEDULED);
+        assertThat(history.get(1).reason).isEqualTo(KeyRotationReason.COMPROMISED);
+    }
+
+    @Test
+    @Transactional
+    void recordRotationAsync_persistsEntry() throws Exception {
+        final String actorId = "claude:reviewer@v13-" + UUID.randomUUID();
+        final SigningKey oldKey = newKey();
+        final SigningKey newKey = newKey();
+
+        final KeyRotationEntry entry = reactiveRotationService.recordRotationAsync(
+                actorId, oldKey.keyRef(), newKey.keyRef(),
+                KeyRotationReason.SCHEDULED, Instant.now())
+                .await().atMost(Duration.ofSeconds(5));
+
+        assertThat(entry.id).isNotNull();
+        assertThat(entry.actorId).isEqualTo(actorId);
+        assertThat(entry.entryType).isEqualTo(LedgerEntryType.COMMAND);
+    }
+
+    @Test
+    @Transactional
+    void recordRotationAsync_subjectIdIsDeterministicFromActorId() throws Exception {
+        final String actorId = "claude:auditor@v2-" + UUID.randomUUID();
+        final SigningKey oldKey = newKey();
+
+        final KeyRotationEntry entry = reactiveRotationService.recordRotationAsync(
+                actorId, oldKey.keyRef(), null,
+                KeyRotationReason.COMPROMISED, Instant.now())
+                .await().atMost(Duration.ofSeconds(5));
+
+        final UUID expectedSubjectId = UUID.nameUUIDFromBytes(
+                actorId.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        assertThat(entry.subjectId).isEqualTo(expectedSubjectId);
+    }
+}
