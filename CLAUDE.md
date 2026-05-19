@@ -229,14 +229,16 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── OtelTraceIdProvider.java         — OTel span reader for TraceIdEnricher
 │       │   ├── LedgerTraceListener.java         — @EntityListeners runner: iterates LedgerEntryEnricher pipeline, non-fatal
 │       │   ├── LedgerMerkleTree.java            — Merkle Mountain Range algorithm (pure static); canonicalBytes() public static — shared by Merkle and agent signing
-│       │   ├── LedgerVerificationService.java   — treeRoot / inclusionProof / verify / verifyAgentSignature / verifyAgentSignatureAsync (CDI bean)
+│       │   ├── LedgerVerificationService.java   — treeRoot / inclusionProof / verify / verifyAgentSignature (blocking only; no reactive imports)
+│       │   ├── ReactiveLedgerVerificationService.java — verifyAgentSignatureAsync (Uni<VerificationResult>); @IfBuildProperty-excluded via LedgerProcessor when casehub.ledger.reactive.enabled=false
 │       │   ├── AgentSignatureSuspectEvent.java  — CDI event record fired when verifyAgentSignature[Async] returns SUSPECT; consumers use @Observes or @ObservesAsync
 │       │   ├── LedgerMerklePublisher.java       — Ed25519 signed tlog-checkpoint (opt-in CDI bean)
 │       │   ├── SigningKey.java                  — record: keyRef (Base64URL SHA-256 of public key) + KeyPair; self-derived, zero operator config
 │       │   ├── AgentKeyProvider.java            — SPI: per-actorId SigningKey for bilateral entry signing; signingKey(actorId) → Optional<SigningKey>; see ADR 0011
 │       │   ├── ConfiguredAgentKeyProvider.java  — @DefaultBean: loads PKCS#8 private + X.509 public PEM per actorId from casehub.ledger.agent-signing.keys.*
 │       │   ├── AgentSignatureEnricher.java      — LedgerEntryEnricher: signs canonicalBytes() at @PrePersist, stores agentSignature + agentPublicKey + agentKeyRef
-│       │   ├── KeyRotationService.java          — CDI bean: recordRotation / rotationHistory / compromisedWindows (blocking); recordRotationAsync / rotationHistoryAsync / compromisedWindowsAsync (Uni<T> reactive); persists via LedgerEntryRepository / ReactiveLedgerEntryRepository
+│       │   ├── KeyRotationService.java          — CDI bean: recordRotation / rotationHistory / compromisedWindows (blocking only; no reactive imports)
+│       │   ├── ReactiveKeyRotationService.java  — compromisedWindowsAsync / rotationHistoryAsync / recordRotationAsync (Uni<T>); excluded when casehub.ledger.reactive.enabled=false
 │       │   ├── LedgerProvExportService.java      — W3C PROV-DM JSON-LD export (CDI bean)
 │       │   ├── LedgerProvSerializer.java         — PROV-DM serialisation utility
 │       │   ├── LedgerEntryArchiver.java          — archive record JSON serialisation for retention
@@ -309,7 +311,8 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       └── V1007__key_rotation_entry.sql    — key_rotation_entry table (KeyRotationEntry subclass: previous_key_ref, new_key_ref, reason, effective_since)
 └── deployment/
     └── src/main/java/io/casehub/ledger/deployment/
-        └── LedgerProcessor.java             — @BuildStep: FeatureBuildItem
+        ├── LedgerBuildTimeConfig.java       — @ConfigRoot(BUILD_TIME): casehub.ledger.reactive.enabled (default false)
+        └── LedgerProcessor.java             — @BuildStep: FeatureBuildItem + excludeReactiveBeans (ExcludedTypeBuildItem when reactive.enabled=false)
 ```
 
 ---
