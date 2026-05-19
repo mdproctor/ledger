@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -391,5 +393,102 @@ class LedgerVerificationServiceIT {
         verificationService.verifyAgentSignature(e.id);
 
         assertThat(eventCapture.syncEvents()).isEmpty();
+    }
+
+    // ── Async path ────────────────────────────────────────────────────────────
+
+    @Test
+    @Transactional
+    void verifyAgentSignatureAsync_unsignedEntry_returnsUnsigned() {
+        final UUID sub = UUID.randomUUID();
+        final TestEntry e = seedEntry(sub, 1, "unsigned-actor");
+
+        final io.casehub.ledger.runtime.service.model.VerificationResult result =
+                verificationService.verifyAgentSignatureAsync(e.id)
+                        .await().atMost(Duration.ofSeconds(5));
+
+        assertThat(result).isEqualTo(VerificationResult.UNSIGNED);
+    }
+
+    @Test
+    @Transactional
+    void verifyAgentSignatureAsync_validSignature_returnsValid() throws Exception {
+        final java.security.KeyPairGenerator gen = java.security.KeyPairGenerator.getInstance("Ed25519");
+        final SigningKey sk = SigningKey.of(gen.generateKeyPair());
+        final UUID sub = UUID.randomUUID();
+        final TestEntry e = seedEntry(sub, 1, "signed-actor");
+        final byte[] canonical = LedgerMerkleTree.canonicalBytes(e);
+        final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
+        sig.initSign(sk.keyPair().getPrivate());
+        sig.update(canonical);
+        e.agentSignature = sig.sign();
+        e.agentPublicKey = sk.keyPair().getPublic().getEncoded();
+        e.agentKeyRef = sk.keyRef();
+        repo.save(e);
+
+        final io.casehub.ledger.runtime.service.model.VerificationResult result =
+                verificationService.verifyAgentSignatureAsync(e.id)
+                        .await().atMost(Duration.ofSeconds(5));
+
+        assertThat(result).isEqualTo(VerificationResult.VALID);
+    }
+
+    @Test
+    @Transactional
+    void verifyAgentSignatureAsync_tamperedSignature_returnsInvalid() throws Exception {
+        final java.security.KeyPairGenerator gen = java.security.KeyPairGenerator.getInstance("Ed25519");
+        final SigningKey sk = SigningKey.of(gen.generateKeyPair());
+        final UUID sub = UUID.randomUUID();
+        final TestEntry e = seedEntry(sub, 1, "signed-actor");
+        final byte[] canonical = LedgerMerkleTree.canonicalBytes(e);
+        final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
+        sig.initSign(sk.keyPair().getPrivate());
+        sig.update(canonical);
+        final byte[] signature = sig.sign();
+        signature[0] ^= 0xFF;
+        e.agentSignature = signature;
+        e.agentPublicKey = sk.keyPair().getPublic().getEncoded();
+        e.agentKeyRef = sk.keyRef();
+        repo.save(e);
+
+        final io.casehub.ledger.runtime.service.model.VerificationResult result =
+                verificationService.verifyAgentSignatureAsync(e.id)
+                        .await().atMost(Duration.ofSeconds(5));
+
+        assertThat(result).isEqualTo(VerificationResult.INVALID);
+    }
+
+    @Test
+    @Transactional
+    void verifyAgentSignatureAsync_suspectEntry_firesEventViaReactivePath() throws Exception {
+        eventCapture.reset();
+        final java.security.KeyPairGenerator gen = java.security.KeyPairGenerator.getInstance("Ed25519");
+        final SigningKey sk = SigningKey.of(gen.generateKeyPair());
+        final UUID sub = UUID.randomUUID();
+        final TestEntry e = seedEntry(sub, 1, "claude:reviewer@v1");
+        final byte[] canonical = LedgerMerkleTree.canonicalBytes(e);
+        final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
+        sig.initSign(sk.keyPair().getPrivate());
+        sig.update(canonical);
+        e.agentSignature = sig.sign();
+        e.agentPublicKey = sk.keyPair().getPublic().getEncoded();
+        e.agentKeyRef = sk.keyRef();
+        repo.save(e);
+
+        final java.time.Instant compromisedSince = e.occurredAt.minusSeconds(60);
+        rotationService.recordRotation("claude:reviewer@v1", sk.keyRef(), null,
+                KeyRotationReason.COMPROMISED, compromisedSince);
+
+        final io.casehub.ledger.runtime.service.model.VerificationResult result =
+                verificationService.verifyAgentSignatureAsync(e.id)
+                        .await().atMost(Duration.ofSeconds(5));
+
+        assertThat(result).isEqualTo(VerificationResult.SUSPECT);
+        assertThat(eventCapture.asyncLatch().await(5, TimeUnit.SECONDS)).isTrue();
+        final AgentSignatureSuspectEvent event = eventCapture.lastAsyncEvent();
+        assertThat(event.entryId()).isEqualTo(e.id);
+        assertThat(event.actorId()).isEqualTo("claude:reviewer@v1");
+        assertThat(event.keyRef()).isEqualTo(sk.keyRef());
+        assertThat(event.effectiveSince()).isEqualTo(compromisedSince);
     }
 }
