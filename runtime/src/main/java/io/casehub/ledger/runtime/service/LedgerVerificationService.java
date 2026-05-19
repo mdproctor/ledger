@@ -18,6 +18,8 @@ import jakarta.transaction.Transactional;
 
 import org.jboss.logging.Logger;
 
+import io.smallrye.mutiny.Uni;
+
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
@@ -26,7 +28,6 @@ import io.casehub.ledger.runtime.repository.ReactiveLedgerEntryRepository;
 import io.casehub.ledger.runtime.service.model.CompromisedWindow;
 import io.casehub.ledger.runtime.service.model.InclusionProof;
 import io.casehub.ledger.runtime.service.model.VerificationResult;
-import io.smallrye.mutiny.Uni;
 
 /**
  * CDI bean exposing Merkle tree verification operations.
@@ -197,11 +198,8 @@ public class LedgerVerificationService {
      * Reactive variant of {@link #verifyAgentSignature(UUID)}.
      *
      * <p>
-     * Uses {@link ReactiveLedgerEntryRepository} for the entry lookup.
-     * {@link KeyRotationService#compromisedWindows} is called via a blocking bridge
-     * pending full reactive {@link KeyRotationService} variants (see casehubio/ledger#86).
-     *
-     * <p>
+     * Uses {@link ReactiveLedgerEntryRepository} for the entry lookup and
+     * {@link KeyRotationService#compromisedWindowsAsync} for the compromise window check.
      * Fires {@link AgentSignatureSuspectEvent} asynchronously via {@code event.fireAsync()}
      * when the result is {@link VerificationResult#SUSPECT}.
      *
@@ -227,19 +225,26 @@ public class LedgerVerificationService {
                         return Uni.createFrom().item(VerificationResult.VALID);
                     }
 
-                    // Blocking bridge — see #86 for reactive KeyRotationService
-                    final Optional<Instant> effectiveSince =
-                            compromisedEffectiveSince(entry.actorId, entry.agentKeyRef, entry.occurredAt);
-
-                    if (effectiveSince.isPresent()) {
-                        return Uni.createFrom().completionStage(
-                                () -> suspectEvent.fireAsync(new AgentSignatureSuspectEvent(
-                                        entryId, entry.actorId, entry.agentKeyRef,
-                                        entry.occurredAt, effectiveSince.get())))
-                                .replaceWith(VerificationResult.SUSPECT);
-                    }
-
-                    return Uni.createFrom().item(VerificationResult.VALID);
+                    return compromisedEffectiveSinceAsync(entry.actorId, entry.agentKeyRef, entry.occurredAt)
+                            .chain(effectiveSince -> {
+                                if (effectiveSince.isPresent()) {
+                                    return Uni.createFrom().completionStage(
+                                            () -> suspectEvent.fireAsync(new AgentSignatureSuspectEvent(
+                                                    entryId, entry.actorId, entry.agentKeyRef,
+                                                    entry.occurredAt, effectiveSince.get())))
+                                            .replaceWith(VerificationResult.SUSPECT);
+                                }
+                                return Uni.createFrom().item(VerificationResult.VALID);
+                            });
                 });
+    }
+
+    private Uni<Optional<Instant>> compromisedEffectiveSinceAsync(
+            final String actorId, final String keyRef, final Instant occurredAt) {
+        return keyRotationService.compromisedWindowsAsync(actorId, keyRef)
+                .map(windows -> windows.stream()
+                        .filter(w -> !occurredAt.isBefore(w.effectiveSince()))
+                        .map(CompromisedWindow::effectiveSince)
+                        .min(Instant::compareTo));
     }
 }

@@ -221,6 +221,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── ReactiveLedgerEntryRepository.java — reactive SPI (Uni<T> return types)
 │       │   ├── ActorTrustScoreRepository.java     — SPI
 │       │   ├── KeyRotationRepository.java         — SPI: query-only (findByActorId, findCompromisedByActorIdAndKeyRef); save via LedgerEntryRepository
+│       │   ├── ReactiveKeyRotationRepository.java — reactive SPI: same two query methods with Uni<List<>> returns; no bundled JPA impl — consumers provide; test suite uses BlockingReactiveKeyRotationRepository shim
 │       │   └── jpa/                              — JPA implementations (EntityManager-based)
 │       ├── service/
 │       │   ├── LedgerEntryEnricher.java         — SPI: pluggable @PrePersist enrichment pipeline
@@ -235,7 +236,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── AgentKeyProvider.java            — SPI: per-actorId SigningKey for bilateral entry signing; signingKey(actorId) → Optional<SigningKey>; see ADR 0011
 │       │   ├── ConfiguredAgentKeyProvider.java  — @DefaultBean: loads PKCS#8 private + X.509 public PEM per actorId from casehub.ledger.agent-signing.keys.*
 │       │   ├── AgentSignatureEnricher.java      — LedgerEntryEnricher: signs canonicalBytes() at @PrePersist, stores agentSignature + agentPublicKey + agentKeyRef
-│       │   ├── KeyRotationService.java          — CDI bean: recordRotation / rotationHistory / compromisedWindows; persists KeyRotationEntry via LedgerEntryRepository
+│       │   ├── KeyRotationService.java          — CDI bean: recordRotation / rotationHistory / compromisedWindows (blocking); recordRotationAsync / rotationHistoryAsync / compromisedWindowsAsync (Uni<T> reactive); persists via LedgerEntryRepository / ReactiveLedgerEntryRepository
 │       │   ├── LedgerProvExportService.java      — W3C PROV-DM JSON-LD export (CDI bean)
 │       │   ├── LedgerProvSerializer.java         — PROV-DM serialisation utility
 │       │   ├── LedgerEntryArchiver.java          — archive record JSON serialisation for retention
