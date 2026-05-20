@@ -83,7 +83,11 @@ are separate `@ApplicationScoped` beans excluded from the CDI graph by
 `casehub.ledger.reactive.enabled=false` (the default). `LedgerBuildTimeConfig` in the
 deployment module declares the property as `@ConfigRoot(BUILD_TIME)` so the exclusion
 decision is made at Quarkus augmentation, not at startup. `BlockingTierPurityTest`
-enforces the separation at compile time via reflection.
+enforces the separation at compile time via reflection — now covering three blocking-tier
+service beans. The blocking/reactive pairing is symmetric: `AgentSignatureVerificationService`
+↔ `ReactiveAgentSignatureVerificationService`, `KeyRotationService` ↔
+`ReactiveKeyRotationService`. `LedgerVerificationService` has no reactive counterpart because
+Merkle verification requires sequential consistency over the full subject history.
 
 `ReactiveKeyRotationRepository` is the reactive twin of `KeyRotationRepository`: no
 production JPA implementation is bundled — consumers provide their own (Hibernate Reactive,
@@ -208,6 +212,22 @@ because it is `@Column(nullable = false)` with a `@PrePersist` fallback, matchin
 blocking path. `recordRotationAsync` carries no `@Transactional` annotation — reactive
 transaction management is the caller's responsibility, consistent with the reactive SPI
 contract established by `ReactiveLedgerEntryRepository`.
+
+### `AgentSignatureVerificationService` — extracting signature verification from the Merkle bean
+
+`LedgerVerificationService` held two unrelated concerns: Merkle tree operations (`treeRoot`,
+`inclusionProof`, `verify`) and agent signature verification (`verifyAgentSignature`). The
+extraction separates them cleanly. `LedgerVerificationService` is now Merkle-only;
+`AgentSignatureVerificationService` (blocking) and `ReactiveAgentSignatureVerificationService`
+(reactive) own the signature pipeline. `LedgerVerificationService` has no reactive counterpart
+because Merkle verification requires sequential consistency over the full subject history —
+it is always blocking by nature.
+
+`verifyCryptographic` was duplicated verbatim between the old blocking and reactive beans.
+Extraction to `AgentCryptographicVerifier` — a package-private `final` static utility with
+no CDI, no IO — eliminates that duplication and establishes a single source of truth for
+Ed25519 verification. This class mirrors the `LedgerMerkleTree` pattern: both beans call the
+utility rather than owning the cryptographic logic themselves.
 
 ### Reactive service tier gating — why `ExcludedTypeBuildItem`
 
