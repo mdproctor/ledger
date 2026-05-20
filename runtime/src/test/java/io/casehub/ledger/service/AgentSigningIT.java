@@ -22,6 +22,7 @@ import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.service.AgentKeyProvider;
+import io.casehub.ledger.runtime.service.AgentSignatureVerificationService;
 import io.casehub.ledger.runtime.service.LedgerVerificationService;
 import io.casehub.ledger.runtime.service.SigningKey;
 import io.casehub.ledger.runtime.service.model.VerificationResult;
@@ -34,6 +35,11 @@ class AgentSigningIT {
 
     @Inject
     LedgerEntryRepository repo;
+
+    // signatureService: Ed25519 signing pipeline (verifyAgentSignature)
+    // verificationService: Merkle chain integrity (verify) — confirms signing doesn't break the chain
+    @Inject
+    AgentSignatureVerificationService signatureService;
 
     @Inject
     LedgerVerificationService verificationService;
@@ -74,7 +80,7 @@ class AgentSigningIT {
 
         assertThat(e.agentSignature).as("enricher should have populated agentSignature").isNotNull();
         assertThat(e.agentPublicKey).as("enricher should have populated agentPublicKey").isNotNull();
-        assertThat(verificationService.verifyAgentSignature(e.id)).isEqualTo(VerificationResult.VALID);
+        assertThat(signatureService.verifyAgentSignature(e.id)).isEqualTo(VerificationResult.VALID);
     }
 
     @Test
@@ -90,7 +96,7 @@ class AgentSigningIT {
         final TestEntry saved = (TestEntry) repo.save(e);
 
         assertThat(saved.agentSignature).isNull();
-        assertThat(verificationService.verifyAgentSignature(saved.id))
+        assertThat(signatureService.verifyAgentSignature(saved.id))
                 .isEqualTo(VerificationResult.UNSIGNED);
     }
 
@@ -104,7 +110,7 @@ class AgentSigningIT {
         stored.agentSignature[0] ^= 0xFF;
         em.flush();
 
-        assertThat(verificationService.verifyAgentSignature(e.id)).isEqualTo(VerificationResult.INVALID);
+        assertThat(signatureService.verifyAgentSignature(e.id)).isEqualTo(VerificationResult.INVALID);
     }
 
     @Test

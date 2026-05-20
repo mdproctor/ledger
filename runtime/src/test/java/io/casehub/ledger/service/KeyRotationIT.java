@@ -24,7 +24,7 @@ import io.casehub.ledger.runtime.model.KeyRotationEntry;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.service.AgentKeyProvider;
 import io.casehub.ledger.runtime.service.KeyRotationService;
-import io.casehub.ledger.runtime.service.LedgerVerificationService;
+import io.casehub.ledger.runtime.service.AgentSignatureVerificationService;
 import io.casehub.ledger.runtime.service.SigningKey;
 import io.casehub.ledger.runtime.service.model.VerificationResult;
 import io.casehub.ledger.service.supplement.TestEntry;
@@ -35,7 +35,7 @@ import io.quarkus.test.junit.QuarkusTest;
 class KeyRotationIT {
 
     @Inject LedgerEntryRepository repo;
-    @Inject LedgerVerificationService verificationService;
+    @Inject AgentSignatureVerificationService verificationService;
     @Inject KeyRotationService rotationService;
 
     @InjectMock
