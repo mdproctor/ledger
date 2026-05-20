@@ -5,7 +5,7 @@ import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
 
-import io.casehub.ledger.runtime.service.ReactiveLedgerVerificationService;
+import io.casehub.ledger.runtime.service.ReactiveAgentSignatureVerificationService;
 import io.casehub.ledger.runtime.service.ReactiveKeyRotationService;
 
 /**
@@ -43,7 +43,7 @@ class LedgerProcessor {
             excluded.produce(
                     new ExcludedTypeBuildItem(ReactiveKeyRotationService.class.getName()));
             excluded.produce(
-                    new ExcludedTypeBuildItem(ReactiveLedgerVerificationService.class.getName()));
+                    new ExcludedTypeBuildItem(ReactiveAgentSignatureVerificationService.class.getName()));
         }
     }
 }

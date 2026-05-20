@@ -72,7 +72,7 @@ public class KeyRotationService {
 
     /**
      * Compromise windows for a specific actor and keyRef.
-     * Used by {@link LedgerVerificationService} to detect SUSPECT signatures.
+     * Used by {@link AgentSignatureVerificationService} to detect SUSPECT signatures.
      */
     public List<CompromisedWindow> compromisedWindows(
             final String actorId, final String keyRef) {

@@ -24,7 +24,7 @@ import io.casehub.ledger.runtime.service.AgentKeyProvider;
 import io.casehub.ledger.runtime.service.AgentSignatureSuspectEvent;
 import io.casehub.ledger.runtime.service.KeyRotationService;
 import io.casehub.ledger.runtime.service.AgentSignatureVerificationService;
-import io.casehub.ledger.runtime.service.ReactiveLedgerVerificationService;
+import io.casehub.ledger.runtime.service.ReactiveAgentSignatureVerificationService;
 import io.casehub.ledger.runtime.service.SigningKey;
 import io.casehub.ledger.runtime.service.model.VerificationResult;
 import io.casehub.ledger.service.supplement.TestEntry;
@@ -44,7 +44,7 @@ class SuspectEventIT {
 
     @Inject LedgerEntryRepository repo;
     @Inject AgentSignatureVerificationService verificationService;
-    @Inject ReactiveLedgerVerificationService reactiveVerificationService;
+    @Inject ReactiveAgentSignatureVerificationService reactiveVerificationService;
     @Inject KeyRotationService rotationService;
     @Inject AgentSuspectEventCapture eventCapture;
 
