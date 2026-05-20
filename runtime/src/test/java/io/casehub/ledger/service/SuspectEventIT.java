@@ -23,8 +23,8 @@ import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.service.AgentKeyProvider;
 import io.casehub.ledger.runtime.service.AgentSignatureSuspectEvent;
 import io.casehub.ledger.runtime.service.KeyRotationService;
-import io.casehub.ledger.runtime.service.LedgerVerificationService;
-import io.casehub.ledger.runtime.service.ReactiveLedgerVerificationService;
+import io.casehub.ledger.runtime.service.AgentSignatureVerificationService;
+import io.casehub.ledger.runtime.service.ReactiveAgentSignatureVerificationService;
 import io.casehub.ledger.runtime.service.SigningKey;
 import io.casehub.ledger.runtime.service.model.VerificationResult;
 import io.casehub.ledger.service.supplement.TestEntry;
@@ -43,8 +43,8 @@ import io.quarkus.test.junit.QuarkusTest;
 class SuspectEventIT {
 
     @Inject LedgerEntryRepository repo;
-    @Inject LedgerVerificationService verificationService;
-    @Inject ReactiveLedgerVerificationService reactiveVerificationService;
+    @Inject AgentSignatureVerificationService verificationService;
+    @Inject ReactiveAgentSignatureVerificationService reactiveVerificationService;
     @Inject KeyRotationService rotationService;
     @Inject AgentSuspectEventCapture eventCapture;
 

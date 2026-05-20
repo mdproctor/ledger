@@ -229,8 +229,10 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── OtelTraceIdProvider.java         — OTel span reader for TraceIdEnricher
 │       │   ├── LedgerTraceListener.java         — @EntityListeners runner: iterates LedgerEntryEnricher pipeline, non-fatal
 │       │   ├── LedgerMerkleTree.java            — Merkle Mountain Range algorithm (pure static); canonicalBytes() public static — shared by Merkle and agent signing
-│       │   ├── LedgerVerificationService.java   — treeRoot / inclusionProof / verify / verifyAgentSignature (blocking only; no reactive imports)
-│       │   ├── ReactiveLedgerVerificationService.java — verifyAgentSignatureAsync (Uni<VerificationResult>); @IfBuildProperty-excluded via LedgerProcessor when casehub.ledger.reactive.enabled=false
+│       │   ├── LedgerVerificationService.java   — treeRoot / inclusionProof / verify (Merkle-only; no reactive imports)
+│       │   ├── AgentCryptographicVerifier.java  — package-private static utility: verifyCryptographic(LedgerEntry); shared by blocking and reactive tiers; mirrors LedgerMerkleTree pattern
+│       │   ├── AgentSignatureVerificationService.java — verifyAgentSignature (blocking only; delegates crypto to AgentCryptographicVerifier, compromise check to KeyRotationService)
+│       │   ├── ReactiveAgentSignatureVerificationService.java — verifyAgentSignatureAsync (Uni<VerificationResult>); excluded via LedgerProcessor ExcludedTypeBuildItem when casehub.ledger.reactive.enabled=false
 │       │   ├── AgentSignatureSuspectEvent.java  — CDI event record fired when verifyAgentSignature[Async] returns SUSPECT; consumers use @Observes or @ObservesAsync
 │       │   ├── LedgerMerklePublisher.java       — Ed25519 signed tlog-checkpoint (opt-in CDI bean)
 │       │   ├── SigningKey.java                  — record: keyRef (Base64URL SHA-256 of public key) + KeyPair; self-derived, zero operator config

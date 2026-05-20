@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.runtime.repository.ReactiveLedgerEntryRepository;
 import io.casehub.ledger.runtime.repository.ReactiveKeyRotationRepository;
+import io.casehub.ledger.runtime.service.AgentSignatureVerificationService;
 import io.casehub.ledger.runtime.service.KeyRotationService;
 import io.casehub.ledger.runtime.service.LedgerVerificationService;
 import io.smallrye.mutiny.Uni;
@@ -31,7 +32,7 @@ class BlockingTierPurityTest {
         final List<String> uniMethods = uniMethodNames(LedgerVerificationService.class);
         assertThat(uniMethods)
                 .as("LedgerVerificationService must contain no Uni<T>-returning methods " +
-                        "(reactive variants belong in ReactiveLedgerVerificationService)")
+                        "(Merkle operations are always blocking — no reactive counterpart)")
                 .isEmpty();
     }
 
@@ -49,7 +50,7 @@ class BlockingTierPurityTest {
         final List<String> reactiveFields = reactiveFieldNames(LedgerVerificationService.class);
         assertThat(reactiveFields)
                 .as("LedgerVerificationService must not inject reactive SPI types " +
-                        "(reactive dependencies belong in ReactiveLedgerVerificationService)")
+                        "(Merkle operations are always blocking — no reactive counterpart)")
                 .isEmpty();
     }
 
@@ -59,6 +60,24 @@ class BlockingTierPurityTest {
         assertThat(reactiveFields)
                 .as("KeyRotationService must not inject reactive SPI types " +
                         "(reactive dependencies belong in ReactiveKeyRotationService)")
+                .isEmpty();
+    }
+
+    @Test
+    void agentSignatureVerificationService_hasNoUniMethods() {
+        final List<String> uniMethods = uniMethodNames(AgentSignatureVerificationService.class);
+        assertThat(uniMethods)
+                .as("AgentSignatureVerificationService must contain no Uni<T>-returning methods " +
+                        "(reactive variants belong in ReactiveAgentSignatureVerificationService)")
+                .isEmpty();
+    }
+
+    @Test
+    void agentSignatureVerificationService_doesNotInjectReactiveSpi() {
+        final List<String> reactiveFields = reactiveFieldNames(AgentSignatureVerificationService.class);
+        assertThat(reactiveFields)
+                .as("AgentSignatureVerificationService must not inject reactive SPI types " +
+                        "(reactive dependencies belong in ReactiveAgentSignatureVerificationService)")
                 .isEmpty();
     }
 

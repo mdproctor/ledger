@@ -1,9 +1,5 @@
 package io.casehub.ledger.runtime.service;
 
-import java.security.KeyFactory;
-import java.security.PublicKey;
-import java.security.Signature;
-import java.security.spec.X509EncodedKeySpec;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -11,8 +7,6 @@ import java.util.UUID;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
-
-import org.jboss.logging.Logger;
 
 import io.smallrye.mutiny.Uni;
 
@@ -30,13 +24,11 @@ import io.casehub.ledger.runtime.service.model.VerificationResult;
  * depend on this bean.
  *
  * <p>
- * The cryptographic verification logic ({@link #verifyCryptographic}) is duplicated
- * from {@link LedgerVerificationService} pending decomposition at casehubio/ledger#93.
+ * Cryptographic verification delegates to {@link AgentCryptographicVerifier#verifyCryptographic},
+ * shared with the blocking tier {@link AgentSignatureVerificationService}.
  */
 @ApplicationScoped
-public class ReactiveLedgerVerificationService {
-
-    private static final Logger LOG = Logger.getLogger(ReactiveLedgerVerificationService.class);
+public class ReactiveAgentSignatureVerificationService {
 
     @Inject
     ReactiveLedgerEntryRepository reactiveLedgerRepo;
@@ -48,7 +40,7 @@ public class ReactiveLedgerVerificationService {
     Event<AgentSignatureSuspectEvent> suspectEvent;
 
     /**
-     * Reactive variant of {@link LedgerVerificationService#verifyAgentSignature(UUID)}.
+     * Reactive variant of {@link AgentSignatureVerificationService#verifyAgentSignature(UUID)}.
      *
      * <p>
      * Uses {@link ReactiveLedgerEntryRepository} for the entry lookup and
@@ -69,7 +61,8 @@ public class ReactiveLedgerVerificationService {
                         return Uni.createFrom().item(VerificationResult.UNSIGNED);
                     }
 
-                    final VerificationResult cryptoResult = verifyCryptographic(entry);
+                    final VerificationResult cryptoResult =
+                            AgentCryptographicVerifier.verifyCryptographic(entry);
                     if (cryptoResult != VerificationResult.VALID) {
                         return Uni.createFrom().item(cryptoResult);
                     }
@@ -99,24 +92,5 @@ public class ReactiveLedgerVerificationService {
                         .filter(w -> !occurredAt.isBefore(w.effectiveSince()))
                         .map(CompromisedWindow::effectiveSince)
                         .min(Instant::compareTo));
-    }
-
-    private VerificationResult verifyCryptographic(final LedgerEntry entry) {
-        if (entry.agentPublicKey == null) {
-            LOG.warnf("Entry %s has agentSignature but no agentPublicKey — record is corrupt", entry.id);
-            return VerificationResult.INVALID;
-        }
-        try {
-            final KeyFactory kf = KeyFactory.getInstance("Ed25519");
-            final PublicKey pub = kf.generatePublic(new X509EncodedKeySpec(entry.agentPublicKey));
-            final Signature sig = Signature.getInstance("Ed25519");
-            sig.initVerify(pub);
-            sig.update(LedgerMerkleTree.canonicalBytes(entry));
-            return sig.verify(entry.agentSignature) ? VerificationResult.VALID : VerificationResult.INVALID;
-        } catch (final Exception e) {
-            LOG.debugf("Ed25519 verify failed for entry %s (%s) — likely corrupt key data or JVM config issue",
-                    entry.id, e.getMessage());
-            return VerificationResult.INVALID;
-        }
     }
 }

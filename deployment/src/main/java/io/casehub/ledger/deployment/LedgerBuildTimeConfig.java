@@ -23,7 +23,7 @@ public interface LedgerBuildTimeConfig {
         /**
          * Whether to activate the reactive service tier
          * ({@link io.casehub.ledger.runtime.service.ReactiveKeyRotationService},
-         * {@link io.casehub.ledger.runtime.service.ReactiveLedgerVerificationService}).
+         * {@link io.casehub.ledger.runtime.service.ReactiveAgentSignatureVerificationService}).
          *
          * <p>
          * Set to {@code true} in deployments that provide a reactive datasource.

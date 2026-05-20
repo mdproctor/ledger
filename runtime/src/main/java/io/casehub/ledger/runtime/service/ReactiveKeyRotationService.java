@@ -44,7 +44,7 @@ public class ReactiveKeyRotationService {
 
     /**
      * Compromise windows for a specific actor and keyRef.
-     * Used by {@link ReactiveLedgerVerificationService} to detect SUSPECT signatures.
+     * Used by {@link ReactiveAgentSignatureVerificationService} to detect SUSPECT signatures.
      */
     public Uni<List<CompromisedWindow>> compromisedWindowsAsync(
             final String actorId, final String keyRef) {

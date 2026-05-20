@@ -75,15 +75,19 @@ from base entries — trust scoring works across all consumers.
 ### Reactive service tier separation
 
 The reactive-capable deployment context is modelled explicitly. Blocking-tier beans
-(`LedgerVerificationService`, `KeyRotationService`) carry zero reactive imports and zero
+(`LedgerVerificationService`, `AgentSignatureVerificationService`, `KeyRotationService`) carry zero reactive imports and zero
 `Uni<T>`-returning methods — they build and run correctly in JDBC-only consumers.
-Reactive-tier beans (`ReactiveLedgerVerificationService`, `ReactiveKeyRotationService`)
+Reactive-tier beans (`ReactiveAgentSignatureVerificationService`, `ReactiveKeyRotationService`)
 are separate `@ApplicationScoped` beans excluded from the CDI graph by
 `LedgerProcessor.excludeReactiveBeans` (`ExcludedTypeBuildItem`) when
 `casehub.ledger.reactive.enabled=false` (the default). `LedgerBuildTimeConfig` in the
 deployment module declares the property as `@ConfigRoot(BUILD_TIME)` so the exclusion
 decision is made at Quarkus augmentation, not at startup. `BlockingTierPurityTest`
-enforces the separation at compile time via reflection.
+enforces the separation at compile time via reflection — now covering three blocking-tier
+service beans. The blocking/reactive pairing is symmetric: `AgentSignatureVerificationService`
+↔ `ReactiveAgentSignatureVerificationService`, `KeyRotationService` ↔
+`ReactiveKeyRotationService`. `LedgerVerificationService` has no reactive counterpart because
+Merkle verification requires sequential consistency over the full subject history.
 
 `ReactiveKeyRotationRepository` is the reactive twin of `KeyRotationRepository`: no
 production JPA implementation is bundled — consumers provide their own (Hibernate Reactive,
@@ -193,7 +197,7 @@ utility works for any subclass.
 
 `AgentSignatureSuspectEvent` follows the `LedgerGapDetected` pattern: plain CDI record, `Event<T>` injection, no annotations on the record — consumers choose `@Observes` (sync) or `@ObservesAsync` (async) independently of how the producer fires.
 
-The sync `verifyAgentSignature()` fires `event.fire()` (lives in `LedgerVerificationService`); the reactive `verifyAgentSignatureAsync()` twin fires `event.fireAsync()` (lives in `ReactiveLedgerVerificationService` — see Reactive tier separation below). Both paths share one event type; delivery semantics are a consumer concern. A `verifyCryptographic()` helper eliminates duplicate Ed25519 logic between the two paths; `compromisedEffectiveSince()` eliminates a structural null-check asymmetry found in code review.
+The sync `verifyAgentSignature()` fires `event.fire()` (lives in `AgentSignatureVerificationService`); the reactive `verifyAgentSignatureAsync()` twin fires `event.fireAsync()` (lives in `ReactiveAgentSignatureVerificationService` — see Reactive tier separation below). Both paths share one event type; delivery semantics are a consumer concern. Ed25519 verification logic is extracted to `AgentCryptographicVerifier` (package-private static utility, mirrors `LedgerMerkleTree`) shared by both tiers; `compromisedEffectiveSince()` eliminates a structural null-check asymmetry found in code review.
 
 This epic also formalised **PP-20260517-15bf75** (ledger-sync-async-parity): all new ledger service methods must ship both blocking and reactive variants unless demonstrably unsuitable — triggered by discovering `verifyAgentSignature()` had no reactive twin. The blocking bridge for `KeyRotationService.compromisedWindows()` was removed in #86 when `ReactiveKeyRotationRepository` and full reactive `KeyRotationService` variants shipped.
 
@@ -208,6 +212,22 @@ because it is `@Column(nullable = false)` with a `@PrePersist` fallback, matchin
 blocking path. `recordRotationAsync` carries no `@Transactional` annotation — reactive
 transaction management is the caller's responsibility, consistent with the reactive SPI
 contract established by `ReactiveLedgerEntryRepository`.
+
+### `AgentSignatureVerificationService` — extracting signature verification from the Merkle bean
+
+`LedgerVerificationService` held two unrelated concerns: Merkle tree operations (`treeRoot`,
+`inclusionProof`, `verify`) and agent signature verification (`verifyAgentSignature`). The
+extraction separates them cleanly. `LedgerVerificationService` is now Merkle-only;
+`AgentSignatureVerificationService` (blocking) and `ReactiveAgentSignatureVerificationService`
+(reactive) own the signature pipeline. `LedgerVerificationService` has no reactive counterpart
+because Merkle verification requires sequential consistency over the full subject history —
+it is always blocking by nature.
+
+`verifyCryptographic` was duplicated verbatim between the old blocking and reactive beans.
+Extraction to `AgentCryptographicVerifier` — a package-private `final` static utility with
+no CDI, no IO — eliminates that duplication and establishes a single source of truth for
+Ed25519 verification. This class mirrors the `LedgerMerkleTree` pattern: both beans call the
+utility rather than owning the cryptographic logic themselves.
 
 ### Reactive service tier gating — why `ExcludedTypeBuildItem`
 
@@ -403,9 +423,9 @@ decision — see `IDEAS.md` (2026-04-23 entry).
 | **Ledger health checks** | ✅ Done | `LedgerHealthJob` (scheduled gap detection + reconciliation); `LedgerReconciliationSource` SPI; `LedgerGapDetected` CDI event; `GapType` enum; `health.enabled` + `health.check-interval` config. 7 IT tests. Closes #56. |
 | **Compliance report query API** | ✅ Done | `LedgerComplianceReportService` CDI bean (`reportForActor`, `reportForSubject`); `ComplianceReport` record with `format(ReportFormat)` (PLAIN_JSON, JSON_LD, CSV); `DecisionRecord`; `findBySubjectIdAndTimeRange` added to repository SPI + reactive SPI. Merkle-root tamper-evidence anchor included. No REST endpoint — consumer responsibility. 7 IT tests. Closes #58. |
 | **@ProvenanceCapture interceptor** | ✅ Done | `@ProvenanceCapture` interceptor binding + `ProvenanceCaptureInterceptor`; `ProvenanceCaptureEnricher` auto-attaches `ProvenanceSupplement` via existing enricher pipeline; `ProvenanceContext` ThreadLocal stack (nesting, exception-safe, `agentConfigHash` preserved); `@SourceEntityId` parameter annotation. 7 IT tests. Closes #59. |
-| **Bilateral entry signing** | ✅ Done | `AgentKeyProvider` SPI (returns `Optional<SigningKey>`); `SigningKey` record (self-derived `keyRef = Base64URL(SHA-256(pubKey))`); `ConfiguredAgentKeyProvider` (@DefaultBean); `AgentSignatureEnricher` (stores `agentSignature` + `agentPublicKey` + `agentKeyRef`); `LedgerEntry` fields (V1005/V1006); `LedgerVerificationService.verifyAgentSignature()` (UNSIGNED/VALID/INVALID/SUSPECT); `VerificationResult` enum; ADR 0011. Closes #79. |
+| **Bilateral entry signing** | ✅ Done | `AgentKeyProvider` SPI (returns `Optional<SigningKey>`); `SigningKey` record (self-derived `keyRef = Base64URL(SHA-256(pubKey))`); `ConfiguredAgentKeyProvider` (@DefaultBean); `AgentSignatureEnricher` (stores `agentSignature` + `agentPublicKey` + `agentKeyRef`); `LedgerEntry` fields (V1005/V1006); `AgentSignatureVerificationService.verifyAgentSignature()` (UNSIGNED/VALID/INVALID/SUSPECT); `VerificationResult` enum; ADR 0011. Closes #79. |
 | **Signing key rotation** | ✅ Done | `KeyRotationReason` enum (SCHEDULED\|COMPROMISED, NIST SP 800-57); `KeyRotationEntry` LedgerEntry subclass (deterministic `subjectId` from actorId, V1007); `KeyRotationRepository` SPI (query-only); `KeyRotationService` (recordRotation, rotationHistory, compromisedWindows); `CompromisedWindow` record; `VerificationResult.SUSPECT`; `verifyAgentSignature` queries compromise windows post-VALID; ADR 0012. 424 tests. Closes #80. |
 | **SUSPECT CDI event** | ✅ Done | `AgentSignatureSuspectEvent` record (entryId, actorId, keyRef, occurredAt, effectiveSince); `verifyCryptographic()` helper extracted; `verifyAgentSignature()` fires `event.fire()` on SUSPECT; `verifyAgentSignatureAsync(UUID)` (reactive twin, `Uni<VerificationResult>`, fires `event.fireAsync()`); blocking bridge for `compromisedWindows` pending #86. 432 tests. Closes #83. |
 | **Reactive KeyRotationService** | ✅ Done | `ReactiveKeyRotationRepository` SPI (query-only, `Uni<List<>>` returns; no bundled JPA impl — consumers provide per their reactive stack); `BlockingReactiveKeyRotationRepository` test shim (H2/JDBC suite); `KeyRotationService` reactive variants (compromisedWindowsAsync, rotationHistoryAsync, recordRotationAsync); blocking bridge removed from `verifyAgentSignatureAsync`; `compromisedEffectiveSinceAsync` private helper. 446 tests. Closes #86. |
-| **Reactive service tier separation** | ✅ Done | `ReactiveKeyRotationService` and `ReactiveLedgerVerificationService` extracted as separate `@ApplicationScoped` beans; blocking services (`KeyRotationService`, `LedgerVerificationService`) stripped of all reactive imports and Uni-returning methods. `LedgerBuildTimeConfig` (`@ConfigRoot(BUILD_TIME)`) + `LedgerProcessor.excludeReactiveBeans` (`ExcludedTypeBuildItem`) gate the reactive tier at augmentation — JDBC-only consumers build cleanly without `casehub.ledger.reactive.enabled=true`. `BlockingTierPurityTest` enforces no Uni methods and no reactive field injections on blocking-tier beans via reflection. 450 tests. Closes #92. |
+| **Reactive service tier separation** | ✅ Done | `ReactiveKeyRotationService` and `ReactiveAgentSignatureVerificationService` (renamed from `ReactiveLedgerVerificationService` in #93) as separate `@ApplicationScoped` beans; blocking services (`KeyRotationService`, `LedgerVerificationService`, `AgentSignatureVerificationService`) carry zero reactive imports and Uni-returning methods. `LedgerBuildTimeConfig` (`@ConfigRoot(BUILD_TIME)`) + `LedgerProcessor.excludeReactiveBeans` (`ExcludedTypeBuildItem`) gate the reactive tier at augmentation — JDBC-only consumers build cleanly without `casehub.ledger.reactive.enabled=true`. `BlockingTierPurityTest` enforces no Uni methods and no reactive field injections on blocking-tier beans via reflection. 456 tests. Closes #92, #93. |
 | **CaseLedgerEntry** | ⬜ Pending | Blocked on CaseHub Epic #131 (WorkBroker integration). `CaseInstance.uuid` → subjectId. Refs #39. |
