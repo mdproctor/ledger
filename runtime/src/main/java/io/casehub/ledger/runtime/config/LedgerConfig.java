@@ -132,7 +132,7 @@ public interface LedgerConfig {
 
     /**
      * Reactive service tier — controls whether {@code ReactiveKeyRotationService} and
-     * {@code ReactiveLedgerVerificationService} are present in the CDI graph. Set
+     * {@code ReactiveAgentSignatureVerificationService} are present in the CDI graph. Set
      * {@code casehub.ledger.reactive.enabled=true} only in deployments that provide a
      * reactive datasource implementation.
      */

@@ -4,8 +4,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * CDI event fired when {@link LedgerVerificationService#verifyAgentSignature(UUID)} or
- * {@link LedgerVerificationService#verifyAgentSignatureAsync(UUID)} returns
+ * CDI event fired when {@link AgentSignatureVerificationService#verifyAgentSignature(UUID)} or
+ * {@link ReactiveAgentSignatureVerificationService#verifyAgentSignatureAsync(UUID)} returns
  * {@link io.casehub.ledger.runtime.service.model.VerificationResult#SUSPECT}.
  *
  * <p>

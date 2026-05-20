@@ -1,46 +1,51 @@
 package io.casehub.ledger.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 import java.security.KeyPairGenerator;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.ActorType;
 import io.casehub.ledger.api.model.KeyRotationReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
+import io.casehub.ledger.runtime.service.AgentKeyProvider;
 import io.casehub.ledger.runtime.service.AgentSignatureSuspectEvent;
 import io.casehub.ledger.runtime.service.KeyRotationService;
 import io.casehub.ledger.runtime.service.LedgerMerkleTree;
-import io.casehub.ledger.runtime.service.ReactiveLedgerVerificationService;
+import io.casehub.ledger.runtime.service.ReactiveAgentSignatureVerificationService;
 import io.casehub.ledger.runtime.service.SigningKey;
 import io.casehub.ledger.runtime.service.model.VerificationResult;
 import io.casehub.ledger.service.supplement.TestEntry;
+import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 
 /**
- * Integration tests for {@link ReactiveLedgerVerificationService}.
+ * Integration tests for {@link ReactiveAgentSignatureVerificationService}.
  *
  * <p>
- * {@code @Transactional} on each test method is required for the <em>setup</em>
- * operations that use the blocking {@link io.casehub.ledger.runtime.repository.LedgerEntryRepository}
- * and {@link KeyRotationService}. The reactive verification calls under test go
- * through {@link BlockingReactiveLedgerEntryRepository}, which delegates to the
- * blocking repo on the same thread and therefore participates in the same JTA
- * transaction. In production the reactive path runs outside any JTA context.
+ * {@code @Transactional} on each test method is required for the setup operations
+ * that use the blocking {@link LedgerEntryRepository} and {@link KeyRotationService}.
+ * The reactive verification calls go through {@link BlockingReactiveLedgerEntryRepository},
+ * which delegates to the blocking repo on the same thread and participates in the same
+ * JTA transaction. In production the reactive path runs outside any JTA context.
  */
 @QuarkusTest
-class ReactiveLedgerVerificationServiceIT {
+class ReactiveAgentSignatureVerificationServiceIT {
 
     @Inject
-    ReactiveLedgerVerificationService reactiveVerificationService;
+    ReactiveAgentSignatureVerificationService reactiveVerificationService;
 
     @Inject
     LedgerEntryRepository repo;
@@ -51,6 +56,15 @@ class ReactiveLedgerVerificationServiceIT {
     @Inject
     AgentSuspectEventCapture eventCapture;
 
+    @InjectMock
+    AgentKeyProvider agentKeyProvider;
+
+    @BeforeEach
+    void setUp() throws Exception {
+        when(agentKeyProvider.signingKey(anyString())).thenReturn(Optional.empty());
+        eventCapture.reset();
+    }
+
     private TestEntry seedEntry(final UUID subjectId, final int seq, final String actorId) {
         final TestEntry e = new TestEntry();
         e.subjectId = subjectId;
@@ -59,6 +73,17 @@ class ReactiveLedgerVerificationServiceIT {
         e.actorId = actorId;
         e.actorType = ActorType.SYSTEM;
         e.actorRole = "Tester";
+        return (TestEntry) repo.save(e);
+    }
+
+    private TestEntry seedAgent(final UUID subjectId, final int seq, final String actorId) {
+        final TestEntry e = new TestEntry();
+        e.subjectId = subjectId;
+        e.sequenceNumber = seq;
+        e.entryType = LedgerEntryType.EVENT;
+        e.actorId = actorId;
+        e.actorType = ActorType.AGENT;
+        e.actorRole = "Reviewer";
         return (TestEntry) repo.save(e);
     }
 
@@ -78,8 +103,7 @@ class ReactiveLedgerVerificationServiceIT {
     @Test
     @Transactional
     void verifyAgentSignatureAsync_validSignature_returnsValid() throws Exception {
-        final java.security.KeyPairGenerator gen = java.security.KeyPairGenerator.getInstance("Ed25519");
-        final SigningKey sk = SigningKey.of(gen.generateKeyPair());
+        final SigningKey sk = SigningKey.of(KeyPairGenerator.getInstance("Ed25519").generateKeyPair());
         final UUID sub = UUID.randomUUID();
         final TestEntry e = seedEntry(sub, 1, "signed-actor");
         final byte[] canonical = LedgerMerkleTree.canonicalBytes(e);
@@ -101,8 +125,7 @@ class ReactiveLedgerVerificationServiceIT {
     @Test
     @Transactional
     void verifyAgentSignatureAsync_tamperedSignature_returnsInvalid() throws Exception {
-        final java.security.KeyPairGenerator gen = java.security.KeyPairGenerator.getInstance("Ed25519");
-        final SigningKey sk = SigningKey.of(gen.generateKeyPair());
+        final SigningKey sk = SigningKey.of(KeyPairGenerator.getInstance("Ed25519").generateKeyPair());
         final UUID sub = UUID.randomUUID();
         final TestEntry e = seedEntry(sub, 1, "signed-actor");
         final byte[] canonical = LedgerMerkleTree.canonicalBytes(e);
@@ -126,11 +149,9 @@ class ReactiveLedgerVerificationServiceIT {
     @Test
     @Transactional
     void verifyAgentSignatureAsync_suspectEntry_firesEventViaReactivePath() throws Exception {
-        eventCapture.reset();
-        final java.security.KeyPairGenerator gen = java.security.KeyPairGenerator.getInstance("Ed25519");
-        final SigningKey sk = SigningKey.of(gen.generateKeyPair());
+        final SigningKey sk = SigningKey.of(KeyPairGenerator.getInstance("Ed25519").generateKeyPair());
         final UUID sub = UUID.randomUUID();
-        final TestEntry e = seedEntry(sub, 1, "claude:reviewer@v1");
+        final TestEntry e = seedAgent(sub, 1, "claude:reviewer@v1");
         final byte[] canonical = LedgerMerkleTree.canonicalBytes(e);
         final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
         sig.initSign(sk.keyPair().getPrivate());

@@ -32,7 +32,7 @@ class BlockingTierPurityTest {
         final List<String> uniMethods = uniMethodNames(LedgerVerificationService.class);
         assertThat(uniMethods)
                 .as("LedgerVerificationService must contain no Uni<T>-returning methods " +
-                        "(reactive variants belong in ReactiveLedgerVerificationService)")
+                        "(Merkle operations are always blocking — no reactive counterpart)")
                 .isEmpty();
     }
 
@@ -50,7 +50,7 @@ class BlockingTierPurityTest {
         final List<String> reactiveFields = reactiveFieldNames(LedgerVerificationService.class);
         assertThat(reactiveFields)
                 .as("LedgerVerificationService must not inject reactive SPI types " +
-                        "(reactive dependencies belong in ReactiveLedgerVerificationService)")
+                        "(Merkle operations are always blocking — no reactive counterpart)")
                 .isEmpty();
     }
 
