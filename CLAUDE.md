@@ -303,7 +303,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │           ├── InternalActorIdentityProvider.java — built-in UUID token impl (config-gated)
 │           ├── LedgerErasureService.java    — GDPR Art.17 erasure (CDI bean)
 │           └── LedgerPrivacyProducer.java   — CDI producer for both SPIs (@DefaultBean)
-│   └── src/main/resources/db/migration/
+│   └── src/main/resources/db/ledger/migration/
 │       ├── V1000__ledger_base_schema.sql    — ledger_entry + ledger_attestation tables
 │       ├── V1001__actor_trust_score.sql     — actor_trust_score two-column key model (UUID PK, score_type GLOBAL|CAPABILITY|DIMENSION|CAPABILITY_DIMENSION, capability_key + dimension_key, CHECK constraint, NULLS NOT DISTINCT)
 │       ├── V1002__ledger_supplement.sql     — supplement tables + drops moved columns
@@ -315,7 +315,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 └── deployment/
     └── src/main/java/io/casehub/ledger/deployment/
         ├── LedgerBuildTimeConfig.java       — @ConfigRoot(BUILD_TIME): casehub.ledger.reactive.enabled (default false)
-        └── LedgerProcessor.java             — @BuildStep: FeatureBuildItem + excludeReactiveBeans (ExcludedTypeBuildItem when reactive.enabled=false)
+        └── LedgerProcessor.java             — @BuildStep: FeatureBuildItem + excludeReactiveBeans (ExcludedTypeBuildItem when reactive.enabled=false) + validateFlywayMigrationLocation (WARN if db/ledger/migration absent from Flyway locations)
 ```
 
 ---
@@ -380,6 +380,10 @@ casehub-work and casehub-qhorus are siblings — neither depends on the other. B
 All schema changes go directly into the base migration files (V1000–V1007) or into a new base
 migration file. Do NOT create incremental migration scripts to evolve the schema. Rewrite the
 relevant migration file in place. Treat every schema change as a clean-slate design decision.
+
+Migrations live at `runtime/src/main/resources/db/ledger/migration/`. Consumers must add
+`classpath:db/ledger/migration` to `quarkus.flyway.locations`. Omitting it triggers a
+build-time warning from `LedgerProcessor.validateFlywayMigrationLocation`.
 
 ---
 

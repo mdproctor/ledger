@@ -167,18 +167,36 @@ implementation yields automatically when a domain-specific one is present.
 application must explicitly activate `JpaLedgerEntryRepository` via `beans.xml`. No
 current consumer has needed this — all provide their own typed repo.
 
-### Flyway version numbering convention
+### Flyway migration path and version numbering convention
 
-| Range | Owner | Purpose |
-|---|---|---|
-| V1000–V1003 | `casehub-ledger` base | Base schema (reserved — do not use in consumers) |
-| V1–V999 | Consumer | Domain tables (orders, cases, channels, etc.) |
-| V1004+ | Consumer | Subclass join tables (must run after V1000 — FK constraint) |
+Ledger migrations live at `classpath:db/ledger/migration` (V1000–V1007). This path is
+separate from `classpath:db/migration` to prevent version conflicts when both
+`casehub-ledger` and `casehub-work` (or consumer domain migrations) are on the classpath.
+
+Consumers must add `classpath:db/ledger/migration` to their Flyway locations config:
+
+```properties
+# Default datasource — domain migrations plus ledger
+quarkus.flyway.locations=classpath:db/migration,classpath:db/ledger/migration
+
+# Named datasource (e.g. qhorus) that also needs ledger base tables
+quarkus.flyway.qhorus.locations=classpath:db/qhorus/migration,classpath:db/ledger/migration
+```
+
+Omitting `classpath:db/ledger/migration` triggers a build-time warning from
+`LedgerProcessor`. A test-only migration (`V1999__test_entry.sql`) lives at
+`classpath:db/ledger/test-migration` and is only included in ledger's own test config.
+
+| Range | Owner | Location | Purpose |
+|---|---|---|---|
+| V1000–V1007 | `casehub-ledger` | `db/ledger/migration` | Base schema (reserved — do not use in consumers) |
+| V1–V999 | Consumer | `db/migration` or named path | Domain tables |
+| V1004+ | Consumer | consumer's own path | Subclass join tables (must run after V1000 — FK constraint) |
 
 This ordering is not optional. The subclass join table has
 `FOREIGN KEY ... REFERENCES ledger_entry (id)`. A subclass migration numbered below
 V1000 will fail with `Table "LEDGER_ENTRY" not found` because Flyway merges all
-classpath migrations globally and sorts by version number.
+configured-path migrations and sorts by version number.
 
 ### Hash chain canonical form
 
