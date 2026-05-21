@@ -29,4 +29,23 @@ class FlywayLocationContractTest {
                 .as("expected all 8 ledger base migrations (V1000-V1007)")
                 .isEqualTo(8);
     }
+
+    @Test
+    void legacyPath_dbMigration_containsNoLedgerMigrations() {
+        // Catches stale build artifacts: if db/migration/ is present in the JAR
+        // (e.g. from a mvn install without clean after the path move), Flyway
+        // scanning classpath:db/migration would find ledger V1000+ alongside
+        // casehub-work V1-V27 — reproducing the exact conflict this move was
+        // intended to fix.
+        final Flyway flyway = Flyway.configure()
+                .dataSource("jdbc:h2:mem:ledger-legacy-absent;MODE=PostgreSQL;DB_CLOSE_DELAY=-1", "sa", "")
+                .locations("classpath:db/migration")
+                .load();
+
+        final MigrateResult result = flyway.migrate();
+
+        assertThat(result.migrationsExecuted)
+                .as("classpath:db/migration must contain no ledger migrations — run mvn clean install if this fails")
+                .isEqualTo(0);
+    }
 }
