@@ -1,4 +1,5 @@
 # ledger Workspace
+**Name:** ledger
 
 **Project repo:** /Users/mdproctor/claude/casehub/ledger
 **Workspace type:** public
