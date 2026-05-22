@@ -7,7 +7,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
-import io.casehub.ledger.runtime.model.ActorType;
+import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.model.LedgerEntryType;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;

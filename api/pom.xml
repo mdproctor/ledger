@@ -15,6 +15,11 @@
   <description>Domain model and SPI interfaces — no JPA, safe for any module to depend on</description>
 
   <dependencies>
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-platform-api</artifactId>
+    </dependency>
+
     <!-- Jakarta Persistence annotations (@MappedSuperclass, @Transient) — no runtime dependency -->
     <dependency>
       <groupId>jakarta.persistence</groupId>

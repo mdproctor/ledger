@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 import io.casehub.ledger.api.model.ActorTrustScore.ScoreType;
-import io.casehub.ledger.api.model.ActorType;
+import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
 
 /** SPI for persisting and querying {@link ActorTrustScore} records. */

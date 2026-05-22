@@ -12,7 +12,7 @@ import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.ActorTrustScore.ScoreType;
-import io.casehub.ledger.api.model.ActorType;
+import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
 import io.casehub.ledger.runtime.service.federation.ActorExport;
 import io.casehub.ledger.runtime.service.federation.TrustExportService;
