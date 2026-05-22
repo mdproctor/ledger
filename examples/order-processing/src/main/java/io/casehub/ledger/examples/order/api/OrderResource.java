@@ -25,7 +25,7 @@ import io.casehub.ledger.examples.order.ledger.OrderLedgerEntry;
 import io.casehub.ledger.examples.order.ledger.OrderLedgerEntryRepository;
 import io.casehub.ledger.examples.order.model.Order;
 import io.casehub.ledger.examples.order.service.OrderService;
-import io.casehub.ledger.runtime.model.ActorType;
+import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.runtime.model.AttestationVerdict;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.service.LedgerMerkleTree;

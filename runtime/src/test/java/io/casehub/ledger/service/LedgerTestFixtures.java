@@ -6,7 +6,7 @@ import java.util.UUID;
 
 import jakarta.persistence.EntityManager;
 
-import io.casehub.ledger.api.model.ActorType;
+import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.CapabilityTag;
 import io.casehub.ledger.api.model.LedgerEntryType;

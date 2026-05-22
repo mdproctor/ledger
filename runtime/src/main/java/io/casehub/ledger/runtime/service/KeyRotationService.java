@@ -9,7 +9,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
-import io.casehub.ledger.api.model.ActorType;
+import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.KeyRotationReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.KeyRotationEntry;

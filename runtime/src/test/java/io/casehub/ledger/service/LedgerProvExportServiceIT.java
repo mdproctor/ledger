@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import io.casehub.ledger.api.model.ActorType;
+import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.supplement.ComplianceSupplement;
 import io.casehub.ledger.runtime.model.supplement.ProvenanceSupplement;

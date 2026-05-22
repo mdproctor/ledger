@@ -11,7 +11,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
 import io.casehub.ledger.runtime.model.ActorTrustScore;
-import io.casehub.ledger.runtime.model.ActorType;
+import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.runtime.model.AttestationVerdict;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.model.LedgerEntryType;

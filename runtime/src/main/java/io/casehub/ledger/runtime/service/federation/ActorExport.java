@@ -2,7 +2,7 @@ package io.casehub.ledger.runtime.service.federation;
 
 import java.util.List;
 
-import io.casehub.ledger.api.model.ActorType;
+import io.casehub.platform.api.identity.ActorType;
 
 /** All trust scores for a single actor, structured by score type. */
 public record ActorExport(

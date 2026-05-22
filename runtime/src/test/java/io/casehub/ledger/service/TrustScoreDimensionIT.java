@@ -225,7 +225,7 @@ class TrustScoreDimensionIT {
         badAtt.ledgerEntryId = myEntry.id;
         badAtt.subjectId = myEntry.subjectId;
         badAtt.attestorId = "bad-peer";
-        badAtt.attestorType = io.casehub.ledger.api.model.ActorType.AGENT;
+        badAtt.attestorType = io.casehub.platform.api.identity.ActorType.AGENT;
         badAtt.verdict = AttestationVerdict.SOUND;
         badAtt.confidence = 1.0;
         badAtt.capabilityTag = CapabilityTag.GLOBAL;
