@@ -83,8 +83,14 @@ are separate `@ApplicationScoped` beans excluded from the CDI graph by
 `casehub.ledger.reactive.enabled=false` (the default). `LedgerBuildTimeConfig` in the
 deployment module declares the property as `@ConfigRoot(BUILD_TIME)` so the exclusion
 decision is made at Quarkus augmentation, not at startup. `BlockingTierPurityTest`
-enforces the separation at compile time via reflection — now covering three blocking-tier
-service beans. The blocking/reactive pairing is symmetric: `AgentSignatureVerificationService`
+enforces the separation at compile time via reflection — no `Uni<T>` methods and no
+reactive field injections on blocking-tier beans. `BlockingReactiveParityTest` (ArchUnit
+1.4.1) auto-discovers all `Reactive*Service` classes by naming convention and enforces
+bidirectional method parity: every public non-static `foo()` in the blocking tier must
+have `fooAsync()` in the reactive tier (and vice versa) with identical raw parameter
+types, and every reactive method must return `Uni<T>`. Together these two tests make the
+tier contract machine-verified rather than convention-only. The blocking/reactive pairing
+is symmetric: `AgentSignatureVerificationService`
 ↔ `ReactiveAgentSignatureVerificationService`, `KeyRotationService` ↔
 `ReactiveKeyRotationService`. `LedgerVerificationService` has no reactive counterpart because
 Merkle verification requires sequential consistency over the full subject history.
@@ -217,7 +223,7 @@ utility works for any subclass.
 
 The sync `verifyAgentSignature()` fires `event.fire()` (lives in `AgentSignatureVerificationService`); the reactive `verifyAgentSignatureAsync()` twin fires `event.fireAsync()` (lives in `ReactiveAgentSignatureVerificationService` — see Reactive tier separation below). Both paths share one event type; delivery semantics are a consumer concern. Ed25519 verification logic is extracted to `AgentCryptographicVerifier` (package-private static utility, mirrors `LedgerMerkleTree`) shared by both tiers; `compromisedEffectiveSince()` eliminates a structural null-check asymmetry found in code review.
 
-This epic also formalised **PP-20260517-15bf75** (ledger-sync-async-parity): all new ledger service methods must ship both blocking and reactive variants unless demonstrably unsuitable — triggered by discovering `verifyAgentSignature()` had no reactive twin. The blocking bridge for `KeyRotationService.compromisedWindows()` was removed in #86 when `ReactiveKeyRotationRepository` and full reactive `KeyRotationService` variants shipped.
+This epic also formalised **PP-20260517-15bf75** (ledger-sync-async-parity): all new ledger service methods must ship both blocking and reactive variants unless demonstrably unsuitable — triggered by discovering `verifyAgentSignature()` had no reactive twin. The blocking bridge for `KeyRotationService.compromisedWindows()` was removed in #86 when `ReactiveKeyRotationRepository` and full reactive `KeyRotationService` variants shipped. Parity is now machine-verified by `BlockingReactiveParityTest` (#94): convention-only enforcement replaced by an ArchUnit structural test that auto-discovers pairs by naming convention and fails the build if any method lacks its counterpart.
 
 ### Reactive key rotation — design invariants
 
@@ -446,4 +452,5 @@ decision — see `IDEAS.md` (2026-04-23 entry).
 | **SUSPECT CDI event** | ✅ Done | `AgentSignatureSuspectEvent` record (entryId, actorId, keyRef, occurredAt, effectiveSince); `verifyCryptographic()` helper extracted; `verifyAgentSignature()` fires `event.fire()` on SUSPECT; `verifyAgentSignatureAsync(UUID)` (reactive twin, `Uni<VerificationResult>`, fires `event.fireAsync()`); blocking bridge for `compromisedWindows` pending #86. 432 tests. Closes #83. |
 | **Reactive KeyRotationService** | ✅ Done | `ReactiveKeyRotationRepository` SPI (query-only, `Uni<List<>>` returns; no bundled JPA impl — consumers provide per their reactive stack); `BlockingReactiveKeyRotationRepository` test shim (H2/JDBC suite); `KeyRotationService` reactive variants (compromisedWindowsAsync, rotationHistoryAsync, recordRotationAsync); blocking bridge removed from `verifyAgentSignatureAsync`; `compromisedEffectiveSinceAsync` private helper. 446 tests. Closes #86. |
 | **Reactive service tier separation** | ✅ Done | `ReactiveKeyRotationService` and `ReactiveAgentSignatureVerificationService` (renamed from `ReactiveLedgerVerificationService` in #93) as separate `@ApplicationScoped` beans; blocking services (`KeyRotationService`, `LedgerVerificationService`, `AgentSignatureVerificationService`) carry zero reactive imports and Uni-returning methods. `LedgerBuildTimeConfig` (`@ConfigRoot(BUILD_TIME)`) + `LedgerProcessor.excludeReactiveBeans` (`ExcludedTypeBuildItem`) gate the reactive tier at augmentation — JDBC-only consumers build cleanly without `casehub.ledger.reactive.enabled=true`. `BlockingTierPurityTest` enforces no Uni methods and no reactive field injections on blocking-tier beans via reflection. 456 tests. Closes #92, #93. |
+| **Blocking/reactive parity enforcement** | ✅ Done | `BlockingReactiveParityTest` (ArchUnit 1.4.1 bytecode scan); auto-discovers all `Reactive*Service` classes by naming convention; bidirectional method parity with parameter-type checking; minimum-count guard against vacuous pass on package rename; `Uni<T>` return type enforcement. 449 tests. Closes #94. |
 | **CaseLedgerEntry** | ⬜ Pending | Blocked on CaseHub Epic #131 (WorkBroker integration). `CaseInstance.uuid` → subjectId. Refs #39. |
