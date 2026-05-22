@@ -3,6 +3,8 @@ package io.casehub.ledger.api.model;
 import java.time.Instant;
 import java.util.UUID;
 
+import io.casehub.platform.api.identity.ActorType;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;

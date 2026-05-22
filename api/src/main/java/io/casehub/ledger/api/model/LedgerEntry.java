@@ -7,6 +7,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+import io.casehub.platform.api.identity.ActorType;
+
 import io.casehub.ledger.api.model.supplement.ComplianceSupplement;
 import io.casehub.ledger.api.model.supplement.LedgerSupplement;
 import io.casehub.ledger.api.model.supplement.LedgerSupplementSerializer;
