@@ -53,15 +53,15 @@ public class LedgerMerklePublisher {
                 + Base64.getEncoder().encodeToString(rootBytes) + "\n";
     }
 
-    /** Sign the checkpoint text with an Ed25519 private key. Returns raw signature bytes. */
+    /** Sign the checkpoint text with the supplied private key. Returns raw signature bytes. */
     public static byte[] signCheckpoint(final String checkpointText, final PrivateKey privateKey) {
         try {
-            final Signature sig = Signature.getInstance("Ed25519");
+            final Signature sig = Signature.getInstance(privateKey.getAlgorithm());
             sig.initSign(privateKey);
             sig.update(checkpointText.getBytes(StandardCharsets.UTF_8));
             return sig.sign();
         } catch (final Exception e) {
-            throw new IllegalStateException("Ed25519 signing failed", e);
+            throw new IllegalStateException("Checkpoint signing failed", e);
         }
     }
 
