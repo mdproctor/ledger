@@ -37,13 +37,12 @@ public class JpaLedgerMerkleFrontierRepository implements LedgerMerkleFrontierRe
                 .map(n -> n.level)
                 .collect(Collectors.toSet());
 
-        for (final LedgerMerkleFrontier old : findBySubjectId(subjectId)) {
-            if (!newLevels.contains(old.level)) {
-                em.createNamedQuery("LedgerMerkleFrontier.deleteBySubjectAndLevel")
-                        .setParameter("subjectId", subjectId)
-                        .setParameter("level", old.level)
-                        .executeUpdate();
-            }
+        if (!newLevels.isEmpty()) {
+            em.createQuery(
+                    "DELETE FROM LedgerMerkleFrontier f WHERE f.subjectId = :subjectId AND f.level NOT IN :levels")
+                    .setParameter("subjectId", subjectId)
+                    .setParameter("levels", newLevels)
+                    .executeUpdate();
         }
 
         for (final LedgerMerkleFrontier node : newFrontier) {
