@@ -24,6 +24,7 @@ import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 import io.casehub.ledger.runtime.privacy.ActorIdentityProvider;
 import io.casehub.ledger.runtime.privacy.DecisionContextSanitiser;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
+import io.casehub.ledger.runtime.repository.LedgerMerkleFrontierRepository;
 import io.casehub.ledger.runtime.service.LedgerMerklePublisher;
 import io.casehub.ledger.runtime.service.LedgerMerkleTree;
 
@@ -75,6 +76,9 @@ public class JpaLedgerEntryRepository implements LedgerEntryRepository {
     LedgerMerklePublisher merklePublisher;
 
     @Inject
+    LedgerMerkleFrontierRepository frontierRepo;
+
+    @Inject
     ActorIdentityProvider actorIdentityProvider;
 
     @Inject
@@ -117,34 +121,10 @@ public class JpaLedgerEntryRepository implements LedgerEntryRepository {
     }
 
     private void updateMerkleFrontier(final LedgerEntry entry) {
-        final List<LedgerMerkleFrontier> currentFrontier = em
-                .createNamedQuery("LedgerMerkleFrontier.findBySubjectId", LedgerMerkleFrontier.class)
-                .setParameter("subjectId", entry.subjectId)
-                .getResultList();
-
-        final List<LedgerMerkleFrontier> newFrontier = LedgerMerkleTree.append(entry.digest, currentFrontier,
-                entry.subjectId);
-
-        final Set<Integer> newLevels = newFrontier.stream()
-                .map(n -> n.level)
-                .collect(Collectors.toSet());
-        for (final LedgerMerkleFrontier old : currentFrontier) {
-            if (!newLevels.contains(old.level)) {
-                em.createNamedQuery("LedgerMerkleFrontier.deleteBySubjectAndLevel")
-                        .setParameter("subjectId", entry.subjectId)
-                        .setParameter("level", old.level)
-                        .executeUpdate();
-            }
-        }
-
-        for (final LedgerMerkleFrontier node : newFrontier) {
-            em.createNamedQuery("LedgerMerkleFrontier.deleteBySubjectAndLevel")
-                    .setParameter("subjectId", entry.subjectId)
-                    .setParameter("level", node.level)
-                    .executeUpdate();
-            em.persist(node);
-        }
-
+        final List<LedgerMerkleFrontier> currentFrontier = frontierRepo.findBySubjectId(entry.subjectId);
+        final List<LedgerMerkleFrontier> newFrontier = LedgerMerkleTree.append(
+                entry.digest, currentFrontier, entry.subjectId);
+        frontierRepo.replace(entry.subjectId, newFrontier);
         final String newRoot = LedgerMerkleTree.treeRoot(newFrontier);
         merklePublisher.publish(entry.subjectId, entry.sequenceNumber, newRoot);
     }
