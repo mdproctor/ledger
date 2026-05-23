@@ -223,7 +223,7 @@ utility works for any subclass.
 
 `AgentSignatureSuspectEvent` follows the `LedgerGapDetected` pattern: plain CDI record, `Event<T>` injection, no annotations on the record — consumers choose `@Observes` (sync) or `@ObservesAsync` (async) independently of how the producer fires.
 
-The sync `verifyAgentSignature()` fires `event.fire()` (lives in `AgentSignatureVerificationService`); the reactive `verifyAgentSignatureAsync()` twin fires `event.fireAsync()` (lives in `ReactiveAgentSignatureVerificationService` — see Reactive tier separation below). Both paths share one event type; delivery semantics are a consumer concern. Ed25519 verification logic is extracted to `AgentCryptographicVerifier` (package-private static utility, mirrors `LedgerMerkleTree`) shared by both tiers; `compromisedEffectiveSince()` eliminates a structural null-check asymmetry found in code review.
+The sync `verifyAgentSignature()` fires `event.fire()` (lives in `AgentSignatureVerificationService`); the reactive `verifyAgentSignatureAsync()` twin fires `event.fireAsync()` (lives in `ReactiveAgentSignatureVerificationService` — see Reactive tier separation below). Both paths share one event type; delivery semantics are a consumer concern. Cryptographic verification logic is extracted to `AgentCryptographicVerifier` (package-private static utility, mirrors `LedgerMerkleTree`) shared by both tiers; algorithm is detected from the stored public key bytes — no algorithm hardcoded (ADR 0013); `compromisedEffectiveSince()` eliminates a structural null-check asymmetry found in code review.
 
 This epic also formalised **PP-20260517-15bf75** (ledger-sync-async-parity): all new ledger service methods must ship both blocking and reactive variants unless demonstrably unsuitable — triggered by discovering `verifyAgentSignature()` had no reactive twin. The blocking bridge for `KeyRotationService.compromisedWindows()` was removed in #86 when `ReactiveKeyRotationRepository` and full reactive `KeyRotationService` variants shipped. Parity is now machine-verified by `BlockingReactiveParityTest` (#94): convention-only enforcement replaced by an ArchUnit structural test that auto-discovers pairs by naming convention and fails the build if any method lacks its counterpart.
 
@@ -252,8 +252,9 @@ it is always blocking by nature.
 `verifyCryptographic` was duplicated verbatim between the old blocking and reactive beans.
 Extraction to `AgentCryptographicVerifier` — a package-private `final` static utility with
 no CDI, no IO — eliminates that duplication and establishes a single source of truth for
-Ed25519 verification. This class mirrors the `LedgerMerkleTree` pattern: both beans call the
-utility rather than owning the cryptographic logic themselves.
+cryptographic verification. Algorithm is detected from the stored X.509 public key bytes via
+trial-load (Ed25519, ML-DSA-44/65/87) — see ADR 0013. This class mirrors the `LedgerMerkleTree`
+pattern: both beans call the utility rather than owning the cryptographic logic themselves.
 
 ### Reactive service tier gating — why `ExcludedTypeBuildItem`
 
@@ -430,7 +431,7 @@ decision — see `IDEAS.md` (2026-04-23 entry).
 | **Forgiveness mechanism** | ✅ Superseded | Replaced by Bayesian Beta model (ADR 0003). ForgivenessParams removed. |
 | **EU AI Act Art.12 compliance** | ✅ Done | Archive-then-delete retention job (`LedgerRetentionJob`), V1003 archive table, audit query SPI (`findByActorId`, `findByActorRole`, `findByTimeRange`), `docs/compliance/EU-AI-ACT-ART12.md`, `examples/art12-compliance/` |
 | **Causality & Observability to core** | ✅ Done | `correlationId` + `causedByEntryId` on `LedgerEntry`; `ObservabilitySupplement` deleted; `findCausedBy()` SPI |
-| **Merkle Mountain Range** | ✅ Done | `LedgerMerkleTree` (RFC 9162 MMR), `LedgerMerkleFrontier` (log₂(N) rows/subject), `LedgerVerificationService` (treeRoot/inclusionProof/verify), `LedgerMerklePublisher` (opt-in Ed25519 tlog-checkpoint); ADR 0002; `examples/merkle-verification/` (2 IT) |
+| **Merkle Mountain Range** | ✅ Done | `LedgerMerkleTree` (RFC 9162 MMR), `LedgerMerkleFrontier` (log₂(N) rows/subject), `LedgerVerificationService` (treeRoot/inclusionProof/verify), `LedgerMerklePublisher` (opt-in tlog-checkpoint; signing algorithm derived from configured private key — Ed25519 today, PQC-ready via ADR 0013); ADR 0002; `examples/merkle-verification/` (2 IT) |
 | **W3C PROV-DM JSON-LD export** | ✅ Done | `LedgerProvSerializer.toProvJsonLd()` (pure static, 13 unit tests), `LedgerProvExportService` (CDI bean, 4 IT); `docs/prov-dm-mapping.md` field reference; `examples/prov-dm-export/` (2 IT) |
 | **Bayesian trust weighting** | ✅ Done | Bayesian Beta model: per-attestation recency weighting, alpha/beta posterior, ForgivenessParams removed. See ADR 0003. |
 | **Privacy / pseudonymisation** | ✅ Done | `ActorIdentityProvider` + `DecisionContextSanitiser` SPIs, `InternalActorIdentityProvider`, `LedgerErasureService`, `ActorIdentity` entity, V1004 migration. 31 tests. |
