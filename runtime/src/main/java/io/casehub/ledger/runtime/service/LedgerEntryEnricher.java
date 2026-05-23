@@ -20,6 +20,13 @@ public interface LedgerEntryEnricher {
      * Enrich the given entry before it is persisted.
      * Called once per {@code @PrePersist} event. Must not throw. Implementations must be
      * idempotent — this method may be called more than once on the same entry under retried transactions.
+     *
+     * <p>
+     * <strong>Contract:</strong> Enrichers must not modify the canonical fields used in
+     * the Merkle leaf hash: {@code subjectId}, {@code sequenceNumber}, {@code entryType},
+     * {@code actorId}, {@code actorRole}, {@code occurredAt}. These fields are hashed
+     * before enrichment in some execution paths. Modifying them in an enricher produces
+     * a mismatch between the leaf hash and the stored entry state.
      */
     void enrich(LedgerEntry entry);
 }

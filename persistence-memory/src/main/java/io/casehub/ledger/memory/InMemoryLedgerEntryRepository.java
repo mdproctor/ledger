@@ -83,6 +83,10 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
                 .computeIfAbsent(entry.subjectId, k -> new AtomicInteger(0))
                 .incrementAndGet();
 
+        // Enrich AFTER sequenceNumber assignment — enrichers (e.g. AgentSignatureEnricher)
+        // call canonicalBytes() which includes sequenceNumber. This ordering differs from the
+        // JPA path (where @PrePersist fires after leafHash), but is safe because enrichers
+        // must not modify canonical fields (subjectId, seqNum, entryType, actorId, actorRole, occurredAt).
         enricherPipeline.enrich(entry);
 
         if (ledgerConfig.hashChain().enabled()) {
@@ -250,5 +254,8 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
         entries.clear();
         attestations.clear();
         sequenceCounters.clear();
+        if (frontierRepo instanceof InMemoryLedgerMerkleFrontierRepository m) {
+            m.clear();
+        }
     }
 }
