@@ -100,12 +100,37 @@ class InMemoryKeyRotationRepositoryTest {
         assertThat(rotationRepo.findCompromisedByActorIdAndKeyRef("actor", "no-key")).isEmpty();
     }
 
+    @Test
+    void findCompromisedByActorIdAndKeyRef_orderedByEffectiveSinceAscending() {
+        String actorId = "claude:reviewer@v1";
+        String keyRef = "bad-key";
+        Instant earlier = Instant.parse("2026-01-01T00:00:00Z");
+        Instant later = Instant.parse("2026-06-01T00:00:00Z");
+
+        // save later first, then earlier — result must be ordered ascending by effectiveSince
+        entryRepo.save(KeyRotationEntryBuilder.build(actorId, keyRef, "new-key-B",
+                KeyRotationReason.COMPROMISED, Instant.now(), later));
+        entryRepo.save(KeyRotationEntryBuilder.build(actorId, keyRef, "new-key-A",
+                KeyRotationReason.COMPROMISED, Instant.now(), earlier));
+
+        List<KeyRotationEntry> results =
+                rotationRepo.findCompromisedByActorIdAndKeyRef(actorId, keyRef);
+        assertThat(results).hasSize(2);
+        // earlier effectiveSince must come first
+        assertThat(effectiveSince(results.get(0))).isEqualTo(earlier);
+        assertThat(effectiveSince(results.get(1))).isEqualTo(later);
+    }
+
     // ── field readers ─────────────────────────────────────────────────────────
     // Access KeyRotationEntry fields through the KeyRotationEntryBuilder subclass
     // to bypass the protected access restriction from Quarkus bytecode enhancement.
 
     private static Instant occurredAt(KeyRotationEntry e) {
         return ((KeyRotationEntryBuilder) e).getOccurredAt();
+    }
+
+    private static Instant effectiveSince(KeyRotationEntry e) {
+        return ((KeyRotationEntryBuilder) e).getEffectiveSince();
     }
 
     private static KeyRotationReason reason(KeyRotationEntry e) {
