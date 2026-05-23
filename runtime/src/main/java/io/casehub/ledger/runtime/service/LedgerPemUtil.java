@@ -2,25 +2,51 @@ package io.casehub.ledger.runtime.service;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.InvalidKeyException;
 import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
+import java.util.List;
 
 final class LedgerPemUtil {
+
+    // Mirrors AgentCryptographicVerifier.SUPPORTED_ALGORITHMS — update both together.
+    private static final List<String> SUPPORTED_ALGORITHMS =
+            List.of("Ed25519", "ML-DSA-44", "ML-DSA-65", "ML-DSA-87");
 
     private LedgerPemUtil() {}
 
     static PrivateKey loadPrivateKey(final String pemPath) throws Exception {
         final byte[] keyBytes = decodePem(Files.readString(Path.of(pemPath)), "PRIVATE KEY");
-        return KeyFactory.getInstance("Ed25519").generatePrivate(new PKCS8EncodedKeySpec(keyBytes));
+        final PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
+        for (final String algo : SUPPORTED_ALGORITHMS) {
+            try {
+                return KeyFactory.getInstance(algo).generatePrivate(spec);
+            } catch (final NoSuchAlgorithmException | InvalidKeySpecException ignored) {
+                // algorithm not supported by this JVM or bytes don't match — try next
+            }
+        }
+        throw new InvalidKeyException(
+                "Private key PEM does not match any supported algorithm: " + SUPPORTED_ALGORITHMS);
     }
 
     static PublicKey loadPublicKey(final String pemPath) throws Exception {
         final byte[] keyBytes = decodePem(Files.readString(Path.of(pemPath)), "PUBLIC KEY");
-        return KeyFactory.getInstance("Ed25519").generatePublic(new X509EncodedKeySpec(keyBytes));
+        final X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
+        for (final String algo : SUPPORTED_ALGORITHMS) {
+            try {
+                return KeyFactory.getInstance(algo).generatePublic(spec);
+            } catch (final NoSuchAlgorithmException | InvalidKeySpecException ignored) {
+                // algorithm not supported by this JVM or bytes don't match — try next
+            }
+        }
+        throw new InvalidKeyException(
+                "Public key PEM does not match any supported algorithm: " + SUPPORTED_ALGORITHMS);
     }
 
     static byte[] decodePem(final String pem, final String type) {

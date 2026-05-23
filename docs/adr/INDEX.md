@@ -12,3 +12,6 @@
 | [0008](0008-global-score-strategy-spi.md) | GlobalScoreStrategy SPI — pluggable global trust score aggregation | Accepted | 2026-05-03 |
 | [0009](0009-continuous-scores-decay-weighted-average.md) | Continuous quality dimension scores use decay-weighted average, not Bayesian Beta | Accepted | 2026-05-14 |
 | [0010](0010-two-column-key-model-replaces-scope-key.md) | Two-column key model replaces scope_key in actor_trust_score | Accepted | 2026-05-14 |
+| [0011](0011-per-actorid-signing-key-model.md) | Per-actorId signing key model for agent non-repudiation | Accepted | 2026-05-15 |
+| [0012](0012-key-rotation-design.md) | Agent signing key rotation: self-derived keyRef and first-class rotation events | Accepted | 2026-05-17 |
+| [0013](0013-post-quantum-signing-migration.md) | Post-quantum algorithm migration path for agent signing | Accepted | 2026-05-23 |

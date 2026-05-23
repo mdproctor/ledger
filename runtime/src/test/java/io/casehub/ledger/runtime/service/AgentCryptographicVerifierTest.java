@@ -72,6 +72,15 @@ class AgentCryptographicVerifierTest {
     }
 
     @Test
+    void unrecognisedPublicKeyBytes_returnsInvalid() {
+        entry.agentSignature = new byte[]{0x01};
+        entry.agentPublicKey = new byte[]{0x00, 0x01, 0x02, 0x03}; // not a valid X.509 key
+
+        assertThat(AgentCryptographicVerifier.verifyCryptographic(entry))
+                .isEqualTo(VerificationResult.INVALID);
+    }
+
+    @Test
     void mutatedCanonicalField_returnsInvalid() throws Exception {
         final byte[] canonical = LedgerMerkleTree.canonicalBytes(entry);
         final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");

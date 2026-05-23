@@ -18,8 +18,8 @@ import io.casehub.ledger.runtime.service.model.VerificationResult;
  * Blocking-tier CDI bean for agent signature verification.
  *
  * <p>
- * Covers the full verification pipeline: unsigned check, Ed25519 cryptographic
- * verification (via {@link AgentCryptographicVerifier}), key compromise window
+ * Covers the full verification pipeline: unsigned check, algorithm-transparent
+ * cryptographic verification (via {@link AgentCryptographicVerifier}), key compromise window
  * check (via {@link KeyRotationService}), and {@link AgentSignatureSuspectEvent}
  * firing. Auto-activated — no consumer configuration required.
  *

@@ -10,7 +10,7 @@ import org.jboss.logging.Logger;
 import io.casehub.ledger.runtime.model.LedgerEntry;
 
 /**
- * {@link LedgerEntryEnricher} that signs each entry with the actorId's Ed25519 private key.
+ * {@link LedgerEntryEnricher} that signs each entry with the actorId's configured signing key.
  *
  * <p>
  * Signs {@link LedgerMerkleTree#canonicalBytes(LedgerEntry)} — the same canonical form
@@ -47,14 +47,14 @@ public class AgentSignatureEnricher implements LedgerEntryEnricher {
     private static void sign(final LedgerEntry entry, final SigningKey sk) {
         try {
             final byte[] canonical = LedgerMerkleTree.canonicalBytes(entry);
-            final Signature sig = Signature.getInstance("Ed25519");
+            final Signature sig = Signature.getInstance(sk.keyPair().getPrivate().getAlgorithm());
             sig.initSign(sk.keyPair().getPrivate());
             sig.update(canonical);
             entry.agentSignature = sig.sign();
             entry.agentPublicKey = sk.keyPair().getPublic().getEncoded();
             entry.agentKeyRef = sk.keyRef();
         } catch (final Exception e) {
-            throw new IllegalStateException("Ed25519 signing failed for actor " + entry.actorId, e);
+            throw new IllegalStateException("Signing failed for actor " + entry.actorId, e);
         }
     }
 }
