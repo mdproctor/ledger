@@ -2,12 +2,11 @@ package io.casehub.ledger.memory;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -18,62 +17,62 @@ import io.casehub.ledger.runtime.model.ActorTrustScore;
 import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
 import io.casehub.platform.api.identity.ActorType;
 
-/**
- * Stub in-memory implementation of {@link ActorTrustScoreRepository}.
- * Real implementation comes in Task 6.
- */
 @Alternative
 @Priority(1)
 @ApplicationScoped
 public class InMemoryActorTrustScoreRepository implements ActorTrustScoreRepository {
 
-    private final ConcurrentHashMap<UUID, ActorTrustScore> scores = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, ActorTrustScore> store = new ConcurrentHashMap<>();
+
+    static String key(String actorId, ScoreType type, String cap, String dim) {
+        return actorId + "|" + type + "|" + nvl(cap) + "|" + nvl(dim);
+    }
+
+    private static String nvl(String s) {
+        return s != null ? s : "";
+    }
 
     @Override
     public Optional<ActorTrustScore> findByActorId(final String actorId) {
-        return scores.values().stream()
-                .filter(s -> actorId.equals(s.actorId) && ScoreType.GLOBAL.equals(s.scoreType))
-                .findFirst();
+        return Optional.ofNullable(store.get(key(actorId, ScoreType.GLOBAL, null, null)));
     }
 
     @Override
-    public Optional<ActorTrustScore> findCapabilityScore(final String actorId, final String capabilityTag) {
-        return scores.values().stream()
-                .filter(s -> actorId.equals(s.actorId) && ScoreType.CAPABILITY.equals(s.scoreType)
-                        && capabilityTag.equals(s.capabilityKey))
-                .findFirst();
+    public Optional<ActorTrustScore> findCapabilityScore(final String actorId,
+            final String capabilityTag) {
+        return Optional.ofNullable(store.get(key(actorId, ScoreType.CAPABILITY, capabilityTag, null)));
     }
 
     @Override
-    public Optional<ActorTrustScore> findDimensionScore(final String actorId, final String dimension) {
-        return scores.values().stream()
-                .filter(s -> actorId.equals(s.actorId) && ScoreType.DIMENSION.equals(s.scoreType)
-                        && dimension.equals(s.dimensionKey))
-                .findFirst();
+    public Optional<ActorTrustScore> findDimensionScore(final String actorId,
+            final String dimension) {
+        return Optional.ofNullable(store.get(key(actorId, ScoreType.DIMENSION, null, dimension)));
     }
 
     @Override
     public Optional<ActorTrustScore> findCapabilityDimension(final String actorId,
             final String capabilityTag, final String dimension) {
-        return scores.values().stream()
-                .filter(s -> actorId.equals(s.actorId) && ScoreType.CAPABILITY_DIMENSION.equals(s.scoreType)
-                        && capabilityTag.equals(s.capabilityKey) && dimension.equals(s.dimensionKey))
-                .findFirst();
+        return Optional.ofNullable(
+                store.get(key(actorId, ScoreType.CAPABILITY_DIMENSION, capabilityTag, dimension)));
     }
 
     @Override
-    public List<ActorTrustScore> findCapabilityDimensions(final String actorId, final String capabilityTag) {
-        return scores.values().stream()
-                .filter(s -> actorId.equals(s.actorId) && ScoreType.CAPABILITY_DIMENSION.equals(s.scoreType)
-                        && capabilityTag.equals(s.capabilityKey))
-                .toList();
+    public List<ActorTrustScore> findCapabilityDimensions(final String actorId,
+            final String capabilityTag) {
+        return store.values().stream()
+                .filter(s -> actorId.equals(s.actorId))
+                .filter(s -> ScoreType.CAPABILITY_DIMENSION.equals(s.scoreType))
+                .filter(s -> capabilityTag.equals(s.capabilityKey))
+                .collect(Collectors.toList());
     }
 
     @Override
-    public List<ActorTrustScore> findByActorIdAndScoreType(final String actorId, final ScoreType scoreType) {
-        return scores.values().stream()
-                .filter(s -> actorId.equals(s.actorId) && scoreType.equals(s.scoreType))
-                .toList();
+    public List<ActorTrustScore> findByActorIdAndScoreType(final String actorId,
+            final ScoreType scoreType) {
+        return store.values().stream()
+                .filter(s -> actorId.equals(s.actorId))
+                .filter(s -> scoreType.equals(s.scoreType))
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -85,55 +84,48 @@ public class InMemoryActorTrustScoreRepository implements ActorTrustScoreReposit
             final int attestationPositive, final int attestationNegative,
             final Instant lastComputedAt) {
 
-        Optional<ActorTrustScore> existing = findByKey(actorId, scoreType, capabilityKey, dimensionKey);
-        final ActorTrustScore score = existing.orElseGet(ActorTrustScore::new);
-        if (score.id == null) {
-            score.id = UUID.randomUUID();
-        }
-        score.actorId = actorId;
-        score.scoreType = scoreType;
-        score.capabilityKey = capabilityKey;
-        score.dimensionKey = dimensionKey;
-        score.actorType = actorType;
-        score.trustScore = trustScore;
-        score.decisionCount = decisionCount;
-        score.overturnedCount = overturnedCount;
-        score.alpha = alpha;
-        score.beta = beta;
-        score.attestationPositive = attestationPositive;
-        score.attestationNegative = attestationNegative;
-        score.lastComputedAt = lastComputedAt;
-        scores.put(score.id, score);
+        final String k = key(actorId, scoreType, capabilityKey, dimensionKey);
+        store.compute(k, (key, existing) -> {
+            final ActorTrustScore score = existing != null ? existing : new ActorTrustScore();
+            if (existing == null) {
+                score.id = UUID.randomUUID();
+                score.actorId = actorId;
+                score.scoreType = scoreType;
+                score.capabilityKey = capabilityKey;
+                score.dimensionKey = dimensionKey;
+            }
+            score.actorType = actorType;
+            score.trustScore = trustScore;
+            score.alpha = alpha;
+            score.beta = beta;
+            score.decisionCount = decisionCount;
+            score.overturnedCount = overturnedCount;
+            score.attestationPositive = attestationPositive;
+            score.attestationNegative = attestationNegative;
+            score.lastComputedAt = lastComputedAt;
+            return score;
+        });
     }
 
     @Override
     public void updateGlobalTrustScore(final String actorId, final double globalTrustScore) {
-        findByActorId(actorId).ifPresent(s -> s.trustScore = globalTrustScore);
+        store.computeIfPresent(key(actorId, ScoreType.GLOBAL, null, null),
+                (k, score) -> { score.globalTrustScore = globalTrustScore; return score; });
     }
 
     @Override
     public List<ActorTrustScore> findAll() {
-        return new ArrayList<>(scores.values());
+        return new ArrayList<>(store.values());
     }
 
     @Override
     public List<ActorTrustScore> findAllByLastComputedAtAfter(final Instant since) {
-        return scores.values().stream()
+        return store.values().stream()
                 .filter(s -> s.lastComputedAt != null && s.lastComputedAt.isAfter(since))
-                .toList();
+                .collect(Collectors.toList());
     }
 
     public void clear() {
-        scores.clear();
-    }
-
-    private Optional<ActorTrustScore> findByKey(final String actorId, final ScoreType scoreType,
-            final String capabilityKey, final String dimensionKey) {
-        return scores.values().stream()
-                .filter(s -> actorId.equals(s.actorId)
-                        && scoreType.equals(s.scoreType)
-                        && Objects.equals(capabilityKey, s.capabilityKey)
-                        && Objects.equals(dimensionKey, s.dimensionKey))
-                .findFirst();
+        store.clear();
     }
 }
