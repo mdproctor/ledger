@@ -138,6 +138,7 @@ in V1000–V1007 and always present when `casehub-ledger` is on the classpath.
 | Parent artifactId | `casehub-ledger-parent` |
 | Runtime artifactId | `casehub-ledger` |
 | Deployment artifactId | `casehub-ledger-deployment` |
+| persistence-memory artifactId | `casehub-ledger-memory` |
 | Root Java package | `io.casehub.ledger.runtime` |
 | Deployment subpackage | `io.casehub.ledger.deployment` |
 | Config prefix | `casehub.ledger` |
@@ -313,9 +314,17 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       ├── V1006__agent_key_ref.sql         — agent_key_ref TEXT on ledger_entry; CHECK enforces null iff agent_signature null
 │       └── V1007__key_rotation_entry.sql    — key_rotation_entry table (KeyRotationEntry subclass: previous_key_ref, new_key_ref, reason, effective_since)
 └── deployment/
-    └── src/main/java/io/casehub/ledger/deployment/
-        ├── LedgerBuildTimeConfig.java       — @ConfigRoot(BUILD_TIME): casehub.ledger.reactive.enabled (default false)
-        └── LedgerProcessor.java             — @BuildStep: FeatureBuildItem + excludeReactiveBeans (ExcludedTypeBuildItem when reactive.enabled=false) + validateFlywayMigrationLocation (WARN if db/ledger/migration absent from Flyway locations)
+│   └── src/main/java/io/casehub/ledger/deployment/
+│       ├── LedgerBuildTimeConfig.java       — @ConfigRoot(BUILD_TIME): casehub.ledger.reactive.enabled (default false)
+│       └── LedgerProcessor.java             — @BuildStep: FeatureBuildItem + excludeReactiveBeans (ExcludedTypeBuildItem when reactive.enabled=false) + validateFlywayMigrationLocation (WARN if db/ledger/migration absent from Flyway locations)
+└── persistence-memory/
+    └── src/main/java/io/casehub/ledger/memory/
+        ├── InMemoryLedgerEntryRepository.java        — @Alternative @Priority(1); save pipeline mirrors JPA; allEntries() method for delegates
+        ├── InMemoryLedgerMerkleFrontierRepository.java — @Alternative @Priority(1); ConcurrentHashMap-backed
+        ├── InMemoryActorTrustScoreRepository.java    — @Alternative @Priority(1); composite key: actorId|scoreType|cap|dim
+        ├── InMemoryKeyRotationRepository.java        — @Alternative @Priority(1); reads via blocking.allEntries()
+        ├── InMemoryReactiveLedgerEntryRepository.java — @IfBuildProperty(reactive.enabled=true); delegates to blocking
+        └── InMemoryReactiveKeyRotationRepository.java — @IfBuildProperty(reactive.enabled=true); delegates to blocking
 ```
 
 ---
