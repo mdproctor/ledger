@@ -39,6 +39,7 @@ class KeyRotationEntryBuilder extends KeyRotationEntry {
     // These run inside a KeyRotationEntry subclass, so protected access is valid.
 
     Instant getOccurredAt() { return this.occurredAt; }
+    Instant getEffectiveSince() { return this.effectiveSince; }
     KeyRotationReason getReason() { return this.reason; }
     String getPreviousKeyRef() { return this.previousKeyRef; }
     String getActorId() { return this.actorId; }
