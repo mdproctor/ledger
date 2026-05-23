@@ -6,6 +6,11 @@ import jakarta.persistence.PrePersist;
 
 import io.casehub.ledger.runtime.model.LedgerEntry;
 
+/**
+ * JPA entity listener that bridges {@code @PrePersist} lifecycle events to
+ * {@link LedgerEnricherPipeline}. Registered via {@code @EntityListeners} on
+ * {@link io.casehub.ledger.runtime.model.LedgerEntry}.
+ */
 @ApplicationScoped
 public class LedgerTraceListener {
 

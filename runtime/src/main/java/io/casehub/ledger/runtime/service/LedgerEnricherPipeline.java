@@ -9,6 +9,18 @@ import org.jboss.logging.Logger;
 
 import io.casehub.ledger.runtime.model.LedgerEntry;
 
+/**
+ * CDI bean that runs the {@link LedgerEntryEnricher} pipeline on a {@link LedgerEntry}.
+ *
+ * <p>
+ * Enrichers are CDI beans discovered via {@code @Inject @Any Instance<LedgerEntryEnricher>}
+ * and invoked in an unspecified order. Each enricher runs in isolation — a thrown exception
+ * is logged and swallowed; the pipeline always completes and the save is never blocked.
+ *
+ * <p>
+ * Invoked by {@link LedgerTraceListener} at JPA {@code @PrePersist} time, and directly
+ * by in-memory {@code LedgerEntryRepository} implementations before storing an entry.
+ */
 @ApplicationScoped
 public class LedgerEnricherPipeline {
 
