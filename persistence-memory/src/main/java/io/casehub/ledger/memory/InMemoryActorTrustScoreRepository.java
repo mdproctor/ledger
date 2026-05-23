@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -24,7 +23,7 @@ public class InMemoryActorTrustScoreRepository implements ActorTrustScoreReposit
 
     private final ConcurrentHashMap<String, ActorTrustScore> store = new ConcurrentHashMap<>();
 
-    static String key(String actorId, ScoreType type, String cap, String dim) {
+    private static String key(String actorId, ScoreType type, String cap, String dim) {
         return actorId + "|" + type + "|" + nvl(cap) + "|" + nvl(dim);
     }
 
@@ -63,7 +62,7 @@ public class InMemoryActorTrustScoreRepository implements ActorTrustScoreReposit
                 .filter(s -> actorId.equals(s.actorId))
                 .filter(s -> ScoreType.CAPABILITY_DIMENSION.equals(s.scoreType))
                 .filter(s -> capabilityTag.equals(s.capabilityKey))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -72,7 +71,7 @@ public class InMemoryActorTrustScoreRepository implements ActorTrustScoreReposit
         return store.values().stream()
                 .filter(s -> actorId.equals(s.actorId))
                 .filter(s -> scoreType.equals(s.scoreType))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -122,7 +121,7 @@ public class InMemoryActorTrustScoreRepository implements ActorTrustScoreReposit
     public List<ActorTrustScore> findAllByLastComputedAtAfter(final Instant since) {
         return store.values().stream()
                 .filter(s -> s.lastComputedAt != null && s.lastComputedAt.isAfter(since))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public void clear() {
