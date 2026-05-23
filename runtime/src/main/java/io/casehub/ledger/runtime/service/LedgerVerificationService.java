@@ -6,13 +6,12 @@ import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
-import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
+import io.casehub.ledger.runtime.repository.LedgerMerkleFrontierRepository;
 import io.casehub.ledger.runtime.service.model.InclusionProof;
 
 /**
@@ -29,16 +28,12 @@ public class LedgerVerificationService {
     LedgerEntryRepository ledgerRepo;
 
     @Inject
-    @LedgerPersistenceUnit
-    EntityManager em;
+    LedgerMerkleFrontierRepository frontierRepo;
 
     /** Return the current Merkle tree root for a subject. */
     @Transactional
     public String treeRoot(final UUID subjectId) {
-        final List<LedgerMerkleFrontier> frontier = em
-                .createNamedQuery("LedgerMerkleFrontier.findBySubjectId", LedgerMerkleFrontier.class)
-                .setParameter("subjectId", subjectId)
-                .getResultList();
+        final List<LedgerMerkleFrontier> frontier = frontierRepo.findBySubjectId(subjectId);
         if (frontier.isEmpty()) {
             throw new IllegalStateException("No entries for subject " + subjectId);
         }
@@ -57,16 +52,13 @@ public class LedgerVerificationService {
             throw new IllegalArgumentException("Entry not found: " + entryId);
 
         final List<LedgerEntry> allForSubject = ledgerRepo.findBySubjectId(entry.subjectId);
-
         final List<String> leafHashes = allForSubject.stream()
                 .map(e -> e.digest)
                 .toList();
-
         final int k = entry.sequenceNumber - 1;
         final String root = treeRoot(entry.subjectId);
         final InclusionProof proof = LedgerMerkleTree.inclusionProof(
                 entryId, k, leafHashes.size(), leafHashes);
-
         return new InclusionProof(entryId, k, leafHashes.size(),
                 proof.leafHash(), proof.siblings(), root);
     }
@@ -78,7 +70,6 @@ public class LedgerVerificationService {
     @Transactional
     public boolean verify(final UUID subjectId) {
         final List<LedgerEntry> entries = ledgerRepo.findBySubjectId(subjectId);
-
         List<LedgerMerkleFrontier> frontier = new ArrayList<>();
         for (final LedgerEntry entry : entries) {
             final String expected = LedgerMerkleTree.leafHash(entry);
@@ -86,10 +77,8 @@ public class LedgerVerificationService {
                 return false;
             frontier = LedgerMerkleTree.append(expected, frontier, subjectId);
         }
-
         if (frontier.isEmpty())
             return true;
-
         final String computed = LedgerMerkleTree.treeRoot(frontier);
         final String stored = treeRoot(subjectId);
         return computed.equals(stored);
