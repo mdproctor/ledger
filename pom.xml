@@ -17,6 +17,7 @@
     <module>api</module>
     <module>runtime</module>
     <module>deployment</module>
+    <module>persistence-memory</module>
   </modules>
 
   <repositories>
