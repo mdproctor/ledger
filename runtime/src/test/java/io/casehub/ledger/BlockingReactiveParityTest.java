@@ -12,13 +12,17 @@ import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.domain.JavaModifier;
+import com.tngtech.archunit.core.domain.JavaParameterizedType;
+import com.tngtech.archunit.core.domain.JavaType;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ConditionEvents;
+import com.tngtech.archunit.lang.EvaluationResult;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
 
 import io.smallrye.mutiny.Uni;
 
+import io.casehub.ledger.runtime.model.KeyRotationEntry;
 import io.casehub.ledger.runtime.service.KeyRotationService;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
@@ -112,6 +116,12 @@ class BlockingReactiveParityTest {
                                             + methodSignatureString(blockingMethod)
                                             + " has no matching '" + expectedAsyncSig
                                             + "' in " + reactiveClass.getName()));
+                        } else {
+                            publicMethods(reactiveClass)
+                                    .filter(m -> methodSignatureString(m).equals(expectedAsyncSig))
+                                    .findFirst()
+                                    .ifPresent(reactiveMethod -> checkUniTypeArg(
+                                            blockingMethod, reactiveMethod, events));
                         }
                     }
                 });
@@ -162,6 +172,39 @@ class BlockingReactiveParityTest {
         };
     }
 
+    // Called only from the Blocking→Reactive direction: by the time we reach this method,
+    // both method name and parameter types already match. The Reactive→Blocking direction
+    // performs the same name/param checks but omits the type-arg check — that is intentional,
+    // since the Blocking→Reactive scan already covers every pair for the current naming convention.
+    private static void checkUniTypeArg(
+            final JavaMethod blockingMethod,
+            final JavaMethod reactiveMethod,
+            final ConditionEvents events) {
+        final JavaType reactiveReturn = reactiveMethod.getReturnType();
+        if (!(reactiveReturn instanceof JavaParameterizedType paramType)) {
+            // Raw Uni: ArchUnit represents raw types as JavaClass, not JavaParameterizedType
+            events.add(SimpleConditionEvent.violated(reactiveMethod,
+                    "Reactive method '" + reactiveMethod.getName()
+                            + "()' returns raw Uni — must return Uni<"
+                            + blockingMethod.getRawReturnType().getSimpleName() + ">"));
+            return;
+        }
+        // ArchUnit guarantees JavaParameterizedType always has ≥1 type argument by construction
+        final JavaClass uniTypeArgErasure = paramType.getActualTypeArguments().get(0).toErasure();
+        final JavaClass blockingRaw = blockingMethod.getRawReturnType();
+        final boolean blockingReturnsVoid = blockingRaw.getName().equals("void");
+        final String expectedName = blockingReturnsVoid ? Void.class.getName() : blockingRaw.getName();
+        final String expectedSimpleName = blockingReturnsVoid ? "Void" : blockingRaw.getSimpleName();
+        if (!uniTypeArgErasure.getName().equals(expectedName)) {
+            events.add(SimpleConditionEvent.violated(reactiveMethod,
+                    "Uni<T> type mismatch: '" + reactiveMethod.getName()
+                            + "()' returns Uni<" + uniTypeArgErasure.getSimpleName()
+                            + "> but blocking counterpart '" + blockingMethod.getName()
+                            + "()' returns " + blockingRaw.getSimpleName()
+                            + " — expected Uni<" + expectedSimpleName + ">"));
+        }
+    }
+
     private static Stream<JavaMethod> publicMethods(final JavaClass cls) {
         return cls.getMethods().stream()
                 .filter(m -> m.getModifiers().contains(JavaModifier.PUBLIC))
@@ -192,5 +235,52 @@ class BlockingReactiveParityTest {
         return method.getRawParameterTypes().stream()
                 .map(JavaClass::getName)
                 .toList();
+    }
+
+    @Test
+    void parity_detectsUniTypeArgMismatch() {
+        final JavaClasses syntheticClasses = new ClassFileImporter()
+                .importClasses(SyntheticService.class, ReactiveSyntheticService.class);
+
+        final EvaluationResult result = classes()
+                .that().haveSimpleName("ReactiveSyntheticService")
+                .should(haveBidirectionalMethodParity(syntheticClasses))
+                .evaluate(syntheticClasses);
+
+        assertThat(result.hasViolation())
+                .as("Uni<Void> where Uni<KeyRotationEntry> is expected should be a parity violation")
+                .isTrue();
+    }
+
+    @Test
+    @SuppressWarnings("rawtypes")
+    void parity_detectsRawUniReturn() {
+        final JavaClasses syntheticClasses = new ClassFileImporter()
+                .importClasses(SyntheticService.class, ReactiveSyntheticRawReturn.class);
+
+        final EvaluationResult result = classes()
+                .that().haveSimpleName("ReactiveSyntheticRawReturn")
+                .should(haveBidirectionalMethodParity(syntheticClasses))
+                .evaluate(syntheticClasses);
+
+        assertThat(result.hasViolation())
+                .as("raw Uni (no type argument) should be a parity violation")
+                .isTrue();
+    }
+
+    // Synthetic blocking service shared by both meta-tests
+    static class SyntheticService {
+        public KeyRotationEntry recordSomething() { return null; }
+    }
+
+    // Wrong: Uni<T> type arg doesn't match blocking return type
+    static class ReactiveSyntheticService {
+        public Uni<Void> recordSomethingAsync() { return null; }
+    }
+
+    // Wrong: raw Uni with no type argument
+    static class ReactiveSyntheticRawReturn {
+        @SuppressWarnings("rawtypes")
+        public Uni recordSomethingAsync() { return null; }
     }
 }
