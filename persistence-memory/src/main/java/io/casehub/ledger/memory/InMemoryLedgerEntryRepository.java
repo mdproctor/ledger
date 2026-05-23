@@ -2,6 +2,7 @@ package io.casehub.ledger.memory;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -238,6 +239,11 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
                 .filter(a -> capabilityTag.equals(a.capabilityTag))
                 .sorted(Comparator.comparing(a -> a.occurredAt))
                 .collect(Collectors.toList());
+    }
+
+    /** Package-private accessor — called by sibling in-memory repositories via method dispatch. */
+    Collection<LedgerEntry> allEntries() {
+        return entries.values();
     }
 
     public void clear() {

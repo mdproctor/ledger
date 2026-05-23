@@ -1,6 +1,8 @@
 package io.casehub.ledger.memory;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -11,38 +13,34 @@ import io.casehub.ledger.api.model.KeyRotationReason;
 import io.casehub.ledger.runtime.model.KeyRotationEntry;
 import io.casehub.ledger.runtime.repository.KeyRotationRepository;
 
-/**
- * Stub in-memory implementation of {@link KeyRotationRepository}.
- * Real implementation comes in Task 7.
- */
 @Alternative
 @Priority(1)
 @ApplicationScoped
 public class InMemoryKeyRotationRepository implements KeyRotationRepository {
 
     @Inject
-    InMemoryLedgerEntryRepository ledgerRepo;
+    InMemoryLedgerEntryRepository blocking;
 
     @Override
     public List<KeyRotationEntry> findByActorId(final String actorId) {
-        return ledgerRepo.entries.values().stream()
-                .filter(KeyRotationEntry.class::isInstance)
-                .map(KeyRotationEntry.class::cast)
+        return blocking.allEntries().stream()
+                .filter(e -> e instanceof KeyRotationEntry)
+                .map(e -> (KeyRotationEntry) e)
                 .filter(e -> actorId.equals(e.actorId))
-                .sorted(java.util.Comparator.comparing(e -> e.occurredAt))
-                .toList();
+                .sorted(Comparator.comparing(e -> e.occurredAt))
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<KeyRotationEntry> findCompromisedByActorIdAndKeyRef(
             final String actorId, final String keyRef) {
-        return ledgerRepo.entries.values().stream()
-                .filter(KeyRotationEntry.class::isInstance)
-                .map(KeyRotationEntry.class::cast)
-                .filter(e -> actorId.equals(e.actorId)
-                        && keyRef.equals(e.previousKeyRef)
-                        && KeyRotationReason.COMPROMISED.equals(e.reason))
-                .sorted(java.util.Comparator.comparing(e -> e.effectiveSince))
-                .toList();
+        return blocking.allEntries().stream()
+                .filter(e -> e instanceof KeyRotationEntry)
+                .map(e -> (KeyRotationEntry) e)
+                .filter(e -> actorId.equals(e.actorId))
+                .filter(e -> keyRef.equals(e.previousKeyRef))
+                .filter(e -> KeyRotationReason.COMPROMISED.equals(e.reason))
+                .sorted(Comparator.comparing(e -> e.effectiveSince))
+                .collect(Collectors.toList());
     }
 }
