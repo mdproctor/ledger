@@ -78,11 +78,11 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
             }
         });
 
-        enricherPipeline.enrich(entry);
-
         entry.sequenceNumber = sequenceCounters
                 .computeIfAbsent(entry.subjectId, k -> new AtomicInteger(0))
                 .incrementAndGet();
+
+        enricherPipeline.enrich(entry);
 
         if (ledgerConfig.hashChain().enabled()) {
             entry.digest = LedgerMerkleTree.leafHash(entry);
