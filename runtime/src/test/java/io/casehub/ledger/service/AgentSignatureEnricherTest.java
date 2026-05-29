@@ -15,10 +15,9 @@ import org.junit.jupiter.api.Test;
 
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.runtime.service.AgentKeyProvider;
+import io.casehub.ledger.runtime.service.AgentSignature;
 import io.casehub.ledger.runtime.service.AgentSignatureEnricher;
 import io.casehub.ledger.runtime.service.LedgerMerkleTree;
-import io.casehub.ledger.runtime.service.SigningKey;
 import io.casehub.ledger.service.supplement.TestEntry;
 
 class AgentSignatureEnricherTest {
@@ -47,19 +46,20 @@ class AgentSignatureEnricherTest {
     @Test
     void populatesSignatureAndPublicKey_whenActorHasKey() {
         final KeyPair kp = testKeyPair;
-        enricher = new AgentSignatureEnricher(actorId -> Optional.of(SigningKey.of(kp)));
+        enricher = new AgentSignatureEnricher(
+                (actorId, data) -> Optional.of(AgentSignature.signWith(kp, data)));
 
         final TestEntry e = entry("claude:reviewer@v1");
         enricher.enrich(e);
 
         assertThat(e.agentSignature).isNotNull().hasSizeGreaterThan(0);
-        assertThat(e.agentPublicKey).isNotNull()
-            .isEqualTo(kp.getPublic().getEncoded());
+        assertThat(e.agentPublicKey).isNotNull().isEqualTo(kp.getPublic().getEncoded());
     }
 
     @Test
     void signatureVerifiesAgainstStoredPublicKey() throws Exception {
-        enricher = new AgentSignatureEnricher(actorId -> Optional.of(SigningKey.of(testKeyPair)));
+        enricher = new AgentSignatureEnricher(
+                (actorId, data) -> Optional.of(AgentSignature.signWith(testKeyPair, data)));
 
         final TestEntry e = entry("claude:reviewer@v1");
         enricher.enrich(e);
@@ -72,7 +72,7 @@ class AgentSignatureEnricherTest {
 
     @Test
     void leavesFieldsNull_whenActorHasNoKey() {
-        enricher = new AgentSignatureEnricher(actorId -> Optional.empty());
+        enricher = new AgentSignatureEnricher((actorId, data) -> Optional.empty());
 
         final TestEntry e = entry("unknown-actor");
         enricher.enrich(e);
@@ -83,7 +83,8 @@ class AgentSignatureEnricherTest {
 
     @Test
     void leavesFieldsNull_whenActorIdIsNull() {
-        enricher = new AgentSignatureEnricher(actorId -> Optional.of(SigningKey.of(testKeyPair)));
+        enricher = new AgentSignatureEnricher(
+                (actorId, data) -> Optional.of(AgentSignature.signWith(testKeyPair, data)));
 
         final TestEntry e = entry(null);
         enricher.enrich(e);
@@ -93,22 +94,18 @@ class AgentSignatureEnricherTest {
     }
 
     @Test
-    void isIdempotent_secondCallIsNoOp() {
-        enricher = new AgentSignatureEnricher(actorId -> Optional.of(SigningKey.of(testKeyPair)));
+    void isIdempotent_secondCallIsNoOp() throws Exception {
+        enricher = new AgentSignatureEnricher(
+                (actorId, data) -> Optional.of(AgentSignature.signWith(testKeyPair, data)));
 
         final TestEntry e = entry("claude:reviewer@v1");
         enricher.enrich(e);
         final byte[] firstSig = e.agentSignature.clone();
         final byte[] firstKey = e.agentPublicKey.clone();
 
-        // Replace key provider with a different key — if re-signing occurred, the signature would differ
-        final KeyPair otherPair;
-        try {
-            otherPair = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
-        } catch (Exception ex) {
-            throw new RuntimeException(ex);
-        }
-        enricher = new AgentSignatureEnricher(actorId -> Optional.of(SigningKey.of(otherPair)));
+        final KeyPair otherPair = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
+        enricher = new AgentSignatureEnricher(
+                (actorId, data) -> Optional.of(AgentSignature.signWith(otherPair, data)));
         enricher.enrich(e);
 
         assertThat(e.agentSignature).isEqualTo(firstSig);
@@ -116,8 +113,8 @@ class AgentSignatureEnricherTest {
     }
 
     @Test
-    void doesNotThrow_whenKeyProviderThrows() {
-        enricher = new AgentSignatureEnricher(actorId -> {
+    void doesNotThrow_whenSignerThrows() {
+        enricher = new AgentSignatureEnricher((actorId, data) -> {
             throw new RuntimeException("key store unavailable");
         });
 
@@ -127,19 +124,20 @@ class AgentSignatureEnricherTest {
     }
 
     @Test
-    void populatesAgentKeyRef_matchingSigningKeyRef() {
-        final SigningKey sk = SigningKey.of(testKeyPair);
-        enricher = new AgentSignatureEnricher(actorId -> Optional.of(sk));
+    void populatesAgentKeyRef_fromSignerResult() {
+        enricher = new AgentSignatureEnricher(
+                (actorId, data) -> Optional.of(AgentSignature.signWith(testKeyPair, data)));
 
         final TestEntry e = entry("claude:reviewer@v1");
         enricher.enrich(e);
 
-        assertThat(e.agentKeyRef).isEqualTo(sk.keyRef());
+        assertThat(e.agentKeyRef).isNotNull().hasSize(43);
+        assertThat(e.agentKeyRef).matches("[A-Za-z0-9_-]+");
     }
 
     @Test
     void agentKeyRef_isNullWhenUnsigned() {
-        enricher = new AgentSignatureEnricher(actorId -> Optional.empty());
+        enricher = new AgentSignatureEnricher((actorId, data) -> Optional.empty());
 
         final TestEntry e = entry("unknown-actor");
         enricher.enrich(e);

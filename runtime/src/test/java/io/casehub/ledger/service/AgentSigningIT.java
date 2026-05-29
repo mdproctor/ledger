@@ -1,7 +1,9 @@
 package io.casehub.ledger.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import java.security.KeyPair;
@@ -21,10 +23,10 @@ import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
-import io.casehub.ledger.runtime.service.AgentKeyProvider;
+import io.casehub.ledger.runtime.service.AgentSignature;
 import io.casehub.ledger.runtime.service.AgentSignatureVerificationService;
+import io.casehub.ledger.runtime.service.AgentSigner;
 import io.casehub.ledger.runtime.service.LedgerVerificationService;
-import io.casehub.ledger.runtime.service.SigningKey;
 import io.casehub.ledger.runtime.service.model.VerificationResult;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.InjectMock;
@@ -49,16 +51,16 @@ class AgentSigningIT {
     EntityManager em;
 
     @InjectMock
-    AgentKeyProvider agentKeyProvider;
+    AgentSigner agentSigner;
 
     private KeyPair testKeyPair;
 
     @BeforeEach
     void setUp() throws Exception {
         testKeyPair = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
-        when(agentKeyProvider.signingKey(anyString())).thenReturn(Optional.empty());
-        when(agentKeyProvider.signingKey("claude:reviewer@v1"))
-                .thenReturn(Optional.of(SigningKey.of(testKeyPair)));
+        when(agentSigner.sign(anyString(), any())).thenReturn(Optional.empty());
+        when(agentSigner.sign(eq("claude:reviewer@v1"), any()))
+                .thenAnswer(inv -> Optional.of(AgentSignature.signWith(testKeyPair, inv.getArgument(1))));
     }
 
     private TestEntry seedSigned(final UUID subjectId, final int seq) {
