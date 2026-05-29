@@ -12,7 +12,7 @@ import jakarta.transaction.Transactional;
 import io.casehub.ledger.examples.art22.ledger.DecisionLedgerEntry;
 import io.casehub.ledger.examples.art22.ledger.DecisionLedgerEntryRepository;
 import io.casehub.platform.api.identity.ActorType;
-import io.casehub.ledger.runtime.model.LedgerEntryType;
+import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.supplement.ComplianceSupplement;
 
 /**

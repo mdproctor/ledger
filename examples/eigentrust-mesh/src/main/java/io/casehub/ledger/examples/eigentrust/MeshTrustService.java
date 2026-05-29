@@ -12,9 +12,9 @@ import jakarta.transaction.Transactional;
 
 import io.casehub.ledger.runtime.model.ActorTrustScore;
 import io.casehub.platform.api.identity.ActorType;
-import io.casehub.ledger.runtime.model.AttestationVerdict;
+import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
-import io.casehub.ledger.runtime.model.LedgerEntryType;
+import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
 import io.casehub.ledger.runtime.service.TrustScoreJob;
 
