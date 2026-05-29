@@ -13,7 +13,7 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 import java.util.List;
 
-final class LedgerPemUtil {
+public final class LedgerPemUtil {
 
     // Mirrors AgentCryptographicVerifier.SUPPORTED_ALGORITHMS — update both together.
     private static final List<String> SUPPORTED_ALGORITHMS =
@@ -43,6 +43,27 @@ final class LedgerPemUtil {
                 return KeyFactory.getInstance(algo).generatePublic(spec);
             } catch (final NoSuchAlgorithmException | InvalidKeySpecException ignored) {
                 // algorithm not supported by this JVM or bytes don't match — try next
+            }
+        }
+        throw new InvalidKeyException(
+                "Public key PEM does not match any supported algorithm: " + SUPPORTED_ALGORITHMS);
+    }
+
+    /**
+     * Parses a PEM-encoded public key from a string (e.g. a Vault Transit API response).
+     * Trial-loads through supported algorithms, same as {@link #loadPublicKey(String)}.
+     *
+     * @param pemContent PEM string containing {@code -----BEGIN PUBLIC KEY-----} header
+     * @return parsed public key
+     * @throws InvalidKeyException if no supported algorithm recognises the key
+     */
+    public static PublicKey parsePublicKey(final String pemContent) throws Exception {
+        final byte[] keyBytes = decodePem(pemContent, "PUBLIC KEY");
+        final X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
+        for (final String algo : SUPPORTED_ALGORITHMS) {
+            try {
+                return KeyFactory.getInstance(algo).generatePublic(spec);
+            } catch (final NoSuchAlgorithmException | InvalidKeySpecException ignored) {
             }
         }
         throw new InvalidKeyException(

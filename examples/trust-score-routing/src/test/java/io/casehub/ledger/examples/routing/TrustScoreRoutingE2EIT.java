@@ -20,9 +20,9 @@ import io.casehub.ledger.examples.routing.ledger.TaskLedgerEntry;
 import io.casehub.ledger.examples.routing.routing.RoutingSignalLogger;
 import io.casehub.ledger.examples.routing.routing.TaskRouter;
 import io.casehub.platform.api.identity.ActorType;
-import io.casehub.ledger.runtime.model.AttestationVerdict;
+import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
-import io.casehub.ledger.runtime.model.LedgerEntryType;
+import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.service.TrustScoreJob;
 import io.quarkus.test.junit.QuarkusTest;
 

@@ -1,10 +1,13 @@
 package io.casehub.ledger.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import java.nio.charset.StandardCharsets;
+import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.time.Instant;
 import java.util.List;
@@ -22,10 +25,10 @@ import io.casehub.ledger.api.model.KeyRotationReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.KeyRotationEntry;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
-import io.casehub.ledger.runtime.service.AgentKeyProvider;
+import io.casehub.ledger.runtime.service.AgentSignature;
+import io.casehub.ledger.runtime.service.AgentSigner;
 import io.casehub.ledger.runtime.service.KeyRotationService;
 import io.casehub.ledger.runtime.service.AgentSignatureVerificationService;
-import io.casehub.ledger.runtime.service.SigningKey;
 import io.casehub.ledger.runtime.service.model.VerificationResult;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.InjectMock;
@@ -39,20 +42,25 @@ class KeyRotationIT {
     @Inject KeyRotationService rotationService;
 
     @InjectMock
-    AgentKeyProvider agentKeyProvider;
+    AgentSigner agentSigner;
 
-    private SigningKey currentKey;
-    private SigningKey nextKey;
+    private KeyPair currentKeyPair;
+    private KeyPair nextKeyPair;
+    private String currentKeyRef;
+    private String nextKeyRef;
 
     @BeforeEach
     void setUp() throws Exception {
         final KeyPairGenerator gen = KeyPairGenerator.getInstance("Ed25519");
-        currentKey = SigningKey.of(gen.generateKeyPair());
-        nextKey = SigningKey.of(gen.generateKeyPair());
+        currentKeyPair = gen.generateKeyPair();
+        nextKeyPair = gen.generateKeyPair();
+        currentKeyRef = AgentSignature.signWith(currentKeyPair, new byte[0]).keyRef();
+        nextKeyRef = AgentSignature.signWith(nextKeyPair, new byte[0]).keyRef();
 
-        when(agentKeyProvider.signingKey(anyString())).thenReturn(Optional.empty());
-        when(agentKeyProvider.signingKey("claude:reviewer@v1"))
-                .thenReturn(Optional.of(currentKey));
+        when(agentSigner.sign(anyString(), any())).thenReturn(Optional.empty());
+        when(agentSigner.sign(eq("claude:reviewer@v1"), any()))
+                .thenAnswer(inv -> Optional.of(
+                        AgentSignature.signWith(currentKeyPair, inv.getArgument(1))));
     }
 
     private TestEntry seedSigned(final UUID subjectId, final int seq) {
@@ -72,11 +80,11 @@ class KeyRotationIT {
         final UUID sub = UUID.randomUUID();
         final TestEntry e = seedSigned(sub, 1);
 
-        assertThat(e.agentKeyRef).isEqualTo(currentKey.keyRef());
+        assertThat(e.agentKeyRef).isEqualTo(currentKeyRef);
         assertThat(verificationService.verifyAgentSignature(e.id)).isEqualTo(VerificationResult.VALID);
 
         rotationService.recordRotation("claude:reviewer@v1",
-                currentKey.keyRef(), nextKey.keyRef(),
+                currentKeyRef, nextKeyRef,
                 KeyRotationReason.SCHEDULED, Instant.now());
 
         assertThat(verificationService.verifyAgentSignature(e.id)).isEqualTo(VerificationResult.VALID);
@@ -91,7 +99,7 @@ class KeyRotationIT {
         assertThat(verificationService.verifyAgentSignature(e.id)).isEqualTo(VerificationResult.VALID);
 
         rotationService.recordRotation("claude:reviewer@v1",
-                currentKey.keyRef(), null,
+                currentKeyRef, null,
                 KeyRotationReason.COMPROMISED,
                 e.occurredAt.minusSeconds(60));
 
@@ -103,10 +111,10 @@ class KeyRotationIT {
     void rotationHistory_recordsAllEvents() {
         final String actorId = "claude:reviewer@rotation-history-" + UUID.randomUUID();
         rotationService.recordRotation(actorId,
-                currentKey.keyRef(), nextKey.keyRef(),
+                currentKeyRef, nextKeyRef,
                 KeyRotationReason.SCHEDULED, Instant.now());
         rotationService.recordRotation(actorId,
-                nextKey.keyRef(), null,
+                nextKeyRef, null,
                 KeyRotationReason.COMPROMISED, Instant.now());
 
         final List<KeyRotationEntry> history = rotationService.rotationHistory(actorId);
@@ -119,7 +127,7 @@ class KeyRotationIT {
     @Transactional
     void keyRotationEntry_subjectId_isDeterministic() {
         final KeyRotationEntry entry = rotationService.recordRotation(
-                "claude:reviewer@v1", currentKey.keyRef(), nextKey.keyRef(),
+                "claude:reviewer@v1", currentKeyRef, nextKeyRef,
                 KeyRotationReason.SCHEDULED, Instant.now());
 
         final UUID expected = UUID.nameUUIDFromBytes(

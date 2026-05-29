@@ -1,6 +1,7 @@
 package io.casehub.ledger.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
@@ -20,12 +21,12 @@ import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.KeyRotationReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
-import io.casehub.ledger.runtime.service.AgentKeyProvider;
+import io.casehub.ledger.runtime.service.AgentSignature;
 import io.casehub.ledger.runtime.service.AgentSignatureSuspectEvent;
+import io.casehub.ledger.runtime.service.AgentSigner;
 import io.casehub.ledger.runtime.service.KeyRotationService;
 import io.casehub.ledger.runtime.service.LedgerMerkleTree;
 import io.casehub.ledger.runtime.service.ReactiveAgentSignatureVerificationService;
-import io.casehub.ledger.runtime.service.SigningKey;
 import io.casehub.ledger.runtime.service.model.VerificationResult;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.InjectMock;
@@ -57,11 +58,11 @@ class ReactiveAgentSignatureVerificationServiceIT {
     AgentSuspectEventCapture eventCapture;
 
     @InjectMock
-    AgentKeyProvider agentKeyProvider;
+    AgentSigner agentSigner;
 
     @BeforeEach
     void setUp() throws Exception {
-        when(agentKeyProvider.signingKey(anyString())).thenReturn(Optional.empty());
+        when(agentSigner.sign(anyString(), any())).thenReturn(Optional.empty());
         eventCapture.reset();
     }
 
@@ -87,6 +88,14 @@ class ReactiveAgentSignatureVerificationServiceIT {
         return (TestEntry) repo.save(e);
     }
 
+    private static AgentSignature signEntry(final TestEntry e, final java.security.KeyPair kp) {
+        final AgentSignature sig = AgentSignature.signWith(kp, LedgerMerkleTree.canonicalBytes(e));
+        e.agentSignature = sig.signature();
+        e.agentPublicKey = sig.publicKey();
+        e.agentKeyRef = sig.keyRef();
+        return sig;
+    }
+
     @Test
     @Transactional
     void verifyAgentSignatureAsync_unsignedEntry_returnsUnsigned() {
@@ -103,16 +112,10 @@ class ReactiveAgentSignatureVerificationServiceIT {
     @Test
     @Transactional
     void verifyAgentSignatureAsync_validSignature_returnsValid() throws Exception {
-        final SigningKey sk = SigningKey.of(KeyPairGenerator.getInstance("Ed25519").generateKeyPair());
+        final java.security.KeyPair kp = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
         final UUID sub = UUID.randomUUID();
         final TestEntry e = seedEntry(sub, 1, "signed-actor");
-        final byte[] canonical = LedgerMerkleTree.canonicalBytes(e);
-        final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
-        sig.initSign(sk.keyPair().getPrivate());
-        sig.update(canonical);
-        e.agentSignature = sig.sign();
-        e.agentPublicKey = sk.keyPair().getPublic().getEncoded();
-        e.agentKeyRef = sk.keyRef();
+        signEntry(e, kp);
         repo.save(e);
 
         final VerificationResult result = reactiveVerificationService
@@ -125,18 +128,11 @@ class ReactiveAgentSignatureVerificationServiceIT {
     @Test
     @Transactional
     void verifyAgentSignatureAsync_tamperedSignature_returnsInvalid() throws Exception {
-        final SigningKey sk = SigningKey.of(KeyPairGenerator.getInstance("Ed25519").generateKeyPair());
+        final java.security.KeyPair kp = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
         final UUID sub = UUID.randomUUID();
         final TestEntry e = seedEntry(sub, 1, "signed-actor");
-        final byte[] canonical = LedgerMerkleTree.canonicalBytes(e);
-        final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
-        sig.initSign(sk.keyPair().getPrivate());
-        sig.update(canonical);
-        final byte[] signature = sig.sign();
-        signature[0] ^= 0xFF;
-        e.agentSignature = signature;
-        e.agentPublicKey = sk.keyPair().getPublic().getEncoded();
-        e.agentKeyRef = sk.keyRef();
+        signEntry(e, kp);
+        e.agentSignature[0] ^= 0xFF;
         repo.save(e);
 
         final VerificationResult result = reactiveVerificationService
@@ -149,20 +145,14 @@ class ReactiveAgentSignatureVerificationServiceIT {
     @Test
     @Transactional
     void verifyAgentSignatureAsync_suspectEntry_firesEventViaReactivePath() throws Exception {
-        final SigningKey sk = SigningKey.of(KeyPairGenerator.getInstance("Ed25519").generateKeyPair());
+        final java.security.KeyPair kp = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
         final UUID sub = UUID.randomUUID();
         final TestEntry e = seedAgent(sub, 1, "claude:reviewer@v1");
-        final byte[] canonical = LedgerMerkleTree.canonicalBytes(e);
-        final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
-        sig.initSign(sk.keyPair().getPrivate());
-        sig.update(canonical);
-        e.agentSignature = sig.sign();
-        e.agentPublicKey = sk.keyPair().getPublic().getEncoded();
-        e.agentKeyRef = sk.keyRef();
+        final AgentSignature sig = signEntry(e, kp);
         repo.save(e);
 
         final java.time.Instant compromisedSince = e.occurredAt.minusSeconds(60);
-        rotationService.recordRotation("claude:reviewer@v1", sk.keyRef(), null,
+        rotationService.recordRotation("claude:reviewer@v1", sig.keyRef(), null,
                 KeyRotationReason.COMPROMISED, compromisedSince);
 
         final VerificationResult result = reactiveVerificationService
