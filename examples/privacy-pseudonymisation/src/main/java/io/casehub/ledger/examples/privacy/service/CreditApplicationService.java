@@ -10,7 +10,7 @@ import jakarta.transaction.Transactional;
 
 import io.casehub.ledger.examples.privacy.ledger.CreditApplicationLedgerEntry;
 import io.casehub.platform.api.identity.ActorType;
-import io.casehub.ledger.runtime.model.LedgerEntryType;
+import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.supplement.ComplianceSupplement;
 import io.casehub.ledger.runtime.model.supplement.ProvenanceSupplement;
 import io.casehub.ledger.runtime.privacy.LedgerErasureService;

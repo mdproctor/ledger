@@ -17,7 +17,7 @@ import io.casehub.ledger.examples.order.model.Order;
 import io.casehub.ledger.examples.order.model.OrderStatus;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.platform.api.identity.ActorType;
-import io.casehub.ledger.runtime.model.LedgerEntryType;
+import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.supplement.ComplianceSupplement;
 
 /**
