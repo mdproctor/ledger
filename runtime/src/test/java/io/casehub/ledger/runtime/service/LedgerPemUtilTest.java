@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.PublicKey;
 import java.util.Base64;
 
 import org.junit.jupiter.api.Test;
@@ -49,6 +50,19 @@ class LedgerPemUtilTest {
         byte[] decoded = LedgerPemUtil.decodePem(pem, "PRIVATE KEY");
 
         assertThat(decoded).isEqualTo(raw);
+    }
+
+    @Test
+    void parsePublicKey_fromPemString_roundTrip() throws Exception {
+        final KeyPairGenerator kpg = KeyPairGenerator.getInstance("Ed25519");
+        final KeyPair kp = kpg.generateKeyPair();
+        final String pem = "-----BEGIN PUBLIC KEY-----\n"
+                + Base64.getMimeEncoder(64, new byte[]{'\n'}).encodeToString(kp.getPublic().getEncoded())
+                + "\n-----END PUBLIC KEY-----\n";
+
+        final PublicKey loaded = LedgerPemUtil.parsePublicKey(pem);
+
+        assertThat(loaded.getEncoded()).isEqualTo(kp.getPublic().getEncoded());
     }
 
     private static Path writePem(Path dir, String name, String type, byte[] encoded) throws Exception {
