@@ -1,9 +1,12 @@
 package io.casehub.ledger.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
+import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.time.Instant;
 import java.util.Optional;
@@ -20,12 +23,12 @@ import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.KeyRotationReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
-import io.casehub.ledger.runtime.service.AgentKeyProvider;
+import io.casehub.ledger.runtime.service.AgentSignature;
 import io.casehub.ledger.runtime.service.AgentSignatureSuspectEvent;
+import io.casehub.ledger.runtime.service.AgentSigner;
 import io.casehub.ledger.runtime.service.KeyRotationService;
 import io.casehub.ledger.runtime.service.AgentSignatureVerificationService;
 import io.casehub.ledger.runtime.service.ReactiveAgentSignatureVerificationService;
-import io.casehub.ledger.runtime.service.SigningKey;
 import io.casehub.ledger.runtime.service.model.VerificationResult;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.InjectMock;
@@ -49,16 +52,19 @@ class SuspectEventIT {
     @Inject AgentSuspectEventCapture eventCapture;
 
     @InjectMock
-    AgentKeyProvider agentKeyProvider;
+    AgentSigner agentSigner;
 
-    private SigningKey testKey;
+    private KeyPair testKeyPair;
+    private String testKeyRef;
 
     @BeforeEach
     void setUp() throws Exception {
-        testKey = SigningKey.of(KeyPairGenerator.getInstance("Ed25519").generateKeyPair());
-        when(agentKeyProvider.signingKey(anyString())).thenReturn(Optional.empty());
-        when(agentKeyProvider.signingKey("claude:reviewer@v1"))
-                .thenReturn(Optional.of(testKey));
+        testKeyPair = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
+        testKeyRef = AgentSignature.signWith(testKeyPair, new byte[0]).keyRef();
+        when(agentSigner.sign(anyString(), any())).thenReturn(Optional.empty());
+        when(agentSigner.sign(eq("claude:reviewer@v1"), any()))
+                .thenAnswer(inv -> Optional.of(
+                        AgentSignature.signWith(testKeyPair, inv.getArgument(1))));
         eventCapture.reset();
     }
 
@@ -79,7 +85,7 @@ class SuspectEventIT {
         final UUID sub = UUID.randomUUID();
         final TestEntry e = seedSigned(sub, 1);
 
-        rotationService.recordRotation("claude:reviewer@v1", testKey.keyRef(), null,
+        rotationService.recordRotation("claude:reviewer@v1", testKeyRef, null,
                 KeyRotationReason.COMPROMISED, e.occurredAt.minusSeconds(60));
 
         final VerificationResult result = verificationService.verifyAgentSignature(e.id);
@@ -89,7 +95,7 @@ class SuspectEventIT {
         final AgentSignatureSuspectEvent event = eventCapture.syncEvents().get(0);
         assertThat(event.entryId()).isEqualTo(e.id);
         assertThat(event.actorId()).isEqualTo("claude:reviewer@v1");
-        assertThat(event.keyRef()).isEqualTo(testKey.keyRef());
+        assertThat(event.keyRef()).isEqualTo(testKeyRef);
     }
 
     @Test
@@ -130,7 +136,7 @@ class SuspectEventIT {
         final UUID sub = UUID.randomUUID();
         final TestEntry e = seedSigned(sub, 1);
 
-        rotationService.recordRotation("claude:reviewer@v1", testKey.keyRef(), null,
+        rotationService.recordRotation("claude:reviewer@v1", testKeyRef, null,
                 KeyRotationReason.COMPROMISED, e.occurredAt.minusSeconds(60));
 
         final VerificationResult result =
@@ -145,7 +151,7 @@ class SuspectEventIT {
         assertThat(event).isNotNull();
         assertThat(event.entryId()).isEqualTo(e.id);
         assertThat(event.actorId()).isEqualTo("claude:reviewer@v1");
-        assertThat(event.keyRef()).isEqualTo(testKey.keyRef());
+        assertThat(event.keyRef()).isEqualTo(testKeyRef);
         assertThat(event.occurredAt()).isEqualTo(e.occurredAt);
         assertThat(event.effectiveSince()).isNotNull().isBefore(e.occurredAt.plusSeconds(1));
     }
@@ -167,8 +173,8 @@ class SuspectEventIT {
         final byte[] tamperedSignature = new byte[64];
         tamperedSignature[0] = (byte) 0xFF;
         saved.agentSignature = tamperedSignature;
-        saved.agentPublicKey = testKey.keyPair().getPublic().getEncoded();
-        saved.agentKeyRef = testKey.keyRef();
+        saved.agentPublicKey = testKeyPair.getPublic().getEncoded();
+        saved.agentKeyRef = testKeyRef;
         repo.save(saved);
 
         final VerificationResult result =

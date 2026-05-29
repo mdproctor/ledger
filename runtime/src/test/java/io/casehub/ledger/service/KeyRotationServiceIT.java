@@ -16,8 +16,8 @@ import org.junit.jupiter.api.Test;
 import io.casehub.ledger.api.model.KeyRotationReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.KeyRotationEntry;
+import io.casehub.ledger.runtime.service.AgentSignature;
 import io.casehub.ledger.runtime.service.KeyRotationService;
-import io.casehub.ledger.runtime.service.SigningKey;
 import io.casehub.ledger.runtime.service.model.CompromisedWindow;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -27,25 +27,26 @@ class KeyRotationServiceIT {
     @Inject
     KeyRotationService rotationService;
 
-    private SigningKey newKey() throws Exception {
-        return SigningKey.of(KeyPairGenerator.getInstance("Ed25519").generateKeyPair());
+    private String newKeyRef() throws Exception {
+        return AgentSignature.signWith(
+                KeyPairGenerator.getInstance("Ed25519").generateKeyPair(), new byte[0]).keyRef();
     }
 
     @Test
     @Transactional
     void recordRotation_persistsEntry() throws Exception {
         final String actorId = "claude:reviewer@v1";
-        final SigningKey oldKey = newKey();
-        final SigningKey newKey = newKey();
+        final String oldKeyRef = newKeyRef();
+        final String newKeyRef = newKeyRef();
 
         final KeyRotationEntry entry = rotationService.recordRotation(
-                actorId, oldKey.keyRef(), newKey.keyRef(),
+                actorId, oldKeyRef, newKeyRef,
                 KeyRotationReason.SCHEDULED, Instant.now());
 
         assertThat(entry.id).isNotNull();
         assertThat(entry.actorId).isEqualTo(actorId);
-        assertThat(entry.previousKeyRef).isEqualTo(oldKey.keyRef());
-        assertThat(entry.newKeyRef).isEqualTo(newKey.keyRef());
+        assertThat(entry.previousKeyRef).isEqualTo(oldKeyRef);
+        assertThat(entry.newKeyRef).isEqualTo(newKeyRef);
         assertThat(entry.reason).isEqualTo(KeyRotationReason.SCHEDULED);
         assertThat(entry.entryType).isEqualTo(LedgerEntryType.COMMAND);
     }
@@ -54,10 +55,10 @@ class KeyRotationServiceIT {
     @Transactional
     void recordRotation_subjectIdIsDeterministicFromActorId() throws Exception {
         final String actorId = "claude:auditor@v1";
-        final SigningKey oldKey = newKey();
+        final String oldKeyRef = newKeyRef();
 
         final KeyRotationEntry entry = rotationService.recordRotation(
-                actorId, oldKey.keyRef(), null,
+                actorId, oldKeyRef, null,
                 KeyRotationReason.COMPROMISED, Instant.now());
 
         final UUID expectedSubjectId = UUID.nameUUIDFromBytes(
@@ -69,12 +70,12 @@ class KeyRotationServiceIT {
     @Transactional
     void rotationHistory_returnsAllEventsOrdered() throws Exception {
         final String actorId = "claude:reviewer@v2-" + UUID.randomUUID();
-        final SigningKey k1 = newKey();
-        final SigningKey k2 = newKey();
+        final String keyRef1 = newKeyRef();
+        final String keyRef2 = newKeyRef();
 
-        rotationService.recordRotation(actorId, k1.keyRef(), k2.keyRef(),
+        rotationService.recordRotation(actorId, keyRef1, keyRef2,
                 KeyRotationReason.SCHEDULED, Instant.now().minusSeconds(60));
-        rotationService.recordRotation(actorId, k2.keyRef(), null,
+        rotationService.recordRotation(actorId, keyRef2, null,
                 KeyRotationReason.COMPROMISED, Instant.now());
 
         final List<KeyRotationEntry> history = rotationService.rotationHistory(actorId);
@@ -87,20 +88,20 @@ class KeyRotationServiceIT {
     @Transactional
     void compromisedWindows_onlyReturnsCompromisedReason() throws Exception {
         final String actorId = "claude:reviewer@v3-" + UUID.randomUUID();
-        final SigningKey oldKey = newKey();
-        final SigningKey newKey = newKey();
+        final String oldKeyRef = newKeyRef();
+        final String newKeyRef = newKeyRef();
         final Instant compromisedSince = Instant.now().minusSeconds(3600);
 
-        rotationService.recordRotation(actorId, oldKey.keyRef(), newKey.keyRef(),
+        rotationService.recordRotation(actorId, oldKeyRef, newKeyRef,
                 KeyRotationReason.SCHEDULED, Instant.now());
-        rotationService.recordRotation(actorId, oldKey.keyRef(), null,
+        rotationService.recordRotation(actorId, oldKeyRef, null,
                 KeyRotationReason.COMPROMISED, compromisedSince);
 
         final List<CompromisedWindow> windows =
-                rotationService.compromisedWindows(actorId, oldKey.keyRef());
+                rotationService.compromisedWindows(actorId, oldKeyRef);
 
         assertThat(windows).hasSize(1);
-        assertThat(windows.get(0).keyRef()).isEqualTo(oldKey.keyRef());
+        assertThat(windows.get(0).keyRef()).isEqualTo(oldKeyRef);
         assertThat(windows.get(0).effectiveSince()).isEqualTo(compromisedSince);
     }
 
@@ -108,10 +109,10 @@ class KeyRotationServiceIT {
     @Transactional
     void compromisedWindows_emptyWhenNoCompromiseRecord() throws Exception {
         final String actorId = "claude:reviewer@v4-" + UUID.randomUUID();
-        final SigningKey key = newKey();
+        final String keyRef = newKeyRef();
 
         final List<CompromisedWindow> windows =
-                rotationService.compromisedWindows(actorId, key.keyRef());
+                rotationService.compromisedWindows(actorId, keyRef);
 
         assertThat(windows).isEmpty();
     }
