@@ -109,6 +109,7 @@
       <modules>
         <module>examples/order-processing</module>
         <module>examples/trust-score-routing</module>
+        <module>examples/vault-transit-signing</module>
       </modules>
     </profile>
     <profile>
