@@ -109,6 +109,19 @@ class ActorIdentityValidationEnricherTest {
     }
 
     @Test
+    void setsCredentialInvalid() {
+        byte[] key = {1};
+        var vm = new VerificationMethod("id", "Ed25519", key);
+        var doc = new DIDDocument("did:web:x", List.of(vm), List.of("claude:r@v1"));
+        when(resolver.resolve("did:web:x")).thenReturn(Optional.of(doc));
+        when(credValidator.validate("claude:r@v1", "did:web:x"))
+            .thenReturn(Optional.of(CredentialValidationResult.INVALID_SIGNATURE));
+        var e = entry("claude:r@v1", "did:web:x", key);
+        enricher.enrich(e);
+        assertThat(e.pendingIdentityStatus).isEqualTo(IdentityBindingStatus.CREDENTIAL_INVALID);
+    }
+
+    @Test
     void setsCredentialExpired() {
         byte[] key = {1};
         var vm = new VerificationMethod("id", "Ed25519", key);
@@ -122,15 +135,39 @@ class ActorIdentityValidationEnricherTest {
     }
 
     @Test
-    void cacheHitSkipsResolution() {
+    void cacheHitSkipsResolutionAndEventFiring() {
         byte[] key = {1};
         var vm = new VerificationMethod("id", "Ed25519", key);
         var doc = new DIDDocument("did:web:x", List.of(vm), List.of("claude:r@v1"));
         when(resolver.resolve("did:web:x")).thenReturn(Optional.of(doc));
         var e = entry("claude:r@v1", "did:web:x", key);
         enricher.enrich(e);
-        enricher.enrich(e);
-        verify(resolver, times(1)).resolve("did:web:x");
+        enricher.enrich(e); // second call — should use cache
+        verify(resolver, times(1)).resolve("did:web:x"); // resolved once
+        verify(event, times(1)).fireAsync(any()); // event fired once
+    }
+
+    @Test
+    void invalidateSingleActorClearsOnlyThatActor() {
+        byte[] keyA = {1};
+        byte[] keyB = {2};
+        var vmA = new VerificationMethod("idA", "Ed25519", keyA);
+        var vmB = new VerificationMethod("idB", "Ed25519", keyB);
+        var docA = new DIDDocument("did:web:a", List.of(vmA), List.of("actor:a@v1"));
+        var docB = new DIDDocument("did:web:b", List.of(vmB), List.of("actor:b@v1"));
+        when(resolver.resolve("did:web:a")).thenReturn(Optional.of(docA));
+        when(resolver.resolve("did:web:b")).thenReturn(Optional.of(docB));
+        // Prime both caches
+        var eA = entry("actor:a@v1", "did:web:a", keyA);
+        var eB = entry("actor:b@v1", "did:web:b", keyB);
+        enricher.enrich(eA);
+        enricher.enrich(eB);
+        // Invalidate only A
+        enricher.invalidate("actor:a@v1");
+        enricher.enrich(eA);
+        enricher.enrich(eB);
+        verify(resolver, times(2)).resolve("did:web:a"); // A was re-resolved
+        verify(resolver, times(1)).resolve("did:web:b"); // B was not
     }
 
     @Test
