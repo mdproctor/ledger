@@ -2,7 +2,9 @@ package io.casehub.ledger.service.identity;
 
 import io.casehub.ledger.api.spi.identity.DIDDocument;
 import io.casehub.ledger.api.spi.resolve.DIDResolver;
+import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Alternative;
 
 import java.util.Map;
 import java.util.Optional;
@@ -18,6 +20,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * and {@link #clear()} between tests to reset state.
  */
 @ApplicationScoped
+@Alternative
+@Priority(1)
 public class InjectableTestDIDResolver implements DIDResolver {
 
     private final Map<String, DIDDocument> docs = new ConcurrentHashMap<>();
