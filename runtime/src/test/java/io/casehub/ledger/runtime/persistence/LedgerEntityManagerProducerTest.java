@@ -165,6 +165,11 @@ class LedgerEntityManagerProducerTest {
         public AgentSigningConfig agentSigning() {
             throw new UnsupportedOperationException();
         }
+
+        @Override
+        public AgentIdentityConfig agentIdentity() {
+            throw new UnsupportedOperationException();
+        }
     }
 
     private LedgerEntityManagerProducer producerWith(final LedgerConfig config) {

@@ -1,20 +1,24 @@
 package io.casehub.ledger.runtime.service;
 
+import java.util.Comparator;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 
 import org.jboss.logging.Logger;
 
 import io.casehub.ledger.runtime.model.LedgerEntry;
+import io.quarkus.arc.InjectableBean;
+import io.quarkus.arc.InjectableInstance;
 
 /**
  * CDI bean that runs the {@link LedgerEntryEnricher} pipeline on a {@link LedgerEntry}.
  *
  * <p>
- * Enrichers are CDI beans discovered via {@code @Inject @Any Instance<LedgerEntryEnricher>}
- * and invoked in an unspecified order. Each enricher runs in isolation — a thrown exception
+ * Enrichers are CDI beans discovered via {@code @Inject @Any InjectableInstance<LedgerEntryEnricher>}
+ * and invoked in ascending {@code @Priority} order (see {@link LedgerEntryEnricher}).
+ * Each enricher runs in isolation — a thrown exception
  * is logged and swallowed; the pipeline always completes and the save is never blocked.
  *
  * <p>
@@ -28,16 +32,20 @@ public class LedgerEnricherPipeline {
 
     @Inject
     @Any
-    Instance<LedgerEntryEnricher> enrichers;
+    InjectableInstance<LedgerEntryEnricher> enrichers;
 
     public void enrich(final LedgerEntry entry) {
-        for (final LedgerEntryEnricher enricher : enrichers) {
-            try {
-                enricher.enrich(entry);
-            } catch (final Exception ex) {
-                log.warnf("LedgerEntryEnricher %s failed — entry will still be saved: %s",
-                        enricher.getClass().getSimpleName(), ex.getMessage());
-            }
-        }
+        enrichers.handlesStream()
+                .sorted(Comparator.comparingInt(h ->
+                        (h.getBean() instanceof InjectableBean<?> ib) ? ib.getPriority() : Integer.MAX_VALUE))
+                .map(h -> h.get())
+                .forEach(e -> {
+                    try {
+                        e.enrich(entry);
+                    } catch (final Exception ex) {
+                        log.warnf("LedgerEntryEnricher %s failed — entry will still be saved: %s",
+                                e.getClass().getSimpleName(), ex.getMessage());
+                    }
+                });
     }
 }
