@@ -535,4 +535,80 @@ public interface LedgerConfig {
         @WithDefault("1h")
         String checkInterval();
     }
+
+    /**
+     * DID/VC agent identity settings — maps actorIds to DID URIs and controls validation behaviour.
+     *
+     * @return the agent identity sub-configuration
+     */
+    AgentIdentityConfig agentIdentity();
+
+    /** DID/VC agent identity configuration. */
+    interface AgentIdentityConfig {
+
+        /**
+         * Validation mode for DID/VC checks.
+         *
+         * <ul>
+         * <li>{@code WARN} (default) — log a warning and allow the write to proceed.</li>
+         * <li>{@code ENFORCE} — block the write with {@code LedgerIdentityViolationException}.</li>
+         * </ul>
+         *
+         * @return the validation mode (default {@code WARN})
+         */
+        @WithDefault("WARN")
+        ValidationMode validationMode();
+
+        /**
+         * Maps actorId → DID URI. Quote keys with colons in application.properties.
+         *
+         * <p>
+         * Example:
+         * <pre>
+         * casehub.ledger.agent-identity.dids."claude:reviewer@v1"=did:web:example.com:agents:reviewer
+         * </pre>
+         */
+        java.util.Map<String, String> dids();
+
+        /**
+         * TTL for cached DID document resolutions in minutes.
+         *
+         * @return cache TTL in minutes (default 5)
+         */
+        @WithDefault("5")
+        int didResolverCacheTtlMinutes();
+
+        /**
+         * TTL for cached VC validation results in minutes.
+         * {@code EXPIRED} results are never cached — credentials may be renewed between calls.
+         *
+         * @return cache TTL in minutes (default 60)
+         */
+        @WithDefault("60")
+        int credentialCacheTtlMinutes();
+
+        /**
+         * HTTP timeout for {@code WebDIDResolver} in milliseconds.
+         *
+         * @return timeout in milliseconds (default 5000)
+         */
+        @WithDefault("5000")
+        int webResolverTimeoutMs();
+
+        /**
+         * Maximum DID document response size in bytes (SSRF/DoS protection).
+         *
+         * @return max response size in bytes (default 1 MiB)
+         */
+        @WithDefault("1048576")
+        int webResolverMaxResponseBytes();
+
+        /** Validation mode controlling how DID/VC check failures are handled. */
+        enum ValidationMode {
+            /** Log a warning and allow the write to proceed. */
+            WARN,
+            /** Block the write with {@code LedgerIdentityViolationException}. */
+            ENFORCE
+        }
+    }
 }

@@ -26,8 +26,8 @@ class FlywayLocationContractTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.migrationsExecuted)
-                .as("expected all 8 ledger base migrations (V1000-V1007)")
-                .isEqualTo(8);
+                .as("expected all 9 ledger base migrations (V1000-V1008)")
+                .isEqualTo(9);
     }
 
     @Test

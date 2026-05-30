@@ -245,6 +245,42 @@ cannot change faster than attestations arrive.
 
 ---
 
+## Agent DID/VC Identity Binding
+
+`actorId` strings are cryptographically bound to W3C DIDs via a three-SPI pipeline. See ADR 0015.
+
+### Three-SPI strategy model
+
+| SPI | Default | Purpose |
+|---|---|---|
+| `ActorDIDProvider` | `NoOpActorDIDProvider` | Maps actorId → DID URI at write time |
+| `DIDResolver` | `NoOpDIDResolver` | Resolves DID URI → DIDDocument (verificationMethods, alsoKnownAs) |
+| `AgentCredentialValidator` | `NoOpCredentialValidator` | Validates VC binding claim (opt-in VC layer) |
+
+Alternative implementations: `ConfiguredActorDIDProvider` (config-based), `KeyDIDResolver` (did:key, no HTTP), `WebDIDResolver` (did:web, HTTPS with SSRF protection).
+
+### Write path
+
+`ActorDIDEnricher` (@Priority 40) populates `LedgerEntry.actorDid`. `ActorIdentityValidationEnricher` (@Priority 50) validates in five steps: DID resolution → `alsoKnownAs` check → null-key check → key match → VC validation. Sets `entry.pendingIdentityStatus` (transient). Fires `AgentIdentityValidatedEvent` (VALID) or `AgentIdentityViolationEvent` (non-VALID) asynchronously.
+
+`LedgerIdentityEnforcementListener` (`@EntityListeners` on `LedgerEntry`) reads `pendingIdentityStatus` and throws `LedgerIdentityViolationException` when `casehub.ledger.agent-identity.validation-mode=ENFORCE` and result is non-VALID. ENFORCE is JPA-only.
+
+`ActorIdentityBindingObserver` observes async events and persists `ActorIdentityBindingEntry` in a `REQUIRES_NEW` transaction.
+
+### Read path
+
+`AgentIdentityVerificationService.verifyIdentityBinding(LedgerEntry)` → `IdentityVerificationResult`. Checks actorDid presence → agentPublicKey presence → DID resolution → alsoKnownAs → key match. Does NOT re-run VC validation — write-time results are in `ActorIdentityBindingRepository`.
+
+### `ActorIdentityBindingEntry`
+
+`LedgerEntry` subclass (JOINED inheritance, table `actor_identity_binding`). `subjectId = UUID.nameUUIDFromBytes(actorId.getBytes(UTF_8))` — same derivation as `KeyRotationEntry`. Forms a unified actor lifecycle sequence with key rotation events. `entryType = EVENT`.
+
+### Config
+
+`casehub.ledger.agent-identity.*`: `validation-mode` (WARN | ENFORCE), `dids.<actorId>`, `did-resolver-cache-ttl-minutes` (default 5), `credential-cache-ttl-minutes` (default 60), `web-resolver-timeout-ms` (default 5000), `web-resolver-max-response-bytes` (default 1MiB).
+
+---
+
 ## Agent Mesh Topology
 
 Three topologies are possible for deploying `casehub-ledger` across a mesh of LLM agents.

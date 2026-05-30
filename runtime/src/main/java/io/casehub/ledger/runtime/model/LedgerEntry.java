@@ -22,6 +22,9 @@ import jakarta.persistence.InheritanceType;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+
+import io.casehub.ledger.api.model.IdentityBindingStatus;
 
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.LedgerEntryType;
@@ -30,6 +33,7 @@ import io.casehub.ledger.runtime.model.supplement.LedgerSupplement;
 import io.casehub.ledger.runtime.model.supplement.LedgerSupplementSerializer;
 import io.casehub.ledger.runtime.model.supplement.ProvenanceSupplement;
 import io.casehub.ledger.runtime.service.LedgerTraceListener;
+import io.casehub.ledger.runtime.service.identity.LedgerIdentityEnforcementListener;
 
 /**
  * Abstract base for all ledger entries.
@@ -67,7 +71,7 @@ import io.casehub.ledger.runtime.service.LedgerTraceListener;
 @Inheritance(strategy = InheritanceType.JOINED)
 @DiscriminatorColumn(name = "dtype", discriminatorType = DiscriminatorType.STRING)
 @Table(name = "ledger_entry")
-@EntityListeners(LedgerTraceListener.class)
+@EntityListeners({LedgerTraceListener.class, LedgerIdentityEnforcementListener.class})
 public abstract class LedgerEntry {
 
     // ── Core identity ─────────────────────────────────────────────────────────
@@ -169,6 +173,18 @@ public abstract class LedgerEntry {
      */
     @Column(name = "agent_key_ref")
     public String agentKeyRef;
+
+    /** DID URI bound to this entry's actorId at write time. Null when no binding is configured. */
+    @Column(name = "actor_did")
+    public String actorDid;
+
+    /**
+     * Set by ActorIdentityValidationEnricher during enrichment — NOT persisted.
+     * Read by LedgerIdentityEnforcementListener to enforce ENFORCE mode after enrichment runs.
+     * Never null when actorDid is set and enrichment completed.
+     */
+    @Transient
+    public IdentityBindingStatus pendingIdentityStatus;
 
     // ── Supplements ───────────────────────────────────────────────────────────
 
