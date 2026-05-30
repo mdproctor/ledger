@@ -7,6 +7,7 @@ import io.casehub.ledger.api.spi.identity.VerificationMethod;
 import io.casehub.ledger.api.spi.resolve.DIDResolver;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
 
@@ -39,6 +40,7 @@ import java.util.regex.Pattern;
  * </ul>
  */
 @ApplicationScoped
+@Alternative
 public class WebDIDResolver implements DIDResolver {
 
     private static final Logger LOG = Logger.getLogger(WebDIDResolver.class);

@@ -4,6 +4,7 @@ import io.casehub.ledger.api.spi.identity.DIDDocument;
 import io.casehub.ledger.api.spi.identity.VerificationMethod;
 import io.casehub.ledger.api.spi.resolve.DIDResolver;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Alternative;
 import org.jboss.logging.Logger;
 
 import java.util.Base64;
@@ -19,6 +20,7 @@ import java.util.Optional;
  * Use TestDIDResolver in tests that require alsoKnownAs.
  */
 @ApplicationScoped
+@Alternative
 public class KeyDIDResolver implements DIDResolver {
 
     private static final Logger LOG = Logger.getLogger(KeyDIDResolver.class);
