@@ -15,6 +15,7 @@ import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.KeyRotationEntry;
 import io.casehub.ledger.runtime.repository.KeyRotationRepository;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
+import io.casehub.ledger.runtime.service.identity.ActorIdentityValidationEnricher;
 import io.casehub.ledger.runtime.service.model.CompromisedWindow;
 
 /**
@@ -32,6 +33,9 @@ public class KeyRotationService {
 
     @Inject
     LedgerEntryRepository ledgerRepo;
+
+    @Inject
+    ActorIdentityValidationEnricher identityEnricher;
 
     /**
      * Record a signing key rotation event.
@@ -62,7 +66,11 @@ public class KeyRotationService {
         entry.newKeyRef = newKeyRef;
         entry.reason = reason;
         entry.effectiveSince = effectiveSince;
-        return (KeyRotationEntry) ledgerRepo.save(entry);
+        final KeyRotationEntry persisted = (KeyRotationEntry) ledgerRepo.save(entry);
+        // Invalidates the actorId's cached IdentityBindingStatus — forces re-validation on next write.
+        // Issue #103 will replace this direct call with CDI event-driven invalidation.
+        identityEnricher.invalidate(actorId);
+        return persisted;
     }
 
     /** All rotation events for an actor, ordered by {@code occurredAt} ascending. */

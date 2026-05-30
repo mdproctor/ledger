@@ -6,6 +6,19 @@ import io.casehub.ledger.runtime.model.LedgerEntry;
  * SPI for auto-populating fields on {@link LedgerEntry} at persist time.
  *
  * <p>
+ * <strong>Ordering:</strong> Enrichers are invoked in ascending {@code @Priority} order
+ * by {@link LedgerEnricherPipeline}. All implementations MUST carry a
+ * {@code @jakarta.annotation.Priority} annotation. An enricher without {@code @Priority}
+ * sorts last ({@code Integer.MAX_VALUE}). Assigned priorities in casehub-ledger:
+ * <ul>
+ *   <li>10 — TraceIdEnricher</li>
+ *   <li>20 — AgentSignatureEnricher</li>
+ *   <li>30 — ProvenanceCaptureEnricher</li>
+ *   <li>40 — ActorDIDEnricher (added in #81)</li>
+ *   <li>50 — ActorIdentityValidationEnricher (added in #81)</li>
+ * </ul>
+ *
+ * <p>
  * Implementations are CDI beans discovered via {@code @Inject @Any Instance<LedgerEntryEnricher>}
  * and invoked in the {@code @PrePersist} pipeline. Implementations must be idempotent and
  * non-fatal — a thrown exception is logged and swallowed; the persist is never blocked.

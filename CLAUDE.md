@@ -123,7 +123,7 @@ Domain logic is NOT in this extension — it lives in consumers via JPA JOINED s
 
 Each consumer defines its own subclass and its own Flyway migration for the subclass table.
 The base tables (`ledger_entry`, `ledger_attestation`, `actor_trust_score`) are defined here
-in V1000–V1007 and always present when `casehub-ledger` is on the classpath.
+in V1000–V1008 and always present when `casehub-ledger` is on the classpath.
 
 **Design documentation:** `docs/DESIGN.md` covers entity model, architecture, SPI contracts, and configuration. `docs/DESIGN-capabilities.md` covers Merkle MMR, PROV-DM export, agent identity model, and agent mesh topology.
 
@@ -201,17 +201,21 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │   └── src/main/java/io/casehub/ledger/runtime/
 │       ├── config/LedgerConfig.java         — @ConfigMapping(prefix = "casehub.ledger")
 │       ├── model/
-│       │   ├── LedgerEntry.java             — abstract base entity (JOINED inheritance); agentSignature + agentPublicKey + agentKeyRef for bilateral signing (V1005/V1006)
+│       │   ├── LedgerEntry.java             — abstract base entity (JOINED inheritance); agentSignature + agentPublicKey + agentKeyRef for bilateral signing (V1005/V1006); actorDid + @Transient pendingIdentityStatus (V1008)
 │       │   ├── LedgerAttestation.java       — peer attestation entity
 │       │   ├── ActorTrustScore.java         — trust score entity; four ScoreType values (GLOBAL|CAPABILITY|DIMENSION|CAPABILITY_DIMENSION) × two-column key (capability_key, dimension_key); see ADR 0010
 │       │   ├── LedgerMerkleFrontier.java    — Merkle frontier node entity (log₂(N) rows per subject)
 │       │   ├── LedgerEntryArchiveRecord.java — archive snapshot record for retention-deleted entries (V1003)
 │       │   ├── KeyRotationEntry.java         — LedgerEntry subclass: key rotation/revocation event; subjectId=UUID.nameUUIDFromBytes(actorId); see ADR 0012
+│       │   ├── ActorIdentityBindingEntry.java — LedgerEntry subclass: DID/VC binding validation event; subjectId=nameUUIDFromBytes(actorId); entryType=EVENT; see ADR 0015
 │       │   ├── LedgerEntryType.java         — COMMAND | EVENT | ATTESTATION (api module)
 │       │   ├── ActorType.java               — HUMAN | AGENT | SYSTEM (api module)
 │       │   ├── KeyRotationReason.java       — SCHEDULED | COMPROMISED (api module); NIST SP 800-57 lifecycle distinction
 │       │   ├── AttestationVerdict.java      — SOUND | FLAGGED | ENDORSED | CHALLENGED (api module)
 │       │   ├── CapabilityTag.java           — sentinel constants: GLOBAL = "*" for cross-capability attestations (api module)
+│       │   ├── IdentityBindingStatus.java  — VALID | UNSIGNED | DID_UNRESOLVABLE | IDENTITY_MISMATCH | KEY_MISMATCH | CREDENTIAL_EXPIRED | CREDENTIAL_INVALID (api module)
+│       │   ├── IdentityVerificationResult.java  — VALID | UNVERIFIABLE | UNSIGNED | DID_UNRESOLVABLE | IDENTITY_MISMATCH | KEY_MISMATCH (api module)
+│       │   ├── CredentialValidationResult.java  — VALID | EXPIRED | INVALID_SIGNATURE | ISSUER_UNKNOWN | NOT_FOUND (api module)
 │       │   ├── ActorIdentity.java           — token↔identity mapping for pseudonymisation
 │       │   └── supplement/
 │       │       ├── LedgerSupplement.java        — abstract base (JOINED inheritance)
@@ -224,7 +228,9 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── ActorTrustScoreRepository.java     — SPI
 │       │   ├── KeyRotationRepository.java         — SPI: query-only (findByActorId, findCompromisedByActorIdAndKeyRef); save via LedgerEntryRepository
 │       │   ├── ReactiveKeyRotationRepository.java — reactive SPI: same two query methods with Uni<List<>> returns; no bundled JPA impl — consumers provide; test suite uses BlockingReactiveKeyRotationRepository shim
+│       │   ├── ActorIdentityBindingRepository.java         — SPI: latestBindingFor / bindingHistoryFor / save
 │       │   └── jpa/                              — JPA implementations (EntityManager-based)
+│       │       └── JpaActorIdentityBindingRepository.java
 │       ├── service/
 │       │   ├── LedgerEntryEnricher.java         — SPI: pluggable @PrePersist enrichment pipeline
 │       │   ├── TraceIdEnricher.java             — auto-populates traceId from active OTel span
@@ -298,6 +304,22 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │       ├── ProvenanceCaptureEnricher.java   — LedgerEntryEnricher: attaches ProvenanceSupplement from active context
 │       │       ├── ProvenanceContext.java           — @ApplicationScoped ThreadLocal stack; supports nested @ProvenanceCapture scopes
 │       │       └── SourceEntityId.java              — parameter annotation: marks the UUID to use as sourceEntityId
+│       │   └── identity/
+│       │       ├── AbstractCachingIdentityProvider.java  — TTL-capable generic cache base with atomic eviction; put() for external-driven caches
+│       │       ├── ActorDIDEnricher.java                 — @Priority(40) enricher: populates LedgerEntry.actorDid from ActorDIDProvider
+│       │       ├── ActorIdentityBindingObserver.java     — @ObservesAsync → @Transactional(REQUIRES_NEW) persistence of ActorIdentityBindingEntry
+│       │       ├── ActorIdentityValidationEnricher.java  — @Priority(50) enricher: full DID/key/VC validation pipeline; sets pendingIdentityStatus
+│       │       ├── AgentIdentityValidatedEvent.java      — CDI async event record: VALID binding result
+│       │       ├── AgentIdentityViolationEvent.java      — CDI async event record: non-VALID binding result
+│       │       ├── AgentIdentityVerificationService.java — read-path: verifyIdentityBinding(LedgerEntry) → IdentityVerificationResult
+│       │       ├── ConfiguredActorDIDProvider.java       — @Alternative: config-based actorId→DID mapping
+│       │       ├── KeyDIDResolver.java                   — @Alternative: did:key decoder (no HTTP, no alsoKnownAs)
+│       │       ├── LedgerIdentityEnforcementListener.java — @EntityListeners @PrePersist: ENFORCE mode gate (JPA-only)
+│       │       ├── LedgerIdentityViolationException.java — thrown by enforcement listener in ENFORCE mode
+│       │       ├── NoOpActorDIDProvider.java             — @DefaultBean: always returns empty
+│       │       ├── NoOpCredentialValidator.java          — @DefaultBean: skips VC validation
+│       │       ├── NoOpDIDResolver.java                  — @DefaultBean: always returns empty
+│       │       └── WebDIDResolver.java                   — @Alternative: did:web HTTPS resolver with SSRF protection
 │       └── privacy/
 │           ├── ActorIdentityProvider.java   — SPI: tokenise/resolve/erase actor identities
 │           ├── DecisionContextSanitiser.java — SPI: sanitise decisionContext JSON before persist
@@ -312,7 +334,8 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       ├── V1004__actor_identity.sql        — actor_identity pseudonymisation table
 │       ├── V1005__agent_signature.sql       — agent_signature + agent_public_key BYTEA nullable on ledger_entry; CHECK constraint enforces pair nullability
 │       ├── V1006__agent_key_ref.sql         — agent_key_ref TEXT on ledger_entry; CHECK enforces null iff agent_signature null
-│       └── V1007__key_rotation_entry.sql    — key_rotation_entry table (KeyRotationEntry subclass: previous_key_ref, new_key_ref, reason, effective_since)
+│       ├── V1007__key_rotation_entry.sql    — key_rotation_entry table (KeyRotationEntry subclass: previous_key_ref, new_key_ref, reason, effective_since)
+│       └── V1008__actor_identity_binding.sql        — actor_did TEXT nullable on ledger_entry; actor_identity_binding join table
 └── deployment/
 │   └── src/main/java/io/casehub/ledger/deployment/
 │       ├── LedgerBuildTimeConfig.java       — @ConfigRoot(BUILD_TIME): casehub.ledger.reactive.enabled (default false)
@@ -386,7 +409,7 @@ casehub-work and casehub-qhorus are siblings — neither depends on the other. B
 ## Schema Convention
 
 **No existing installations** — there are no deployed instances of `casehub-ledger` in production.
-All schema changes go directly into the base migration files (V1000–V1007) or into a new base
+All schema changes go directly into the base migration files (V1000–V1008) or into a new base
 migration file. Do NOT create incremental migration scripts to evolve the schema. Rewrite the
 relevant migration file in place. Treat every schema change as a clean-slate design decision.
 

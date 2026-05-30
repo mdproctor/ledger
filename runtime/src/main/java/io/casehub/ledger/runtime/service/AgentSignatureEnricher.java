@@ -1,5 +1,6 @@
 package io.casehub.ledger.runtime.service;
 
+import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -17,6 +18,7 @@ import io.casehub.ledger.runtime.model.LedgerEntry;
  * the signer are swallowed so a key store failure never blocks a ledger write.
  */
 @ApplicationScoped
+@Priority(20)
 public class AgentSignatureEnricher implements LedgerEntryEnricher {
 
     private static final Logger LOG = Logger.getLogger(AgentSignatureEnricher.class);
