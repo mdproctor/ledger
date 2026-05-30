@@ -33,6 +33,7 @@ import io.casehub.ledger.runtime.model.supplement.LedgerSupplement;
 import io.casehub.ledger.runtime.model.supplement.LedgerSupplementSerializer;
 import io.casehub.ledger.runtime.model.supplement.ProvenanceSupplement;
 import io.casehub.ledger.runtime.service.LedgerTraceListener;
+import io.casehub.ledger.runtime.service.identity.LedgerIdentityEnforcementListener;
 
 /**
  * Abstract base for all ledger entries.
@@ -70,7 +71,7 @@ import io.casehub.ledger.runtime.service.LedgerTraceListener;
 @Inheritance(strategy = InheritanceType.JOINED)
 @DiscriminatorColumn(name = "dtype", discriminatorType = DiscriminatorType.STRING)
 @Table(name = "ledger_entry")
-@EntityListeners(LedgerTraceListener.class)
+@EntityListeners({LedgerTraceListener.class, LedgerIdentityEnforcementListener.class})
 public abstract class LedgerEntry {
 
     // ── Core identity ─────────────────────────────────────────────────────────
