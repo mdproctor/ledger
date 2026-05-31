@@ -247,8 +247,9 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── AgentKeyProvider.java            — SPI: per-actorId SigningKey for bilateral entry signing; signingKey(actorId) → Optional<SigningKey>; see ADR 0011
 │       │   ├── ConfiguredAgentKeyProvider.java  — @DefaultBean: loads PKCS#8 private + X.509 public PEM per actorId from casehub.ledger.agent-signing.keys.*
 │       │   ├── AgentSignatureEnricher.java      — LedgerEntryEnricher: signs canonicalBytes() at @PrePersist, stores agentSignature + agentPublicKey + agentKeyRef
-│       │   ├── KeyRotationService.java          — CDI bean: recordRotation / rotationHistory / compromisedWindows (blocking only; no reactive imports)
-│       │   ├── ReactiveKeyRotationService.java  — compromisedWindowsAsync / rotationHistoryAsync / recordRotationAsync (Uni<T>); excluded when casehub.ledger.reactive.enabled=false
+│       │   ├── AgentKeyRotatedEvent.java        — CDI event record fired by KeyRotationService/ReactiveKeyRotationService after rotation is persisted; observers (ActorIdentityValidationEnricher, ScimActorDIDProvider) invalidate their caches
+│       │   ├── KeyRotationService.java          — CDI bean: recordRotation fires AgentKeyRotatedEvent after persist; rotationHistory / compromisedWindows
+│       │   ├── ReactiveKeyRotationService.java  — compromisedWindowsAsync / rotationHistoryAsync / recordRotationAsync (Uni<T>); fires AgentKeyRotatedEvent via fireAsync (fire-and-forget); excluded when casehub.ledger.reactive.enabled=false
 │       │   ├── LedgerProvExportService.java      — W3C PROV-DM JSON-LD export (CDI bean)
 │       │   ├── LedgerProvSerializer.java         — PROV-DM serialisation utility
 │       │   ├── LedgerEntryArchiver.java          — archive record JSON serialisation for retention
@@ -312,6 +313,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │       ├── AgentIdentityValidatedEvent.java      — CDI async event record: VALID binding result
 │       │       ├── AgentIdentityViolationEvent.java      — CDI async event record: non-VALID binding result
 │       │       ├── AgentIdentityVerificationService.java — read-path: verifyIdentityBinding(LedgerEntry) → IdentityVerificationResult
+│       │       ├── ReactiveAgentIdentityVerificationService.java — @DefaultBean @Unremovable: Uni<IdentityVerificationResult> bridge wrapping blocking service on worker pool; no Hibernate Reactive dep, always active
 │       │       ├── ConfiguredActorDIDProvider.java       — @Alternative: config-based actorId→DID mapping
 │       │       ├── KeyDIDResolver.java                   — @Alternative: did:key decoder (no HTTP, no alsoKnownAs)
 │       │       ├── LedgerIdentityEnforcementListener.java — @EntityListeners @PrePersist: ENFORCE mode gate (JPA-only)
@@ -319,6 +321,8 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │       ├── NoOpActorDIDProvider.java             — @DefaultBean: always returns empty
 │       │       ├── NoOpCredentialValidator.java          — @DefaultBean: skips VC validation
 │       │       ├── NoOpDIDResolver.java                  — @DefaultBean: always returns empty
+│       │       ├── ScimAgentResource.java                — record(String did): cached result of a SCIM2 agent lookup
+│       │       ├── ScimActorDIDProvider.java             — @ApplicationScoped @Alternative: resolves actorId→DID via SCIM2 Agent endpoint; TTL cache; @Observes AgentKeyRotatedEvent for invalidation; activate via quarkus.arc.selected-alternatives
 │       │       └── WebDIDResolver.java                   — @Alternative: did:web HTTPS resolver with SSRF protection
 │       └── privacy/
 │           ├── ActorIdentityProvider.java   — SPI: tokenise/resolve/erase actor identities

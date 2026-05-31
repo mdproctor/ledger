@@ -603,6 +603,56 @@ public interface LedgerConfig {
         @WithDefault("1048576")
         int webResolverMaxResponseBytes();
 
+        /** SCIM2 agent identity resolver configuration. */
+        ScimConfig scim();
+
+        /** SCIM2-based agent identity resolution. */
+        interface ScimConfig {
+
+            /**
+             * Base URL of the SCIM2 server (e.g. {@code https://idp.example.com}).
+             * Must use HTTPS — validated at first use via {@code @PostConstruct}.
+             * Optional so that Quarkus config validation does not fail at startup when the
+             * SCIM provider is not activated (SmallRye rejects empty-string defaults for
+             * plain {@code String} config mappings).
+             */
+            java.util.Optional<String> endpoint();
+
+            /**
+             * Bearer token for the {@code Authorization} header.
+             * Static deploy-time credential — not a {@code Preferences} key.
+             * Optional so that Quarkus config validation does not fail at startup when the
+             * SCIM provider is not activated (SmallRye rejects empty-string defaults for
+             * plain {@code String} config mappings).
+             */
+            java.util.Optional<String> authToken();
+
+            /**
+             * HTTP connect + read timeout in milliseconds.
+             *
+             * @return timeout in milliseconds (default 5000)
+             */
+            @WithDefault("5000")
+            int timeoutMs();
+
+            /**
+             * TTL for cached SCIM lookups in minutes.
+             * Separate from {@code didResolverCacheTtlMinutes} — SCIM is not a DID resolver.
+             *
+             * @return cache TTL in minutes (default 5)
+             */
+            @WithDefault("5")
+            int cacheTtlMinutes();
+
+            /**
+             * Whether to enforce HTTPS for the SCIM endpoint.
+             * Set to {@code false} only in test environments using plain HTTP (e.g. WireMock).
+             * Default: {@code true}.
+             */
+            @WithDefault("true")
+            boolean requireHttps();
+        }
+
         /** Validation mode controlling how DID/VC check failures are handled. */
         enum ValidationMode {
             /** Log a warning and allow the write to proceed. */
