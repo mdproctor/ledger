@@ -257,7 +257,9 @@ cannot change faster than attestations arrive.
 | `DIDResolver` | `NoOpDIDResolver` | Resolves DID URI → DIDDocument (verificationMethods, alsoKnownAs) |
 | `AgentCredentialValidator` | `NoOpCredentialValidator` | Validates VC binding claim (opt-in VC layer) |
 
-Alternative implementations: `ConfiguredActorDIDProvider` (config-based), `KeyDIDResolver` (did:key, no HTTP), `WebDIDResolver` (did:web, HTTPS with SSRF protection).
+Alternative implementations: `ConfiguredActorDIDProvider` (config-based), `KeyDIDResolver` (did:key, no HTTP), `WebDIDResolver` (did:web, HTTPS with SSRF protection), `ScimActorDIDProvider` (SCIM2 enterprise IdP — `@Alternative`, activate via `quarkus.arc.selected-alternatives`; queries `GET /scim/v2/Agents?filter=externalId eq "{actorId}"` and caches with TTL; see `docs/integration/scim2-agent-identity.md` in casehubio/parent).
+
+**Cache invalidation:** `AgentKeyRotatedEvent` (CDI event fired by `KeyRotationService` after persist) is observed by `ActorIdentityValidationEnricher` and `ScimActorDIDProvider` to evict their per-actorId caches. `ReactiveKeyRotationService` fires via `fireAsync()` (fire-and-forget). `AbstractCachingAgentSigner` exposes `onKeyRotated(AgentKeyRotatedEvent)` as a plain method for concrete CDI subclasses to wire as `@Observes`.
 
 ### Write path
 
@@ -271,6 +273,8 @@ Alternative implementations: `ConfiguredActorDIDProvider` (config-based), `KeyDI
 
 `AgentIdentityVerificationService.verifyIdentityBinding(LedgerEntry)` → `IdentityVerificationResult`. Checks actorDid presence → agentPublicKey presence → DID resolution → alsoKnownAs → key match. Does NOT re-run VC validation — write-time results are in `ActorIdentityBindingRepository`.
 
+`ReactiveAgentIdentityVerificationService.verifyIdentityBindingAsync(LedgerEntry)` → `Uni<IdentityVerificationResult>`. `@DefaultBean @Unremovable` bridge wrapping the blocking service on the Vert.x worker pool. Always active (no Hibernate Reactive dep, no `@IfBuildProperty` gate).
+
 ### `ActorIdentityBindingEntry`
 
 `LedgerEntry` subclass (JOINED inheritance, table `actor_identity_binding`). `subjectId = UUID.nameUUIDFromBytes(actorId.getBytes(UTF_8))` — same derivation as `KeyRotationEntry`. Forms a unified actor lifecycle sequence with key rotation events. `entryType = EVENT`.
@@ -278,6 +282,8 @@ Alternative implementations: `ConfiguredActorDIDProvider` (config-based), `KeyDI
 ### Config
 
 `casehub.ledger.agent-identity.*`: `validation-mode` (WARN | ENFORCE), `dids.<actorId>`, `did-resolver-cache-ttl-minutes` (default 5), `credential-cache-ttl-minutes` (default 60), `web-resolver-timeout-ms` (default 5000), `web-resolver-max-response-bytes` (default 1MiB).
+
+`casehub.ledger.agent-identity.scim.*` (for `ScimActorDIDProvider @Alternative`): `endpoint` (`Optional<String>`), `auth-token` (`Optional<String>`), `timeout-ms` (default 5000), `cache-ttl-minutes` (default 5), `require-https` (default `true`). Activate the provider via `quarkus.arc.selected-alternatives=io.casehub.ledger.runtime.service.identity.ScimActorDIDProvider`. When active, `dids.*` config-based mappings are superseded.
 
 ---
 
