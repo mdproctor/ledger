@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import io.casehub.ledger.api.model.KeyRotationReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.KeyRotationEntry;
+import io.casehub.ledger.runtime.service.AgentKeyRotatedEvent;
 import io.casehub.ledger.runtime.service.AgentSignature;
 import io.casehub.ledger.runtime.service.KeyRotationService;
 import io.casehub.ledger.runtime.service.ReactiveKeyRotationService;
@@ -45,6 +46,9 @@ class ReactiveKeyRotationServiceIT {
 
     @Inject
     KeyRotationService rotationService;
+
+    @Inject
+    AgentKeyRotatedEventCapture eventCapture;
 
     private String newKeyRef() throws Exception {
         return AgentSignature.signWith(
@@ -138,5 +142,24 @@ class ReactiveKeyRotationServiceIT {
         final UUID expectedSubjectId = UUID.nameUUIDFromBytes(
                 actorId.getBytes(java.nio.charset.StandardCharsets.UTF_8));
         assertThat(entry.subjectId).isEqualTo(expectedSubjectId);
+    }
+
+    @Test
+    @Transactional
+    void recordRotationAsync_firesAgentKeyRotatedEvent() throws Exception {
+        eventCapture.reset();
+        final String actorId = "claude:async-event-test-" + UUID.randomUUID();
+        final String oldRef = newKeyRef();
+        final String newRef = newKeyRef();
+
+        reactiveRotationService.recordRotationAsync(
+                actorId, oldRef, newRef,
+                KeyRotationReason.SCHEDULED, Instant.now())
+                .await().atMost(Duration.ofSeconds(5));
+
+        // fireAsync is fire-and-forget; give it a moment to complete
+        Thread.sleep(200);
+        assertThat(eventCapture.events()).hasSize(1);
+        assertThat(eventCapture.events().get(0).actorId()).isEqualTo(actorId);
     }
 }
