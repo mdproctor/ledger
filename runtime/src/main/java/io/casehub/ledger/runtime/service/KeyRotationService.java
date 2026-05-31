@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
@@ -15,7 +16,6 @@ import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.KeyRotationEntry;
 import io.casehub.ledger.runtime.repository.KeyRotationRepository;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
-import io.casehub.ledger.runtime.service.identity.ActorIdentityValidationEnricher;
 import io.casehub.ledger.runtime.service.model.CompromisedWindow;
 
 /**
@@ -24,6 +24,7 @@ import io.casehub.ledger.runtime.service.model.CompromisedWindow;
  * <p>
  * Each rotation is persisted as a {@link KeyRotationEntry} via {@link LedgerEntryRepository#save},
  * ensuring Merkle chain inclusion, pseudonymisation, and enricher pipeline execution.
+ * After persisting, fires {@link AgentKeyRotatedEvent} so observers can invalidate their caches.
  */
 @ApplicationScoped
 public class KeyRotationService {
@@ -35,7 +36,7 @@ public class KeyRotationService {
     LedgerEntryRepository ledgerRepo;
 
     @Inject
-    ActorIdentityValidationEnricher identityEnricher;
+    Event<AgentKeyRotatedEvent> keyRotatedEvent;
 
     /**
      * Record a signing key rotation event.
@@ -67,9 +68,7 @@ public class KeyRotationService {
         entry.reason = reason;
         entry.effectiveSince = effectiveSince;
         final KeyRotationEntry persisted = (KeyRotationEntry) ledgerRepo.save(entry);
-        // Invalidates the actorId's cached IdentityBindingStatus — forces re-validation on next write.
-        // Issue #103 will replace this direct call with CDI event-driven invalidation.
-        identityEnricher.invalidate(actorId);
+        keyRotatedEvent.fire(new AgentKeyRotatedEvent(actorId, previousKeyRef, newKeyRef));
         return persisted;
     }
 
@@ -89,5 +88,4 @@ public class KeyRotationService {
                 .map(e -> new CompromisedWindow(e.previousKeyRef, e.effectiveSince))
                 .toList();
     }
-
 }

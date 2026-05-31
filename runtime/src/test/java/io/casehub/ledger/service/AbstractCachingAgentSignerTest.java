@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.runtime.service.AbstractCachingAgentSigner;
+import io.casehub.ledger.runtime.service.AgentKeyRotatedEvent;
 import io.casehub.ledger.runtime.service.AgentSignature;
 
 class AbstractCachingAgentSignerTest {
@@ -91,5 +92,19 @@ class AbstractCachingAgentSignerTest {
     void returnsPresent_whenContextPresent() {
         final TestSigner signer = new TestSigner();
         assertThat(signer.sign("actor1", new byte[]{1})).isPresent();
+    }
+
+    @Test
+    void onKeyRotated_invalidatesOnlyTargetActor() {
+        final TestSigner signer = new TestSigner();
+        signer.sign("actor1", new byte[]{1});
+        signer.sign("actor2", new byte[]{1});
+        assertThat(signer.loadCount.get()).isEqualTo(2);
+
+        signer.onKeyRotated(new AgentKeyRotatedEvent("actor1", "oldRef", "newRef"));
+
+        signer.sign("actor1", new byte[]{1}); // cache was evicted — reloads
+        signer.sign("actor2", new byte[]{1}); // cache intact — no reload
+        assertThat(signer.loadCount.get()).isEqualTo(3);
     }
 }

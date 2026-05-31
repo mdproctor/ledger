@@ -7,6 +7,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 
 import io.smallrye.mutiny.Uni;
@@ -28,9 +29,8 @@ import io.casehub.ledger.runtime.service.model.CompromisedWindow;
  * must not depend on this bean.
  *
  * <p>
- * Reactive transaction management is the caller's responsibility. This bean
- * carries no {@code @Transactional} annotation — callers must ensure an appropriate
- * reactive transaction context when calling {@link #recordRotationAsync}.
+ * Fires {@link AgentKeyRotatedEvent} via {@code fireAsync()} after the Uni persist completes.
+ * Fire-and-forget: observer failure is invisible to the Uni pipeline — benign for cache eviction.
  */
 @ApplicationScoped
 public class ReactiveKeyRotationService {
@@ -41,6 +41,9 @@ public class ReactiveKeyRotationService {
     /** Used only by {@link #recordRotationAsync} — saves go through the ledger pipeline. */
     @Inject
     ReactiveLedgerEntryRepository reactiveLedgerRepo;
+
+    @Inject
+    Event<AgentKeyRotatedEvent> keyRotatedEvent;
 
     /**
      * Compromise windows for a specific actor and keyRef.
@@ -87,6 +90,10 @@ public class ReactiveKeyRotationService {
         entry.newKeyRef = newKeyRef;
         entry.reason = reason;
         entry.effectiveSince = effectiveSince;
-        return reactiveLedgerRepo.save(entry).map(e -> (KeyRotationEntry) e);
+        return reactiveLedgerRepo.save(entry)
+                .map(e -> (KeyRotationEntry) e)
+                // Fire-and-forget: observer failure is invisible; benign for cache eviction
+                .invoke(e -> keyRotatedEvent.fireAsync(
+                        new AgentKeyRotatedEvent(actorId, previousKeyRef, newKeyRef)));
     }
 }
