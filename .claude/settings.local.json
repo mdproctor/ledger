@@ -187,7 +187,9 @@
       "WebFetch(domain:quarkus.io)",
       "Bash(curl -s https://raw.githubusercontent.com/casehubio/parent/main/docs/PLATFORM.md)",
       "Skill(project-init)",
-      "Bash(xargs '-I{}' python3 -c ' *)"
+      "Bash(xargs '-I{}' python3 -c ' *)",
+      "Bash(xargs -I{} basename {})",
+      "Skill(write-content)"
     ]
   }
 }
