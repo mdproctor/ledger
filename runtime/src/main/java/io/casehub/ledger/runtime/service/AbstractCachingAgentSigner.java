@@ -62,4 +62,22 @@ public abstract class AbstractCachingAgentSigner<C> implements AgentSigner {
     public void invalidate(final String actorId) {
         contextCache.remove(actorId);
     }
+
+    /**
+     * Invalidates the cached context for the rotated actor.
+     *
+     * <p>Concrete {@code @ApplicationScoped} CDI subclasses should expose this as a CDI observer:
+     * <pre>
+     *   {@literal @}Observes
+     *   public void onKeyRotated(AgentKeyRotatedEvent event) {
+     *       super.onKeyRotated(event);
+     *   }
+     * </pre>
+     * Direct {@code @Observes} on this abstract class is intentionally omitted: Quarkus Arc
+     * registers abstract classes with observer methods as {@code @Dependent} beans, creating
+     * an ambiguous {@link AgentSigner} resolution that breaks {@code @InjectMock} in tests.
+     */
+    public void onKeyRotated(final AgentKeyRotatedEvent event) {
+        invalidate(event.actorId());
+    }
 }

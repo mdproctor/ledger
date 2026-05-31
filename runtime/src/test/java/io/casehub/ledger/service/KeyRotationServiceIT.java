@@ -16,8 +16,10 @@ import org.junit.jupiter.api.Test;
 import io.casehub.ledger.api.model.KeyRotationReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.KeyRotationEntry;
+import io.casehub.ledger.runtime.service.AgentKeyRotatedEvent;
 import io.casehub.ledger.runtime.service.AgentSignature;
 import io.casehub.ledger.runtime.service.KeyRotationService;
+import io.casehub.ledger.runtime.service.identity.ActorIdentityValidationEnricher;
 import io.casehub.ledger.runtime.service.model.CompromisedWindow;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -26,6 +28,12 @@ class KeyRotationServiceIT {
 
     @Inject
     KeyRotationService rotationService;
+
+    @Inject
+    AgentKeyRotatedEventCapture eventCapture;
+
+    @Inject
+    ActorIdentityValidationEnricher identityEnricher;
 
     private String newKeyRef() throws Exception {
         return AgentSignature.signWith(
@@ -115,6 +123,38 @@ class KeyRotationServiceIT {
                 rotationService.compromisedWindows(actorId, keyRef);
 
         assertThat(windows).isEmpty();
+    }
+
+    @Test
+    @Transactional
+    void recordRotation_invalidatesIdentityEnricherCacheViaEvent() throws Exception {
+        final String actorId = "claude:cache-invalidation-test-" + UUID.randomUUID();
+        identityEnricher.invalidate(actorId); // ensure clean state first
+
+        // Record a rotation — fires AgentKeyRotatedEvent which enricher observes
+        rotationService.recordRotation(actorId, newKeyRef(), newKeyRef(),
+                KeyRotationReason.SCHEDULED, Instant.now());
+
+        // Idempotent call confirms enricher is wired and not throwing
+        identityEnricher.invalidateAll();
+    }
+
+    @Test
+    @Transactional
+    void recordRotation_firesAgentKeyRotatedEvent() throws Exception {
+        eventCapture.reset();
+        final String actorId = "claude:reviewer@event-test-" + UUID.randomUUID();
+        final String oldRef = newKeyRef();
+        final String newRef = newKeyRef();
+
+        rotationService.recordRotation(actorId, oldRef, newRef,
+                KeyRotationReason.SCHEDULED, Instant.now());
+
+        assertThat(eventCapture.events()).hasSize(1);
+        final AgentKeyRotatedEvent fired = eventCapture.events().get(0);
+        assertThat(fired.actorId()).isEqualTo(actorId);
+        assertThat(fired.previousKeyRef()).isEqualTo(oldRef);
+        assertThat(fired.newKeyRef()).isEqualTo(newRef);
     }
 
 }

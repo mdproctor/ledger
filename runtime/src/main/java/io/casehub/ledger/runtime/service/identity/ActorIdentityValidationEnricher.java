@@ -7,10 +7,12 @@ import io.casehub.ledger.api.spi.identity.DIDDocument;
 import io.casehub.ledger.api.spi.resolve.DIDResolver;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.runtime.model.LedgerEntry;
+import io.casehub.ledger.runtime.service.AgentKeyRotatedEvent;
 import io.casehub.ledger.runtime.service.LedgerEntryEnricher;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
+import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
 
@@ -22,7 +24,7 @@ import java.util.Optional;
  * Validates the actorId→DID binding at write time.
  *
  * <p>Cache: per-actorId IdentityBindingStatus. Populated on first miss via computeStatus().
- * Invalidated on key rotation via invalidate(actorId) called from KeyRotationService.
+ * Invalidated on key rotation via {@link AgentKeyRotatedEvent} CDI event observer.
  *
  * <p>Sets {@link LedgerEntry#pendingIdentityStatus} (transient) for
  * {@link LedgerIdentityEnforcementListener}. Fires async CDI events for the binding observer.
@@ -94,6 +96,10 @@ public class ActorIdentityValidationEnricher implements LedgerEntryEnricher {
 
     public void invalidateAll() {
         statusCache.invalidateAll();
+    }
+
+    void onKeyRotated(@Observes final AgentKeyRotatedEvent event) {
+        statusCache.invalidate(event.actorId());
     }
 
     private IdentityBindingStatus computeStatus(final LedgerEntry entry) {
