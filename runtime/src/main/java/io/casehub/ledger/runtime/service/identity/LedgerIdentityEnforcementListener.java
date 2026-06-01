@@ -1,6 +1,6 @@
 package io.casehub.ledger.runtime.service.identity;
 
-import io.casehub.ledger.api.model.IdentityBindingStatus;
+import io.casehub.platform.api.identity.IdentityBindingStatus;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import jakarta.enterprise.context.ApplicationScoped;

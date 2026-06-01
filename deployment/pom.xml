@@ -84,6 +84,16 @@
       <artifactId>quarkus-scheduler-deployment</artifactId>
     </dependency>
 
+    <!-- Config YAML + Jackson — pulled in by casehub-platform-identity -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-config-yaml-deployment</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-jackson-deployment</artifactId>
+    </dependency>
+
     <!-- Testing -->
     <dependency>
       <groupId>io.quarkus</groupId>

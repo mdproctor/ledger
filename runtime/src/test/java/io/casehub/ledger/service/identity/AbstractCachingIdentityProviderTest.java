@@ -1,6 +1,6 @@
 package io.casehub.ledger.service.identity;
 
-import io.casehub.ledger.runtime.service.identity.AbstractCachingIdentityProvider;
+import io.casehub.platform.identity.AbstractCachingIdentityProvider;
 import org.junit.jupiter.api.Test;
 
 import java.time.*;
