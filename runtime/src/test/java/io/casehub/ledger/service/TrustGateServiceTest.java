@@ -304,6 +304,53 @@ class TrustGateServiceTest {
         assertThat(gate.dimensionScores("ghost")).isEmpty();
     }
 
+    private static ActorTrustScoreRepository repoWithCapabilities(
+            final String actorId,
+            final Map<String, Double> capabilityScores) {
+        return new StubRepository(null) {
+            @Override
+            public List<ActorTrustScore> findByActorIdAndScoreType(
+                    final String id, final ScoreType type) {
+                if (!actorId.equals(id) || type != ScoreType.CAPABILITY) {
+                    return List.of();
+                }
+                return capabilityScores.entrySet().stream().map(e -> {
+                    final ActorTrustScore s = new ActorTrustScore();
+                    s.id = UUID.randomUUID();
+                    s.actorId = actorId;
+                    s.scoreType = ScoreType.CAPABILITY;
+                    s.capabilityKey = e.getKey();
+                    s.actorType = ActorType.AGENT;
+                    s.trustScore = e.getValue();
+                    s.lastComputedAt = Instant.now();
+                    return s;
+                }).collect(Collectors.toList());
+            }
+        };
+    }
+
+    // ── allCapabilityScores ────────────────────────────────────────────────────
+
+    @Test
+    void allCapabilityScores_returnsAllCapabilityScores() {
+        final TrustGateService gate = new TrustGateService(
+                repoWithCapabilities("actor-cap",
+                        Map.of("sar-drafting", 0.79, "osint-screening", 0.85)));
+
+        final Map<String, Double> scores = gate.allCapabilityScores("actor-cap");
+
+        assertThat(scores).hasSize(2);
+        assertThat(scores.get("sar-drafting")).isEqualTo(0.79);
+        assertThat(scores.get("osint-screening")).isEqualTo(0.85);
+    }
+
+    @Test
+    void allCapabilityScores_returnsEmptyMap_whenNoCapabilityRows() {
+        final TrustGateService gate = new TrustGateService(emptyRepo());
+
+        assertThat(gate.allCapabilityScores("ghost")).isEmpty();
+    }
+
     // ── dimensionScore ────────────────────────────────────────────────────────
 
     @Test
