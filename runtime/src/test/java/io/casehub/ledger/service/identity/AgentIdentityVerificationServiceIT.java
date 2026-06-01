@@ -10,10 +10,10 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import io.casehub.ledger.api.model.IdentityVerificationResult;
+import io.casehub.platform.api.identity.IdentityVerificationResult;
 import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.api.spi.identity.DIDDocument;
-import io.casehub.ledger.api.spi.identity.VerificationMethod;
+import io.casehub.platform.api.identity.DIDDocument;
+import io.casehub.platform.api.identity.VerificationMethod;
 import io.casehub.ledger.runtime.service.identity.AgentIdentityVerificationService;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.casehub.platform.api.identity.ActorType;

@@ -1,7 +1,9 @@
 package io.casehub.ledger.runtime.service.identity;
 
-import io.casehub.ledger.api.model.CredentialValidationResult;
-import io.casehub.ledger.api.model.IdentityBindingStatus;
+import io.casehub.platform.api.identity.AgentIdentityValidatedEvent;
+import io.casehub.platform.api.identity.AgentIdentityViolationEvent;
+import io.casehub.platform.api.identity.CredentialValidationResult;
+import io.casehub.platform.api.identity.IdentityBindingStatus;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.ActorIdentityBindingEntry;
 import io.casehub.ledger.runtime.repository.ActorIdentityBindingRepository;

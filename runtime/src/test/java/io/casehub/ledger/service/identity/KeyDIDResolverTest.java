@@ -1,6 +1,6 @@
 package io.casehub.ledger.service.identity;
 
-import io.casehub.ledger.runtime.service.identity.KeyDIDResolver;
+import io.casehub.platform.identity.KeyDIDResolver;
 import org.junit.jupiter.api.Test;
 
 import java.security.KeyPairGenerator;

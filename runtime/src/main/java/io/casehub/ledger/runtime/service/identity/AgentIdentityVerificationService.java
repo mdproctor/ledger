@@ -1,7 +1,7 @@
 package io.casehub.ledger.runtime.service.identity;
 
-import io.casehub.ledger.api.model.IdentityVerificationResult;
-import io.casehub.ledger.api.spi.resolve.DIDResolver;
+import io.casehub.platform.api.identity.IdentityVerificationResult;
+import io.casehub.platform.api.identity.DIDResolver;
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;

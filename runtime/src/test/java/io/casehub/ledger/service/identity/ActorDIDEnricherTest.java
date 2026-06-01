@@ -11,7 +11,7 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
-import io.casehub.ledger.api.spi.identity.ActorDIDProvider;
+import io.casehub.platform.api.identity.ActorDIDProvider;
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.service.identity.ActorDIDEnricher;
 

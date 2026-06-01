@@ -1,7 +1,7 @@
 package io.casehub.ledger.service.identity;
 
-import io.casehub.ledger.api.spi.identity.DIDDocument;
-import io.casehub.ledger.api.spi.resolve.DIDResolver;
+import io.casehub.platform.api.identity.DIDDocument;
+import io.casehub.platform.api.identity.DIDResolver;
 
 import java.util.HashMap;
 import java.util.Map;

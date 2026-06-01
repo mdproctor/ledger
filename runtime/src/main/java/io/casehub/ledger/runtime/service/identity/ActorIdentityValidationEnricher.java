@@ -1,10 +1,13 @@
 package io.casehub.ledger.runtime.service.identity;
 
-import io.casehub.ledger.api.model.CredentialValidationResult;
-import io.casehub.ledger.api.model.IdentityBindingStatus;
-import io.casehub.ledger.api.spi.identity.AgentCredentialValidator;
-import io.casehub.ledger.api.spi.identity.DIDDocument;
-import io.casehub.ledger.api.spi.resolve.DIDResolver;
+import io.casehub.platform.api.identity.AgentCredentialValidator;
+import io.casehub.platform.api.identity.AgentIdentityValidatedEvent;
+import io.casehub.platform.api.identity.AgentIdentityViolationEvent;
+import io.casehub.platform.api.identity.CredentialValidationResult;
+import io.casehub.platform.api.identity.DIDDocument;
+import io.casehub.platform.identity.AbstractCachingIdentityProvider;
+import io.casehub.platform.api.identity.DIDResolver;
+import io.casehub.platform.api.identity.IdentityBindingStatus;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.service.AgentKeyRotatedEvent;

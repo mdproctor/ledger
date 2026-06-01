@@ -1,5 +1,6 @@
 package io.casehub.ledger.api.model;
 
+import io.casehub.platform.api.identity.IdentityBindingStatus;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
