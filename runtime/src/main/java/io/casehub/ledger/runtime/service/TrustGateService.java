@@ -83,6 +83,15 @@ public class TrustGateService {
                 .collect(Collectors.toMap(s -> s.dimensionKey, s -> s.trustScore));
     }
 
+    /**
+     * Returns all CAPABILITY trust scores for the actor, keyed by capability tag.
+     * Empty map if no capability scores have been computed yet.
+     */
+    public Map<String, Double> allCapabilityScores(final String actorId) {
+        return repository.findByActorIdAndScoreType(actorId, ScoreType.CAPABILITY).stream()
+                .collect(Collectors.toMap(s -> s.capabilityKey, s -> s.trustScore));
+    }
+
     /** Returns the DIMENSION score for a specific dimension, or empty if not yet computed. */
     public Optional<Double> dimensionScore(final String actorId, final String dimension) {
         return repository.findDimensionScore(actorId, dimension).map(s -> s.trustScore);
