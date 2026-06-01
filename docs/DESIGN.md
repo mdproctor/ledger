@@ -17,12 +17,16 @@ auth model, and event system better than a shared base can.
 ## Ecosystem Context
 
 ```
-casehub-ledger        (audit/provenance — this project)
+casehub-platform-identity   (identity SPIs, model, implementations — platform module)
+         ↓
+casehub-ledger        (audit/provenance — this project; consumes platform identity SPIs)
     ↑         ↑         ↑
  tarkus    qhorus    casehub    (each adds its own LedgerEntry subclass)
     ↑         ↑
           claudony
 ```
+
+`casehub-platform-identity` provides the identity SPI contracts (`ActorDIDProvider`, `DIDResolver`, `AgentCredentialValidator`), model types (`IdentityVerificationResult`, `CredentialValidationResult`, `IdentityBindingStatus`, `DIDDocument`, `VerificationMethod`), CDI events (`AgentIdentityValidatedEvent`, `AgentIdentityViolationEvent`), and provider implementations (`NoOp*`, `ConfiguredActorDIDProvider`, `KeyDIDResolver`, `WebDIDResolver`, `ScimActorDIDProvider`, `AbstractCachingIdentityProvider`). Ledger is a consumer — it owns the write-path enrichers, enforcement listener, binding persistence, and the `IdentityCacheInvalidator` key-rotation bridge.
 
 **Current consumers:**
 
@@ -197,7 +201,7 @@ Omitting `classpath:db/ledger/migration` triggers a build-time warning from
 
 | Range | Owner | Location | Purpose |
 |---|---|---|---|
-| V1000–V1007 | `casehub-ledger` | `db/ledger/migration` | Base schema (reserved — do not use in consumers) |
+| V1000–V1008 | `casehub-ledger` | `db/ledger/migration` | Base schema (reserved — do not use in consumers) |
 | V1–V999 | Consumer | `db/migration` or named path | Domain tables |
 | V1004+ | Consumer | consumer's own path | Subclass join tables (must run after V1000 — FK constraint) |
 
@@ -457,4 +461,5 @@ decision — see `IDEAS.md` (2026-04-23 entry).
 | **Reactive service tier separation** | ✅ Done | `ReactiveKeyRotationService` and `ReactiveAgentSignatureVerificationService` (renamed from `ReactiveLedgerVerificationService` in #93) as separate `@ApplicationScoped` beans; blocking services (`KeyRotationService`, `LedgerVerificationService`, `AgentSignatureVerificationService`) carry zero reactive imports and Uni-returning methods. `LedgerBuildTimeConfig` (`@ConfigRoot(BUILD_TIME)`) + `LedgerProcessor.excludeReactiveBeans` (`ExcludedTypeBuildItem`) gate the reactive tier at augmentation — JDBC-only consumers build cleanly without `casehub.ledger.reactive.enabled=true`. `BlockingTierPurityTest` enforces no Uni methods and no reactive field injections on blocking-tier beans via reflection. 456 tests. Closes #92, #93. |
 | **Blocking/reactive parity enforcement** | ✅ Done | `BlockingReactiveParityTest` (ArchUnit 1.4.1 bytecode scan); auto-discovers all `Reactive*Service` classes by naming convention; bidirectional method parity with parameter-type checking; minimum-count guard against vacuous pass on package rename; `Uni<T>` return type enforcement; `Uni<T>` type-arg erasure verified against blocking return type (e.g. `Uni<Void>` where `Uni<KeyRotationEntry>` expected is caught). 451 tests. Closes #94, #97. |
 | **In-memory persistence (`casehub-ledger-memory`)** | ✅ Done | `persistence-memory/` module — `@Alternative @Priority(1)` in-memory impls of all persistence SPIs (entries, attestations, trust scores, key rotation, Merkle frontier) for zero-datasource installs and `@QuarkusTest` isolation. Includes reactive delegates gated by `@IfBuildProperty(casehub.ledger.reactive.enabled=true)`. Runtime refactors: `LedgerEnricherPipeline` CDI bean extracted from `LedgerTraceListener` (shared by JPA and in-memory paths); `LedgerMerkleFrontierRepository` SPI + `JpaLedgerMerkleFrontierRepository` extracted — `LedgerVerificationService` no longer injects `EntityManager` directly. 497 tests. Closes #91. |
+| **Identity infrastructure to casehub-platform-identity** | ✅ Done | SPIs (`ActorDIDProvider`, `DIDResolver`, `AgentCredentialValidator`), model types (`IdentityVerificationResult`, `CredentialValidationResult`, `IdentityBindingStatus`, `DIDDocument`, `VerificationMethod`), CDI events (`AgentIdentityValidatedEvent`, `AgentIdentityViolationEvent`), and implementations (`NoOp*`, `ConfiguredActorDIDProvider`, `KeyDIDResolver`, `WebDIDResolver`, `ScimActorDIDProvider`, `AbstractCachingIdentityProvider`) moved to `casehub-platform-identity` (`io.casehub.platform.api.identity` / `io.casehub.platform.identity`). Ledger retains: write-path enrichers (`ActorDIDEnricher`, `ActorIdentityValidationEnricher`), enforcement listener, `ActorIdentityBindingEntry` + `ActorIdentityBindingObserver`, `AgentIdentityVerificationService`, `ReactiveAgentIdentityVerificationService`, and `IdentityCacheInvalidator` (observes `AgentKeyRotatedEvent`, calls `actorDIDProvider.invalidate(actorId)` when provider is `AbstractCachingIdentityProvider`). Config migrated: `casehub.ledger.agent-identity.scim.*` → `casehub.identity.scim.*`; `casehub.ledger.agent-identity.dids.*` → `casehub.identity.dids.*`; `casehub.ledger.agent-identity.web-resolver-*` → `casehub.identity.web-resolver-*`. |
 | **CaseLedgerEntry** | ⬜ Pending | Blocked on CaseHub Epic #131 (WorkBroker integration). `CaseInstance.uuid` → subjectId. Refs #39. |
