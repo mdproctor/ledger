@@ -4,10 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
-import io.casehub.ledger.api.model.IdentityVerificationResult;
-import io.casehub.ledger.api.spi.identity.DIDDocument;
-import io.casehub.ledger.api.spi.identity.VerificationMethod;
-import io.casehub.ledger.api.spi.resolve.DIDResolver;
+import io.casehub.platform.api.identity.IdentityVerificationResult;
+import io.casehub.platform.api.identity.DIDDocument;
+import io.casehub.platform.api.identity.VerificationMethod;
+import io.casehub.platform.api.identity.DIDResolver;
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.service.identity.ReactiveAgentIdentityVerificationService;
 import io.casehub.platform.api.identity.ActorType;

@@ -16,9 +16,9 @@ public class ScimWireMockResource implements QuarkusTestResourceLifecycleManager
         server = new WireMockServer(wireMockConfig().dynamicPort());
         server.start();
         return Map.of(
-                "casehub.ledger.agent-identity.scim.endpoint",
+                "casehub.identity.scim.endpoint",
                 "http://localhost:" + server.port(),
-                "casehub.ledger.agent-identity.scim.require-https", "false"
+                "casehub.identity.scim.require-https", "false"
         );
     }
 

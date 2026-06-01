@@ -1,6 +1,6 @@
 package io.casehub.ledger.api.model;
 
-import io.casehub.ledger.api.spi.identity.VerificationMethod;
+import io.casehub.platform.api.identity.VerificationMethod;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

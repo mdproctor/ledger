@@ -1,6 +1,6 @@
 package io.casehub.ledger.runtime.service.identity;
 
-import io.casehub.ledger.api.model.IdentityVerificationResult;
+import io.casehub.platform.api.identity.IdentityVerificationResult;
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.quarkus.arc.DefaultBean;
 import io.quarkus.arc.Unremovable;

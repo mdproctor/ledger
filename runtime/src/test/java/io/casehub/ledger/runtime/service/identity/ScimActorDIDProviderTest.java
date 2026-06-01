@@ -5,7 +5,7 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 import static org.assertj.core.api.Assertions.*;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
-import io.casehub.ledger.runtime.service.AgentKeyRotatedEvent;
+import io.casehub.platform.identity.ScimActorDIDProvider;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -150,7 +150,7 @@ class ScimActorDIDProviderTest {
     }
 
     @Test
-    void onKeyRotated_invalidatesCacheForActor() {
+    void invalidate_invalidatesCacheForActor() {
         wm.stubFor(get(urlPathEqualTo("/scim/v2/Agents"))
                 .willReturn(aResponse().withStatus(200)
                         .withHeader("Content-Type", "application/json")
@@ -159,14 +159,14 @@ class ScimActorDIDProviderTest {
         provider.didFor("claude:reviewer@v1");
         wm.verify(1, getRequestedFor(urlPathEqualTo("/scim/v2/Agents")));
 
-        provider.onKeyRotated(new AgentKeyRotatedEvent("claude:reviewer@v1", "oldRef", "newRef"));
+        provider.invalidate("claude:reviewer@v1");
 
         provider.didFor("claude:reviewer@v1");
         wm.verify(2, getRequestedFor(urlPathEqualTo("/scim/v2/Agents")));
     }
 
     @Test
-    void onKeyRotated_doesNotInvalidateOtherActors() {
+    void invalidate_doesNotInvalidateOtherActors() {
         wm.stubFor(get(urlPathEqualTo("/scim/v2/Agents"))
                 .willReturn(aResponse().withStatus(200)
                         .withHeader("Content-Type", "application/json")
@@ -174,7 +174,7 @@ class ScimActorDIDProviderTest {
 
         provider.didFor("claude:actor1@v1");
         provider.didFor("claude:actor2@v1");
-        provider.onKeyRotated(new AgentKeyRotatedEvent("claude:actor1@v1", null, null));
+        provider.invalidate("claude:actor1@v1");
         provider.didFor("claude:actor1@v1");
         provider.didFor("claude:actor2@v1");
         wm.verify(3, getRequestedFor(urlPathEqualTo("/scim/v2/Agents")));

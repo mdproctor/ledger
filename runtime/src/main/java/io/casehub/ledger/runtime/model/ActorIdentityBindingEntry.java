@@ -9,8 +9,8 @@ import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
 import jakarta.persistence.Table;
 
-import io.casehub.ledger.api.model.CredentialValidationResult;
-import io.casehub.ledger.api.model.IdentityBindingStatus;
+import io.casehub.platform.api.identity.CredentialValidationResult;
+import io.casehub.platform.api.identity.IdentityBindingStatus;
 
 /**
  * A first-class immutable ledger entry recording an actor DID identity binding event.

@@ -24,7 +24,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 
-import io.casehub.ledger.api.model.IdentityBindingStatus;
+import io.casehub.platform.api.identity.IdentityBindingStatus;
 
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.LedgerEntryType;

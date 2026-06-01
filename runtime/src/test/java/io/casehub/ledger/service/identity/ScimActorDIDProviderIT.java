@@ -5,10 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import io.casehub.ledger.api.model.KeyRotationReason;
-import io.casehub.ledger.api.spi.identity.ActorDIDProvider;
+import io.casehub.platform.api.identity.ActorDIDProvider;
 import io.casehub.ledger.runtime.service.AgentSignature;
 import io.casehub.ledger.runtime.service.KeyRotationService;
-import io.casehub.ledger.runtime.service.identity.ScimActorDIDProvider;
+import io.casehub.platform.identity.ScimActorDIDProvider;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
@@ -22,7 +22,7 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Integration test verifying {@link io.casehub.ledger.runtime.service.identity.ScimActorDIDProvider}
+ * Integration test verifying {@link io.casehub.platform.identity.ScimActorDIDProvider}
  * CDI wiring end-to-end inside a Quarkus container:
  *
  * <ol>
