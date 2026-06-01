@@ -1,51 +1,29 @@
 package io.casehub.ledger.runtime.service.identity;
 
 import io.casehub.platform.api.identity.IdentityVerificationResult;
-import io.casehub.platform.api.identity.DIDResolver;
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
-import java.util.Arrays;
-
 /**
- * Read-path DID identity verification service.
+ * Ledger adapter wrapping the platform {@link io.casehub.platform.identity.AgentIdentityVerificationService}.
  *
- * <p>Verifies that the stored {@link LedgerEntry#agentPublicKey} matches a verification
- * method in the current DID document for the stored {@link LedgerEntry#actorDid}.
- * Also confirms that the DID document's {@code alsoKnownAs} claim includes {@code actorId}.
- *
- * <p><strong>VC validation is not re-run on the read path.</strong> VC results are
- * stored at write time in {@code ActorIdentityBindingEntry}. Consumers needing
- * write-time VC validation results should query
- * {@code ActorIdentityBindingRepository.latestBindingFor(actorId)}.
- *
- * <p>Uses the injected {@link DIDResolver} with its configured TTL cache.
+ * <p>Extracts the relevant fields ({@code actorId}, {@code actorDid}, {@code agentPublicKey})
+ * from a {@link LedgerEntry} and delegates to the domain-agnostic platform service.
+ * Existing consumers that inject by ledger type continue to work unchanged.
  */
 @ApplicationScoped
 public class AgentIdentityVerificationService {
 
-    private final DIDResolver resolver;
+    private final io.casehub.platform.identity.AgentIdentityVerificationService delegate;
 
     @Inject
-    public AgentIdentityVerificationService(final DIDResolver resolver) {
-        this.resolver = resolver;
+    public AgentIdentityVerificationService(
+            final io.casehub.platform.identity.AgentIdentityVerificationService delegate) {
+        this.delegate = delegate;
     }
 
     public IdentityVerificationResult verifyIdentityBinding(final LedgerEntry entry) {
-        if (entry.actorDid == null) return IdentityVerificationResult.UNVERIFIABLE;
-        if (entry.agentPublicKey == null) return IdentityVerificationResult.UNSIGNED;
-
-        final var docOpt = resolver.resolve(entry.actorDid);
-        if (docOpt.isEmpty()) return IdentityVerificationResult.DID_UNRESOLVABLE;
-
-        final var doc = docOpt.get();
-        if (!doc.alsoKnownAs().contains(entry.actorId)) {
-            return IdentityVerificationResult.IDENTITY_MISMATCH;
-        }
-
-        final boolean keyMatch = doc.verificationMethods().stream()
-            .anyMatch(vm -> Arrays.equals(vm.publicKeyBytes(), entry.agentPublicKey));
-        return keyMatch ? IdentityVerificationResult.VALID : IdentityVerificationResult.KEY_MISMATCH;
+        return delegate.verifyIdentityBinding(entry.actorId, entry.actorDid, entry.agentPublicKey);
     }
 }
