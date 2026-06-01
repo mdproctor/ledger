@@ -193,6 +193,54 @@ rationale.
 
 ---
 
+## Identity Infrastructure — casehub-platform-identity
+
+Agent identity SPIs, resolvers, and no-op implementations have been extracted to the
+`casehub-platform-identity` library. The runtime pom declares this as a dependency.
+
+**What lives in `casehub-platform-identity` (`io.casehub.platform.api.identity` / `io.casehub.platform.identity`):**
+
+| Category | Classes |
+|---|---|
+| SPIs | `ActorDIDProvider`, `DIDResolver`, `AgentCredentialValidator` |
+| Model | `DIDDocument`, `VerificationMethod`, `IdentityVerificationResult`, `CredentialValidationResult`, `IdentityBindingStatus` |
+| Events | `AgentIdentityValidatedEvent`, `AgentIdentityViolationEvent` |
+| Cache base | `AbstractCachingIdentityProvider` |
+| No-Op defaults | `NoOpActorDIDProvider`, `NoOpDIDResolver`, `NoOpCredentialValidator` |
+| Implementations | `KeyDIDResolver`, `WebDIDResolver`, `ConfiguredActorDIDProvider`, `ScimActorDIDProvider`, `ScimAgentResource` |
+
+**What stays in ledger (`runtime/.../service/identity/`):**
+- `ActorDIDEnricher`, `ActorIdentityValidationEnricher`, `ActorIdentityBindingObserver` — enrichment pipeline
+- `AgentIdentityVerificationService`, `ReactiveAgentIdentityVerificationService` — read-path
+- `IdentityCacheInvalidator` — bridges `AgentKeyRotatedEvent` → platform provider cache invalidation
+- `LedgerIdentityEnforcementListener`, `LedgerIdentityViolationException` — ENFORCE mode gate
+
+**Package migration:**
+
+| Old (ledger api) | New (platform) |
+|---|---|
+| `io.casehub.ledger.api.spi.identity.*` | `io.casehub.platform.api.identity.*` |
+| `io.casehub.ledger.api.spi.resolve.DIDResolver` | `io.casehub.platform.api.identity.DIDResolver` |
+| `io.casehub.ledger.api.model.IdentityVerificationResult` | `io.casehub.platform.api.identity.IdentityVerificationResult` |
+| `io.casehub.ledger.api.model.CredentialValidationResult` | `io.casehub.platform.api.identity.CredentialValidationResult` |
+| `io.casehub.ledger.api.model.IdentityBindingStatus` | `io.casehub.platform.api.identity.IdentityBindingStatus` |
+
+**Config key migration:**
+
+| Old key | New key | Owned by |
+|---|---|---|
+| `casehub.ledger.agent-identity.dids.*` | `casehub.identity.dids.*` | platform |
+| `casehub.ledger.agent-identity.scim.*` | `casehub.identity.scim.*` | platform |
+| `casehub.ledger.agent-identity.web-resolver-*` | `casehub.identity.web-resolver-*` | platform |
+| `casehub.ledger.agent-identity.validation-mode` | (unchanged) | ledger |
+
+**Activating SCIM provider** (updated class name):
+```properties
+quarkus.arc.selected-alternatives=io.casehub.platform.identity.ScimActorDIDProvider
+```
+
+---
+
 ## Project Structure
 
 ```
@@ -213,9 +261,6 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── KeyRotationReason.java       — SCHEDULED | COMPROMISED (api module); NIST SP 800-57 lifecycle distinction
 │       │   ├── AttestationVerdict.java      — SOUND | FLAGGED | ENDORSED | CHALLENGED (api module)
 │       │   ├── CapabilityTag.java           — sentinel constants: GLOBAL = "*" for cross-capability attestations (api module)
-│       │   ├── IdentityBindingStatus.java  — VALID | UNSIGNED | DID_UNRESOLVABLE | IDENTITY_MISMATCH | KEY_MISMATCH | CREDENTIAL_EXPIRED | CREDENTIAL_INVALID (api module)
-│       │   ├── IdentityVerificationResult.java  — VALID | UNVERIFIABLE | UNSIGNED | DID_UNRESOLVABLE | IDENTITY_MISMATCH | KEY_MISMATCH (api module)
-│       │   ├── CredentialValidationResult.java  — VALID | EXPIRED | INVALID_SIGNATURE | ISSUER_UNKNOWN | NOT_FOUND (api module)
 │       │   ├── ActorIdentity.java           — token↔identity mapping for pseudonymisation
 │       │   └── supplement/
 │       │       ├── LedgerSupplement.java        — abstract base (JOINED inheritance)
@@ -247,7 +292,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── AgentKeyProvider.java            — SPI: per-actorId SigningKey for bilateral entry signing; signingKey(actorId) → Optional<SigningKey>; see ADR 0011
 │       │   ├── ConfiguredAgentKeyProvider.java  — @DefaultBean: loads PKCS#8 private + X.509 public PEM per actorId from casehub.ledger.agent-signing.keys.*
 │       │   ├── AgentSignatureEnricher.java      — LedgerEntryEnricher: signs canonicalBytes() at @PrePersist, stores agentSignature + agentPublicKey + agentKeyRef
-│       │   ├── AgentKeyRotatedEvent.java        — CDI event record fired by KeyRotationService/ReactiveKeyRotationService after rotation is persisted; observers (ActorIdentityValidationEnricher, ScimActorDIDProvider) invalidate their caches
+│       │   ├── AgentKeyRotatedEvent.java        — CDI event record fired by KeyRotationService/ReactiveKeyRotationService after rotation is persisted; observers (ActorIdentityValidationEnricher, IdentityCacheInvalidator) invalidate their caches
 │       │   ├── KeyRotationService.java          — CDI bean: recordRotation fires AgentKeyRotatedEvent after persist; rotationHistory / compromisedWindows
 │       │   ├── ReactiveKeyRotationService.java  — compromisedWindowsAsync / rotationHistoryAsync / recordRotationAsync (Uni<T>); fires AgentKeyRotatedEvent via fireAsync (fire-and-forget); excluded when casehub.ledger.reactive.enabled=false
 │       │   ├── LedgerProvExportService.java      — W3C PROV-DM JSON-LD export (CDI bean)
@@ -306,24 +351,15 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │       ├── ProvenanceContext.java           — @ApplicationScoped ThreadLocal stack; supports nested @ProvenanceCapture scopes
 │       │       └── SourceEntityId.java              — parameter annotation: marks the UUID to use as sourceEntityId
 │       │   └── identity/
-│       │       ├── AbstractCachingIdentityProvider.java  — TTL-capable generic cache base with atomic eviction; put() for external-driven caches
+│       │       │   (SPIs, resolvers, and No-Op impls live in casehub-platform-identity — see below)
 │       │       ├── ActorDIDEnricher.java                 — @Priority(40) enricher: populates LedgerEntry.actorDid from ActorDIDProvider
 │       │       ├── ActorIdentityBindingObserver.java     — @ObservesAsync → @Transactional(REQUIRES_NEW) persistence of ActorIdentityBindingEntry
 │       │       ├── ActorIdentityValidationEnricher.java  — @Priority(50) enricher: full DID/key/VC validation pipeline; sets pendingIdentityStatus
-│       │       ├── AgentIdentityValidatedEvent.java      — CDI async event record: VALID binding result
-│       │       ├── AgentIdentityViolationEvent.java      — CDI async event record: non-VALID binding result
 │       │       ├── AgentIdentityVerificationService.java — read-path: verifyIdentityBinding(LedgerEntry) → IdentityVerificationResult
 │       │       ├── ReactiveAgentIdentityVerificationService.java — @DefaultBean @Unremovable: Uni<IdentityVerificationResult> bridge wrapping blocking service on worker pool; no Hibernate Reactive dep, always active
-│       │       ├── ConfiguredActorDIDProvider.java       — @Alternative: config-based actorId→DID mapping
-│       │       ├── KeyDIDResolver.java                   — @Alternative: did:key decoder (no HTTP, no alsoKnownAs)
+│       │       ├── IdentityCacheInvalidator.java         — bridges AgentKeyRotatedEvent → platform cache invalidation; @Observes AgentKeyRotatedEvent, calls actorDIDProvider.invalidate(actorId) if provider is AbstractCachingIdentityProvider
 │       │       ├── LedgerIdentityEnforcementListener.java — @EntityListeners @PrePersist: ENFORCE mode gate (JPA-only)
-│       │       ├── LedgerIdentityViolationException.java — thrown by enforcement listener in ENFORCE mode
-│       │       ├── NoOpActorDIDProvider.java             — @DefaultBean: always returns empty
-│       │       ├── NoOpCredentialValidator.java          — @DefaultBean: skips VC validation
-│       │       ├── NoOpDIDResolver.java                  — @DefaultBean: always returns empty
-│       │       ├── ScimAgentResource.java                — record(String did): cached result of a SCIM2 agent lookup
-│       │       ├── ScimActorDIDProvider.java             — @ApplicationScoped @Alternative: resolves actorId→DID via SCIM2 Agent endpoint; TTL cache; @Observes AgentKeyRotatedEvent for invalidation; activate via quarkus.arc.selected-alternatives
-│       │       └── WebDIDResolver.java                   — @Alternative: did:web HTTPS resolver with SSRF protection
+│       │       └── LedgerIdentityViolationException.java — thrown by enforcement listener in ENFORCE mode
 │       └── privacy/
 │           ├── ActorIdentityProvider.java   — SPI: tokenise/resolve/erase actor identities
 │           ├── DecisionContextSanitiser.java — SPI: sanitise decisionContext JSON before persist
