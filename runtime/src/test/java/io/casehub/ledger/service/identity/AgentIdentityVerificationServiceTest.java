@@ -14,7 +14,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AgentIdentityVerificationServiceTest {
 
     TestDIDResolver resolver = new TestDIDResolver();
-    AgentIdentityVerificationService svc = new AgentIdentityVerificationService(resolver);
+    // Test the platform service directly — the ledger adapter is a trivial field-extraction delegate
+    io.casehub.platform.identity.AgentIdentityVerificationService platformSvc =
+            new io.casehub.platform.identity.AgentIdentityVerificationService(resolver);
+    AgentIdentityVerificationService svc = new AgentIdentityVerificationService(platformSvc);
 
     LedgerEntry entry(String actorId, String actorDid, byte[] pubKey) {
         var e = new ConcreteEntry();
