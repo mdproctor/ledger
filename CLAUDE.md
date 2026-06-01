@@ -34,9 +34,7 @@ Run `add-dir /Users/mdproctor/claude/casehub/ledger` before any other work.
 
 ## Git Discipline
 
-Two git repositories are active in every session:
-- **Workspace** (`/Users/mdproctor/claude/public/casehub/ledger`) — staging area for specs and ADRs; permanent home for blog, handover, plans, snapshots
-- **Project repo** (`/Users/mdproctor/claude/casehub/ledger`) — source code + promoted specs (`docs/specs/`) + promoted ADRs (`docs/adr/`)
+Two git repositories are active in every session: a **workspace** (staging area for specs and ADRs; permanent home for blog, handover, plans, snapshots) and the **project repo** (source code + promoted specs and ADRs).
 
 Before any git operation, run `git rev-parse --show-toplevel` to confirm which repo is currently active. Do not assume — the session may have opened in either. cd to the correct repo before staging:
 - Source code commits → project repo
