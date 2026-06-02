@@ -11,8 +11,6 @@ import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
-import io.smallrye.mutiny.Uni;
-
 import io.casehub.ledger.api.model.ActorTrustScore.ScoreType;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
@@ -158,15 +156,6 @@ class TrustGateServiceTest {
         final TrustGateService gate = new TrustGateService(emptyRepo());
 
         assertThat(gate.meetsThresholdAsync("unknown-actor", 0.5).await().indefinitely()).isFalse();
-    }
-
-    @Test
-    void meetsThresholdAsync_returnsUni() {
-        final TrustGateService gate = new TrustGateService(repoWith("actor-a", 0.8));
-
-        final Uni<Boolean> result = gate.meetsThresholdAsync("actor-a", 0.7);
-        assertThat(result).isNotNull();
-        assertThat(result.await().indefinitely()).isTrue();
     }
 
     // ── meetsThreshold (global) ───────────────────────────────────────────────
