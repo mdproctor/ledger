@@ -10,6 +10,8 @@ import jakarta.inject.Inject;
 import io.casehub.ledger.api.model.ActorTrustScore.ScoreType;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
 import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
+import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 
 /**
  * CDI bean for trust threshold enforcement.
@@ -26,6 +28,20 @@ public class TrustGateService {
     @Inject
     public TrustGateService(final ActorTrustScoreRepository repository) {
         this.repository = repository;
+    }
+
+    /**
+     * Reactive variant of {@link #meetsThreshold(String, double)}.
+     *
+     * <p>Wraps the blocking JPA query on the default worker pool — safe to call from a Vert.x
+     * event-loop context. Callers responsible for the {@code minTrust <= 0} fast-path (gate
+     * disabled) if applicable; this method always queries the repository.
+     *
+     * <p>Refs casehubio/ledger#106.
+     */
+    public Uni<Boolean> meetsThresholdAsync(final String actorId, final double minTrust) {
+        return Uni.createFrom().item(() -> meetsThreshold(actorId, minTrust))
+                .runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
     }
 
     /** Returns true if the actor's global trust score meets or exceeds {@code minTrust}. */

@@ -11,6 +11,8 @@ import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 
+import io.smallrye.mutiny.Uni;
+
 import io.casehub.ledger.api.model.ActorTrustScore.ScoreType;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
@@ -133,6 +135,38 @@ class TrustGateServiceTest {
         public List<ActorTrustScore> findAllByLastComputedAtAfter(final Instant since) {
             return List.of();
         }
+    }
+
+    // ── meetsThresholdAsync (global) ─────────────────────────────────────────
+
+    @Test
+    void meetsThresholdAsync_true_whenScoreAboveMin() {
+        final TrustGateService gate = new TrustGateService(repoWith("actor-a", 0.8));
+
+        assertThat(gate.meetsThresholdAsync("actor-a", 0.7).await().indefinitely()).isTrue();
+    }
+
+    @Test
+    void meetsThresholdAsync_false_whenScoreBelowMin() {
+        final TrustGateService gate = new TrustGateService(repoWith("actor-a", 0.6));
+
+        assertThat(gate.meetsThresholdAsync("actor-a", 0.7).await().indefinitely()).isFalse();
+    }
+
+    @Test
+    void meetsThresholdAsync_false_whenNoScoreExists() {
+        final TrustGateService gate = new TrustGateService(emptyRepo());
+
+        assertThat(gate.meetsThresholdAsync("unknown-actor", 0.5).await().indefinitely()).isFalse();
+    }
+
+    @Test
+    void meetsThresholdAsync_returnsUni() {
+        final TrustGateService gate = new TrustGateService(repoWith("actor-a", 0.8));
+
+        final Uni<Boolean> result = gate.meetsThresholdAsync("actor-a", 0.7);
+        assertThat(result).isNotNull();
+        assertThat(result.await().indefinitely()).isTrue();
     }
 
     // ── meetsThreshold (global) ───────────────────────────────────────────────
