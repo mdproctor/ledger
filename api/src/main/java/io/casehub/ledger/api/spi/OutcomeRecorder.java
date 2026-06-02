@@ -9,7 +9,7 @@ import io.casehub.ledger.api.model.OutcomeRecord;
  * Applications may substitute a custom implementation by declaring an {@code @ApplicationScoped}
  * bean implementing this interface — CDI will prefer it over the {@code @DefaultBean}.
  *
- * @see ReactiveOutcomeRecorder for the non-blocking variant
+ * @see ReactiveOutcomeRecorder
  */
 public interface OutcomeRecorder {
 

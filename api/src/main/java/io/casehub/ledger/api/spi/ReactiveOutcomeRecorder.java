@@ -14,6 +14,9 @@ import io.smallrye.mutiny.Uni;
  */
 public interface ReactiveOutcomeRecorder {
 
-    /** @see OutcomeRecorder#record(OutcomeRecord) */
+    /**
+     * Non-blocking equivalent of {@link OutcomeRecorder#record(OutcomeRecord)}.
+     * Returns a {@code Uni<Void>} that completes after both writes are committed.
+     */
     Uni<Void> record(OutcomeRecord record);
 }
