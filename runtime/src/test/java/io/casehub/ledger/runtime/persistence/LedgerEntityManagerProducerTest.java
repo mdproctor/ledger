@@ -167,6 +167,11 @@ class LedgerEntityManagerProducerTest {
         }
 
         @Override
+        public OutcomeConfig outcome() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public AgentIdentityConfig agentIdentity() {
             throw new UnsupportedOperationException();
         }
