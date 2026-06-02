@@ -71,10 +71,6 @@ class MultiCapabilityIT {
         assertThat(scoutingScore).isGreaterThan(economicsScore);
         assertThat(tacticsScore).isGreaterThan(0.0);
 
-        // Verify distinct CAPABILITY rows exist for all four plugins
-        assertThat(trustRepo.findCapabilityScore(strategy,  "strategy")).isPresent();
-        assertThat(trustRepo.findCapabilityScore(economics, "economics")).isPresent();
-        assertThat(trustRepo.findCapabilityScore(tactics,   "tactics")).isPresent();
-        assertThat(trustRepo.findCapabilityScore(scouting,  "scouting")).isPresent();
+        // Score assertions above (orElseThrow) already verify all four CAPABILITY rows exist.
     }
 }

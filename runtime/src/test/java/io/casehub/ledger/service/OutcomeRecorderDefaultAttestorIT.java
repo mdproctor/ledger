@@ -43,6 +43,7 @@ class OutcomeRecorderDefaultAttestorIT {
 
         final var entry = ledgerRepo.findBySubjectId(gameId).get(0);
         final var attestations = ledgerRepo.findAttestationsByEntryId(entry.id);
+        assertThat(attestations).hasSize(1);
         assertThat(attestations.get(0).attestorId).isEqualTo("custom-attestor@v1");
     }
 }

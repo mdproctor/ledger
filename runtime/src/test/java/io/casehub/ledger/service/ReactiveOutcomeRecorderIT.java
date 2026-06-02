@@ -43,8 +43,10 @@ class ReactiveOutcomeRecorderIT {
 
         final var attestations = ledgerRepo.findAttestationsByEntryId(entries.get(0).id);
         assertThat(attestations).hasSize(1);
-        assertThat(attestations.get(0).capabilityTag).isEqualTo("economics");
+        assertThat(attestations.get(0).verdict).isEqualTo(SOUND);
         assertThat(attestations.get(0).confidence).isEqualTo(0.7);
+        assertThat(attestations.get(0).capabilityTag).isEqualTo("economics");
+        assertThat(attestations.get(0).attestorId).isEqualTo("quarkmind:game-engine@v1");
 
         trustScoreJob.runComputation();
 
