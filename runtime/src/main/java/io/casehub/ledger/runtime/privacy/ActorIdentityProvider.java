@@ -18,6 +18,12 @@ public interface ActorIdentityProvider {
      * Creates a new mapping if one does not yet exist.
      * Called on every {@code save()} and {@code saveAttestation()}.
      *
+     * <p>
+     * <strong>Reactive constraint:</strong> implementations must be non-blocking. In reactive
+     * persistence paths this method is called synchronously on the Vert.x event loop without
+     * a worker-pool hop. A blocking implementation (e.g. one backed by a JPA query) will
+     * stall the event loop. The built-in implementations are non-blocking. Refs #106.
+     *
      * @param rawActorId the real actor identity; may be {@code null}
      * @return token to store, or {@code null} if input is {@code null}
      */
