@@ -34,6 +34,9 @@ class OutcomeRecordSaveService {
         // In-memory: repo assigns id, sequenceNumber, occurredAt, and enriches.
         // JPA: @PrePersist assigns id and occurredAt; sequenceNumber is a pre-existing JPA gap (#116).
         ledgerRepo.save(entry);
+        java.util.Objects.requireNonNull(entry.id,
+                "LedgerEntryRepository.save() must assign entry.id before returning — "
+                        + "custom implementations must honour this contract");
 
         final LedgerAttestation attestation = buildAttestation(record, entry, attestor);
         ledgerRepo.saveAttestation(attestation);
