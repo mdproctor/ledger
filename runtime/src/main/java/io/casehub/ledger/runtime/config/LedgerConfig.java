@@ -131,6 +131,13 @@ public interface LedgerConfig {
     AgentSigningConfig agentSigning();
 
     /**
+     * Combined write API settings for {@link io.casehub.ledger.runtime.service.DefaultOutcomeRecorder}.
+     *
+     * @return outcome sub-configuration
+     */
+    OutcomeConfig outcome();
+
+    /**
      * Reactive service tier — controls whether {@code ReactiveKeyRotationService} and
      * {@code ReactiveAgentSignatureVerificationService} are present in the CDI graph. Set
      * {@code casehub.ledger.reactive.enabled=true} only in deployments that provide a
@@ -660,5 +667,29 @@ public interface LedgerConfig {
             /** Block the write with {@code LedgerIdentityViolationException}. */
             ENFORCE
         }
+    }
+
+    /** Settings for the combined write API ({@link io.casehub.ledger.runtime.service.DefaultOutcomeRecorder}). */
+    interface OutcomeConfig {
+
+        /**
+         * Default attestor identity used when {@code OutcomeRecord.attestorId()} is null.
+         * For QuarkMind: {@code "quarkmind:game-engine@v1"}.
+         *
+         * <p>If this is absent and {@code OutcomeRecord.attestorId()} is also null,
+         * {@code DefaultOutcomeRecorder.record()} throws {@code IllegalStateException} at call time.
+         *
+         * @return the default attestor ID, or empty if not configured
+         */
+        java.util.Optional<String> defaultAttestorId();
+
+        /**
+         * Default attestor type used when {@code OutcomeRecord.attestorType()} is null.
+         * Ignored when {@code defaultAttestorId} is empty.
+         *
+         * @return SYSTEM by default
+         */
+        @WithDefault("SYSTEM")
+        io.casehub.platform.api.identity.ActorType defaultAttestorType();
     }
 }
