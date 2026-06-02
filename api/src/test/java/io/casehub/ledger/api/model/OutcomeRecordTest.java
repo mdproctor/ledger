@@ -3,7 +3,6 @@ package io.casehub.ledger.api.model;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static io.casehub.ledger.api.model.AttestationVerdict.SOUND;
-import static io.casehub.ledger.api.model.AttestationVerdict.FLAGGED;
 
 import java.time.Instant;
 import java.util.UUID;
