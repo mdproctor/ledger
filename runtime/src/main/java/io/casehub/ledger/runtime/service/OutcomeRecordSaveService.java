@@ -1,7 +1,5 @@
 package io.casehub.ledger.runtime.service;
 
-import java.util.UUID;
-
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -33,7 +31,9 @@ class OutcomeRecordSaveService {
     @Transactional
     void save(final OutcomeRecord record, final AttestorDefaults attestor) {
         final LedgerEntry entry = buildEntry(record);
-        ledgerRepo.save(entry);  // repo assigns sequenceNumber, UUID, occurredAt, enriches
+        // In-memory: repo assigns id, sequenceNumber, occurredAt, and enriches.
+        // JPA: @PrePersist assigns id and occurredAt; sequenceNumber is a pre-existing JPA gap (#116).
+        ledgerRepo.save(entry);
 
         final LedgerAttestation attestation = buildAttestation(record, entry, attestor);
         ledgerRepo.saveAttestation(attestation);
@@ -53,7 +53,7 @@ class OutcomeRecordSaveService {
     private LedgerAttestation buildAttestation(final OutcomeRecord record,
             final LedgerEntry saved, final AttestorDefaults attestor) {
         final LedgerAttestation a = new LedgerAttestation();
-        a.id             = UUID.randomUUID();
+        // id left null — @PrePersist (JPA) or saveAttestation guard (in-memory) assigns it
         a.ledgerEntryId  = saved.id;
         a.subjectId      = saved.subjectId;
         a.attestorId     = attestor.attestorId();
