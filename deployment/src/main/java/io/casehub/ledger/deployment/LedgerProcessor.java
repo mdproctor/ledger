@@ -6,6 +6,7 @@ import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.Produce;
 import io.quarkus.deployment.pkg.builditem.ArtifactResultBuildItem;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
+import io.quarkus.deployment.builditem.nativeimage.NativeImageResourcePatternsBuildItem;
 import io.quarkus.flyway.runtime.FlywayBuildTimeConfig;
 
 import io.casehub.ledger.runtime.service.ReactiveAgentSignatureVerificationService;
@@ -30,6 +31,13 @@ class LedgerProcessor {
     @BuildStep
     FeatureBuildItem feature() {
         return new FeatureBuildItem(FEATURE);
+    }
+
+    @BuildStep
+    NativeImageResourcePatternsBuildItem registerMigrationResources() {
+        return NativeImageResourcePatternsBuildItem.builder()
+                .includeGlob("db/ledger/migration/*.sql")
+                .build();
     }
 
     /**
