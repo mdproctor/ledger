@@ -301,6 +301,37 @@ class InMemoryLedgerEntryRepositoryTest {
         assertThat(results).hasSize(1);
     }
 
+    // ── session lifecycle / clear ─────────────────────────────────────────────
+
+    @Test
+    void clear_removesAllEntriesAndAttestations() {
+        UUID subjectId = UUID.randomUUID();
+        MemoryTestEntry e = entry(subjectId, LedgerEntryType.EVENT);
+        repo.save(e);
+        repo.saveAttestation(attestation(e.getId(), subjectId, "actor", "*"));
+
+        repo.clear();
+
+        assertThat(repo.listAll()).isEmpty();
+        assertThat(repo.findAttestationsByEntryId(e.getId())).isEmpty();
+    }
+
+    @Test
+    void clear_resetsSequenceCountersSoNextSessionStartsAt1() {
+        UUID subjectId = UUID.randomUUID();
+        MemoryTestEntry session1Entry = entry(subjectId, LedgerEntryType.EVENT);
+        repo.save(session1Entry);
+        assertThat(session1Entry.getSequenceNumber()).isEqualTo(1);
+
+        repo.clear();
+
+        MemoryTestEntry session2Entry = entry(subjectId, LedgerEntryType.EVENT);
+        repo.save(session2Entry);
+        assertThat(session2Entry.getSequenceNumber())
+                .as("sequence counter resets to 1 after clear — new session starts fresh")
+                .isEqualTo(1);
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private MemoryTestEntry entry(UUID subjectId, LedgerEntryType type) {

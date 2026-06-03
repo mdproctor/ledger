@@ -33,6 +33,17 @@ import io.casehub.ledger.runtime.service.LedgerEnricherPipeline;
 import io.casehub.ledger.runtime.service.LedgerMerklePublisher;
 import io.casehub.ledger.runtime.service.LedgerMerkleTree;
 
+/**
+ * In-memory implementation of {@link LedgerEntryRepository} for zero-datasource deployments.
+ *
+ * <p>Accumulates entries, attestations, and sequence counters in-process. Suitable for
+ * short-lived processes (test suites, single game sessions). For long-running processes
+ * that span multiple sessions, call {@link #clear()} at each session boundary to prevent
+ * unbounded growth (see casehubio/ledger#117).
+ *
+ * <p>Activated via {@code @Alternative @Priority(1)} — consumers add this class to
+ * {@code quarkus.arc.selected-alternatives} to displace the JPA default.
+ */
 @Alternative
 @Priority(1)
 @ApplicationScoped
@@ -250,6 +261,11 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
         return entries.values();
     }
 
+    /**
+     * Resets all in-memory state: entries, attestations, sequence counters, and the Merkle
+     * frontier. Call at session boundaries (e.g. game-over) to prevent unbounded growth in
+     * long-running deployments. Also called by {@code @BeforeEach} in test suites.
+     */
     public void clear() {
         entries.clear();
         attestations.clear();
