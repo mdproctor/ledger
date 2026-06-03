@@ -287,8 +287,8 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── AgentSignatureSuspectEvent.java  — CDI event record fired when verifyAgentSignature[Async] returns SUSPECT; consumers use @Observes or @ObservesAsync
 │       │   ├── LedgerMerklePublisher.java       — Ed25519 signed tlog-checkpoint (opt-in CDI bean)
 │       │   ├── SigningKey.java                  — record: keyRef (Base64URL SHA-256 of public key) + KeyPair; self-derived, zero operator config
-│       │   ├── AgentKeyProvider.java            — SPI: per-actorId SigningKey for bilateral entry signing; signingKey(actorId) → Optional<SigningKey>; see ADR 0011
-│       │   ├── ConfiguredAgentKeyProvider.java  — @DefaultBean: loads PKCS#8 private + X.509 public PEM per actorId from casehub.ledger.agent-signing.keys.*
+│       │   ├── AgentSigner.java                 — SPI: sign(actorId, data) → Optional<AgentSignature>; algorithm-transparent; see PP-20260523-e7b577
+│       │   ├── ConfiguredAgentSigner.java       — @DefaultBean: loads PKCS#8 private + X.509 public PEM per actorId from casehub.ledger.agent-signing.keys.*
 │       │   ├── AgentSignatureEnricher.java      — LedgerEntryEnricher: signs canonicalBytes() at @PrePersist, stores agentSignature + agentPublicKey + agentKeyRef
 │       │   ├── AgentKeyRotatedEvent.java        — CDI event record fired by KeyRotationService/ReactiveKeyRotationService after rotation is persisted; observers (ActorIdentityValidationEnricher, IdentityCacheInvalidator) invalidate their caches
 │       │   ├── KeyRotationService.java          — CDI bean: recordRotation fires AgentKeyRotatedEvent after persist; rotationHistory / compromisedWindows
@@ -384,6 +384,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
         ├── InMemoryLedgerMerkleFrontierRepository.java — @Alternative @Priority(1); ConcurrentHashMap-backed
         ├── InMemoryActorTrustScoreRepository.java    — @Alternative @Priority(1); composite key: actorId|scoreType|cap|dim
         ├── InMemoryKeyRotationRepository.java        — @Alternative @Priority(1); reads via blocking.allEntries()
+        ├── InMemoryAgentSigner.java              — @Alternative @Priority(1); ConcurrentHashMap<String,KeyPair>; register(actorId,keyPair) + clear() for session-boundary reset; see #104
         ├── InMemoryReactiveLedgerEntryRepository.java — @IfBuildProperty(reactive.enabled=true); delegates to blocking
         └── InMemoryReactiveKeyRotationRepository.java — @IfBuildProperty(reactive.enabled=true); delegates to blocking
 ```
