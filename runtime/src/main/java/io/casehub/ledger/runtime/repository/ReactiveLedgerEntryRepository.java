@@ -26,6 +26,17 @@ import io.smallrye.mutiny.Uni;
  */
 public interface ReactiveLedgerEntryRepository {
 
+    /**
+     * Persist a new ledger entry with automatic sequence number assignment.
+     *
+     * <p>The repository assigns {@code sequenceNumber} based on the entry's
+     * {@code subjectId} — any value set by the caller is overwritten. Sequence
+     * numbers are monotonically increasing and contiguous on insert within
+     * committed transactions.
+     *
+     * @param entry the entry to persist; {@code subjectId} must not be {@code null}
+     * @return the persisted entry with {@code sequenceNumber} assigned
+     */
     Uni<LedgerEntry> save(LedgerEntry entry);
 
     Uni<List<LedgerEntry>> listAll();

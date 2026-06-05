@@ -38,7 +38,7 @@ CREATE TABLE ledger_entry (
     CONSTRAINT pk_ledger_entry PRIMARY KEY (id)
 );
 
-CREATE INDEX idx_ledger_entry_subject_seq ON ledger_entry (subject_id, sequence_number);
+CREATE UNIQUE INDEX idx_ledger_entry_subject_seq ON ledger_entry (subject_id, sequence_number);
 CREATE INDEX idx_ledger_entry_subject_id  ON ledger_entry (subject_id);
 CREATE INDEX idx_ledger_entry_trace ON ledger_entry (trace_id);
 CREATE INDEX idx_ledger_entry_caused_by   ON ledger_entry (caused_by_entry_id);
@@ -78,3 +78,8 @@ CREATE TABLE ledger_merkle_frontier (
 );
 
 CREATE INDEX idx_merkle_frontier_subject ON ledger_merkle_frontier (subject_id);
+
+CREATE TABLE ledger_subject_sequence (
+    subject_id UUID NOT NULL PRIMARY KEY,
+    next_seq   INT  NOT NULL DEFAULT 1
+);

@@ -103,7 +103,7 @@ class ActorIdentityBindingEntryIT {
         final String did = "did:web:persist-test.example.com";
         configureDid(actorId, did);
 
-        saveEntryWithDid(actorId, did, 1);
+        saveEntryWithDid(actorId, did);
 
         await().atMost(5, TimeUnit.SECONDS)
             .untilAsserted(() -> {
@@ -123,14 +123,14 @@ class ActorIdentityBindingEntryIT {
         final String did = "did:web:cache-test.example.com";
         configureDid(actorId, did);
 
-        saveEntryWithDid(actorId, did, 1);
+        saveEntryWithDid(actorId, did);
 
         // Wait for the first binding entry to be committed
         await().atMost(5, TimeUnit.SECONDS)
             .until(() -> readLatestBinding(actorId).isPresent());
 
         // Save a second entry for the same actor — cache hit, no new binding entry
-        saveEntryWithDid(actorId, did, 2);
+        saveEntryWithDid(actorId, did);
 
         // Short wait to confirm no second binding entry appears
         await().during(500, TimeUnit.MILLISECONDS)
@@ -145,7 +145,7 @@ class ActorIdentityBindingEntryIT {
         final String did = "did:web:invalidate-test.example.com";
         configureDid(actorId, did);
 
-        saveEntryWithDid(actorId, did, 1);
+        saveEntryWithDid(actorId, did);
 
         // Wait for the first binding entry
         await().atMost(5, TimeUnit.SECONDS)
@@ -155,7 +155,7 @@ class ActorIdentityBindingEntryIT {
         identityEnricher.invalidateAll();
 
         // Save again — cache miss, should produce a second binding entry
-        saveEntryWithDid(actorId, did, 3);
+        saveEntryWithDid(actorId, did);
 
         await().atMost(5, TimeUnit.SECONDS)
             .untilAsserted(() ->
@@ -166,11 +166,10 @@ class ActorIdentityBindingEntryIT {
      * Saves a TestEntry with actorDid set, in a committed transaction.
      * agentSignature and agentPublicKey are populated by AgentSignatureEnricher from the mocked signer.
      */
-    private void saveEntryWithDid(final String actorId, final String did, final int seq) {
+    private void saveEntryWithDid(final String actorId, final String did) {
         QuarkusTransaction.requiringNew().run(() -> {
             final TestEntry e = new TestEntry();
             e.subjectId = UUID.randomUUID();
-            e.sequenceNumber = seq;
             e.entryType = LedgerEntryType.EVENT;
             e.actorId = actorId;
             e.actorType = ActorType.AGENT;

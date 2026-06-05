@@ -273,7 +273,8 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── ReactiveKeyRotationRepository.java — reactive SPI: same two query methods with Uni<List<>> returns; no bundled JPA impl — consumers provide; test suite uses BlockingReactiveKeyRotationRepository shim
 │       │   ├── ActorIdentityBindingRepository.java         — SPI: latestBindingFor / bindingHistoryFor / save
 │       │   └── jpa/                              — JPA implementations (EntityManager-based)
-│       │       └── JpaActorIdentityBindingRepository.java
+│       │       ├── JpaActorIdentityBindingRepository.java
+│       │       └── LedgerSequenceAllocator.java     — CDI bean: atomic per-subject sequence allocation via SQL-standard MERGE on ledger_subject_sequence
 │       ├── service/
 │       │   ├── LedgerEntryEnricher.java         — SPI: pluggable @PrePersist enrichment pipeline
 │       │   ├── TraceIdEnricher.java             — auto-populates traceId from active OTel span
@@ -365,7 +366,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │           ├── LedgerErasureService.java    — GDPR Art.17 erasure (CDI bean)
 │           └── LedgerPrivacyProducer.java   — CDI producer for both SPIs (@DefaultBean)
 │   └── src/main/resources/db/ledger/migration/
-│       ├── V1000__ledger_base_schema.sql    — ledger_entry + ledger_attestation tables
+│       ├── V1000__ledger_base_schema.sql    — ledger_entry + ledger_attestation tables + ledger_subject_sequence (per-subject seq counter) + UNIQUE(subject_id, sequence_number)
 │       ├── V1001__actor_trust_score.sql     — actor_trust_score two-column key model (UUID PK, score_type GLOBAL|CAPABILITY|DIMENSION|CAPABILITY_DIMENSION, capability_key + dimension_key, CHECK constraint, NULLS NOT DISTINCT)
 │       ├── V1002__ledger_supplement.sql     — supplement tables + drops moved columns
 │       ├── V1003__ledger_entry_archive.sql  — ledger_entry_archive table

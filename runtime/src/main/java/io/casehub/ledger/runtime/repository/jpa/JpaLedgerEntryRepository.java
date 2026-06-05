@@ -84,29 +84,32 @@ public class JpaLedgerEntryRepository implements LedgerEntryRepository {
     @Inject
     DecisionContextSanitiser decisionContextSanitiser;
 
+    @Inject
+    LedgerSequenceAllocator sequenceAllocator;
+
     /** {@inheritDoc} */
     @Override
     @Transactional
     public LedgerEntry save(final LedgerEntry entry) {
-        // Ensure occurredAt is set before computing the digest — @PrePersist fires
-        // during persist(), which is too late for leafHash() to see the correct value.
+        if (entry.subjectId == null) {
+            throw new IllegalArgumentException("LedgerEntry.subjectId must not be null");
+        }
         if (entry.occurredAt == null) {
             entry.occurredAt = Instant.now();
         }
 
-        // Pseudonymise actor identity before computing the leaf hash.
-        // The hash chain covers the token, not the raw identity.
         if (entry.actorId != null) {
             entry.actorId = actorIdentityProvider.tokenise(entry.actorId);
         }
 
-        // Sanitise decisionContext in any attached ComplianceSupplement.
         entry.compliance().ifPresent(cs -> {
             if (cs.decisionContext != null) {
                 cs.decisionContext = decisionContextSanitiser.sanitise(cs.decisionContext);
                 entry.refreshSupplementJson();
             }
         });
+
+        entry.sequenceNumber = sequenceAllocator.nextSequenceNumber(entry.subjectId);
 
         if (ledgerConfig.hashChain().enabled()) {
             entry.digest = LedgerMerkleTree.leafHash(entry);

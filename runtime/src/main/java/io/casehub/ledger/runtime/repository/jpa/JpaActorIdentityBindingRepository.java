@@ -19,6 +19,9 @@ public class JpaActorIdentityBindingRepository implements ActorIdentityBindingRe
     @LedgerPersistenceUnit
     EntityManager em;
 
+    @Inject
+    LedgerSequenceAllocator sequenceAllocator;
+
     @Override
     public Optional<ActorIdentityBindingEntry> latestBindingFor(final String actorId) {
         return em.createNamedQuery("ActorIdentityBindingEntry.findLatestByActorId",
@@ -40,6 +43,10 @@ public class JpaActorIdentityBindingRepository implements ActorIdentityBindingRe
     @Override
     @Transactional
     public ActorIdentityBindingEntry save(final ActorIdentityBindingEntry entry) {
+        if (entry.subjectId == null) {
+            throw new IllegalArgumentException("ActorIdentityBindingEntry.subjectId must not be null");
+        }
+        entry.sequenceNumber = sequenceAllocator.nextSequenceNumber(entry.subjectId);
         em.persist(entry);
         return entry;
     }

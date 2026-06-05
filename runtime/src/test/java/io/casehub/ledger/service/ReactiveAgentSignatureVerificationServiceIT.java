@@ -12,6 +12,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -57,6 +58,9 @@ class ReactiveAgentSignatureVerificationServiceIT {
     @Inject
     AgentSuspectEventCapture eventCapture;
 
+    @Inject
+    EntityManager em;
+
     @InjectMock
     AgentSigner agentSigner;
 
@@ -66,10 +70,9 @@ class ReactiveAgentSignatureVerificationServiceIT {
         eventCapture.reset();
     }
 
-    private TestEntry seedEntry(final UUID subjectId, final int seq, final String actorId) {
+    private TestEntry seedEntry(final UUID subjectId, final String actorId) {
         final TestEntry e = new TestEntry();
         e.subjectId = subjectId;
-        e.sequenceNumber = seq;
         e.entryType = LedgerEntryType.EVENT;
         e.actorId = actorId;
         e.actorType = ActorType.SYSTEM;
@@ -77,10 +80,9 @@ class ReactiveAgentSignatureVerificationServiceIT {
         return (TestEntry) repo.save(e);
     }
 
-    private TestEntry seedAgent(final UUID subjectId, final int seq, final String actorId) {
+    private TestEntry seedAgent(final UUID subjectId, final String actorId) {
         final TestEntry e = new TestEntry();
         e.subjectId = subjectId;
-        e.sequenceNumber = seq;
         e.entryType = LedgerEntryType.EVENT;
         e.actorId = actorId;
         e.actorType = ActorType.AGENT;
@@ -100,7 +102,7 @@ class ReactiveAgentSignatureVerificationServiceIT {
     @Transactional
     void verifyAgentSignatureAsync_unsignedEntry_returnsUnsigned() {
         final UUID sub = UUID.randomUUID();
-        final TestEntry e = seedEntry(sub, 1, "unsigned-actor");
+        final TestEntry e = seedEntry(sub, "unsigned-actor");
 
         final VerificationResult result = reactiveVerificationService
                 .verifyAgentSignatureAsync(e.id)
@@ -114,9 +116,9 @@ class ReactiveAgentSignatureVerificationServiceIT {
     void verifyAgentSignatureAsync_validSignature_returnsValid() throws Exception {
         final java.security.KeyPair kp = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
         final UUID sub = UUID.randomUUID();
-        final TestEntry e = seedEntry(sub, 1, "signed-actor");
+        final TestEntry e = seedEntry(sub, "signed-actor");
         signEntry(e, kp);
-        repo.save(e);
+        em.flush();
 
         final VerificationResult result = reactiveVerificationService
                 .verifyAgentSignatureAsync(e.id)
@@ -130,10 +132,10 @@ class ReactiveAgentSignatureVerificationServiceIT {
     void verifyAgentSignatureAsync_tamperedSignature_returnsInvalid() throws Exception {
         final java.security.KeyPair kp = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
         final UUID sub = UUID.randomUUID();
-        final TestEntry e = seedEntry(sub, 1, "signed-actor");
+        final TestEntry e = seedEntry(sub, "signed-actor");
         signEntry(e, kp);
         e.agentSignature[0] ^= 0xFF;
-        repo.save(e);
+        em.flush();
 
         final VerificationResult result = reactiveVerificationService
                 .verifyAgentSignatureAsync(e.id)
@@ -147,9 +149,9 @@ class ReactiveAgentSignatureVerificationServiceIT {
     void verifyAgentSignatureAsync_suspectEntry_firesEventViaReactivePath() throws Exception {
         final java.security.KeyPair kp = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
         final UUID sub = UUID.randomUUID();
-        final TestEntry e = seedAgent(sub, 1, "claude:reviewer@v1");
+        final TestEntry e = seedAgent(sub, "claude:reviewer@v1");
         final AgentSignature sig = signEntry(e, kp);
-        repo.save(e);
+        em.flush();
 
         final java.time.Instant compromisedSince = e.occurredAt.minusSeconds(60);
         rotationService.recordRotation("claude:reviewer@v1", sig.keyRef(), null,

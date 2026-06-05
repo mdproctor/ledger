@@ -22,10 +22,16 @@ import io.casehub.ledger.runtime.model.LedgerEntry;
 public interface LedgerEntryRepository {
 
     /**
-     * Persist a new ledger entry and return the saved instance.
+     * Persist a new ledger entry with automatic sequence number assignment.
      *
-     * @param entry the entry to persist; must not be {@code null}
-     * @return the persisted entry (same instance, post-{@code @PrePersist})
+     * <p>The repository assigns {@code sequenceNumber} based on the entry's
+     * {@code subjectId} — any value set by the caller is overwritten. Sequence
+     * numbers are monotonically increasing and contiguous on insert within
+     * committed transactions. Retention deletion may remove entries from the
+     * start of the sequence without affecting the contiguity invariant.
+     *
+     * @param entry the entry to persist; {@code subjectId} must not be {@code null}
+     * @return the persisted entry with {@code sequenceNumber} assigned
      */
     LedgerEntry save(LedgerEntry entry);
 

@@ -11,6 +11,7 @@ import java.util.UUID;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -88,6 +89,7 @@ class LedgerHealthJobIT {
 
     @Inject LedgerHealthJob healthJob;
     @Inject LedgerEntryRepository repo;
+    @Inject EntityManager em;
 
     @BeforeEach
     void reset() {
@@ -103,9 +105,10 @@ class LedgerHealthJobIT {
     @Transactional
     void contiguousSequences_noGapEvent() {
         final UUID subjectId = UUID.randomUUID();
-        entry(subjectId, 1);
-        entry(subjectId, 2);
-        entry(subjectId, 3);
+        // Save three entries normally — repo assigns 1, 2, 3
+        newEntry(subjectId);
+        newEntry(subjectId);
+        newEntry(subjectId);
 
         healthJob.run();
 
@@ -122,9 +125,16 @@ class LedgerHealthJobIT {
     @Transactional
     void sequenceGap_eventFired() {
         final UUID subjectId = UUID.randomUUID();
-        entry(subjectId, 1);
-        entry(subjectId, 2);
-        entry(subjectId, 4); // gap at 3
+        // Save three entries normally: gets seqNum 1, 2, 3
+        final TestEntry e1 = newEntry(subjectId);
+        final TestEntry e2 = newEntry(subjectId);
+        final TestEntry e3 = newEntry(subjectId);
+
+        // Create gap: change e2's sequence to 4 via native SQL
+        em.createNativeQuery("UPDATE ledger_entry SET sequence_number = ?1 WHERE id = ?2")
+                .setParameter(1, 4)
+                .setParameter(2, e2.id)
+                .executeUpdate();
 
         healthJob.run();
 
@@ -143,12 +153,18 @@ class LedgerHealthJobIT {
     @Transactional
     void multipleSubjects_onlyGappedFires() {
         final UUID cleanSubjectId = UUID.randomUUID();
-        entry(cleanSubjectId, 1);
-        entry(cleanSubjectId, 2);
+        newEntry(cleanSubjectId);
+        newEntry(cleanSubjectId);
 
         final UUID gappedSubjectId = UUID.randomUUID();
-        entry(gappedSubjectId, 1);
-        entry(gappedSubjectId, 3); // gap at 2
+        final TestEntry g1 = newEntry(gappedSubjectId);
+        final TestEntry g2 = newEntry(gappedSubjectId);
+
+        // Create gap: change g2's sequence to 3 via native SQL
+        em.createNativeQuery("UPDATE ledger_entry SET sequence_number = ?1 WHERE id = ?2")
+                .setParameter(1, 3)
+                .setParameter(2, g2.id)
+                .executeUpdate();
 
         healthJob.run();
 
@@ -167,7 +183,7 @@ class LedgerHealthJobIT {
     void singleEntry_noGapEvent() {
         // A subject with one entry always satisfies COUNT=1 = MAX-MIN+1=1, so no gap.
         final UUID subjectId = UUID.randomUUID();
-        entry(subjectId, 1);
+        newEntry(subjectId);
 
         healthJob.run();
 
@@ -227,15 +243,14 @@ class LedgerHealthJobIT {
 
     // ── fixture ───────────────────────────────────────────────────────────────
 
-    private void entry(final UUID subjectId, final int seq) {
+    private TestEntry newEntry(final UUID subjectId) {
         final TestEntry e = new TestEntry();
         e.subjectId = subjectId;
-        e.sequenceNumber = seq;
         e.entryType = LedgerEntryType.EVENT;
         e.actorId = "health-actor";
         e.actorType = ActorType.AGENT;
         e.actorRole = "HealthTester";
         e.occurredAt = Instant.now();
-        repo.save(e);
+        return (TestEntry) repo.save(e);
     }
 }

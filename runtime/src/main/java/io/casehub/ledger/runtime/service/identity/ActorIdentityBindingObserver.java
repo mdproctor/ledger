@@ -66,6 +66,7 @@ public class ActorIdentityBindingObserver {
             entry.id = UUID.randomUUID();
             entry.subjectId = UUID.nameUUIDFromBytes(actorId.getBytes(StandardCharsets.UTF_8));
             entry.actorId = actorId;
+            entry.actorType = io.casehub.platform.api.identity.ActorType.AGENT;
             entry.actorRole = "identity-binding";
             entry.entryType = LedgerEntryType.EVENT;
             entry.occurredAt = Instant.now();
