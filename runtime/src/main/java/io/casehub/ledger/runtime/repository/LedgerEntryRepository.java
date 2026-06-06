@@ -101,6 +101,19 @@ public interface LedgerEntryRepository {
     List<LedgerEntry> findAllEvents();
 
     /**
+     * Return all EVENT-type ledger entries for the given actor.
+     *
+     * <p>
+     * Used by incremental trust score recomputation to fetch all EVENT entries
+     * for a single actor when their trust score needs to be recomputed. Filters
+     * by {@code entryType = EVENT} and {@code actorId}.
+     *
+     * @param actorId the actor identity to filter by
+     * @return list of EVENT entries for the actor; empty if none exist
+     */
+    List<LedgerEntry> findEventsByActorId(String actorId);
+
+    /**
      * Return all attestations for the given set of ledger entry IDs, grouped by entry ID.
      *
      * @param entryIds the set of ledger entry UUIDs

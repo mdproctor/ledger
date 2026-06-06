@@ -51,6 +51,18 @@ public interface ReactiveLedgerEntryRepository {
 
     Uni<List<LedgerEntry>> findAllEvents();
 
+    /**
+     * Return all EVENT-type ledger entries for the given actor.
+     *
+     * <p>
+     * Reactive counterpart of {@link LedgerEntryRepository#findEventsByActorId(String)}.
+     * Used by incremental trust score recomputation.
+     *
+     * @param actorId the actor identity to filter by
+     * @return list of EVENT entries for the actor; empty if none exist
+     */
+    Uni<List<LedgerEntry>> findEventsByActorId(String actorId);
+
     Uni<List<LedgerEntry>> findByActorId(String actorId, Instant from, Instant to);
 
     Uni<List<LedgerEntry>> findByActorRole(String actorRole, Instant from, Instant to);

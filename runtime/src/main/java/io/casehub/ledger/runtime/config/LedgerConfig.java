@@ -402,6 +402,26 @@ public interface LedgerConfig {
         }
 
         /**
+         * Incremental per-actor trust recomputation settings.
+         *
+         * @return the incremental sub-configuration
+         */
+        IncrementalConfig incremental();
+
+        /** Incremental per-actor trust recomputation on attestation persist. */
+        interface IncrementalConfig {
+            /**
+             * When {@code true}, each attestation persist triggers immediate per-actor trust
+             * recomputation via a {@code TransactionPhase.AFTER_SUCCESS} CDI observer.
+             * The batch job remains as a consistency backstop.
+             *
+             * @return {@code true} if incremental recomputation is active; {@code false} by default
+             */
+            @WithDefault("false")
+            boolean enabled();
+        }
+
+        /**
          * Recomputation interval for trust scores expressed as a Quarkus duration string
          * (e.g. {@code "24h"}, {@code "6h"}, {@code "1h"}). Default is {@code "24h"} (nightly).
          *

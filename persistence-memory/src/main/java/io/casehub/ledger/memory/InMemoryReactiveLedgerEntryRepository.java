@@ -64,6 +64,11 @@ public class InMemoryReactiveLedgerEntryRepository implements ReactiveLedgerEntr
     }
 
     @Override
+    public Uni<List<LedgerEntry>> findEventsByActorId(final String actorId) {
+        return Uni.createFrom().item(() -> blocking.findEventsByActorId(actorId));
+    }
+
+    @Override
     public Uni<List<LedgerEntry>> findByActorId(final String actorId,
             final Instant from, final Instant to) {
         return Uni.createFrom().item(() -> blocking.findByActorId(actorId, from, to));

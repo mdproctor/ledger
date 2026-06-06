@@ -10,10 +10,13 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
+
+import org.jboss.logging.Logger;
 
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.config.LedgerConfig;
@@ -25,6 +28,7 @@ import io.casehub.ledger.runtime.privacy.ActorIdentityProvider;
 import io.casehub.ledger.runtime.privacy.DecisionContextSanitiser;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.repository.LedgerMerkleFrontierRepository;
+import io.casehub.ledger.runtime.service.AttestationRecordedEvent;
 import io.casehub.ledger.runtime.service.LedgerMerklePublisher;
 import io.casehub.ledger.runtime.service.LedgerMerkleTree;
 
@@ -65,6 +69,8 @@ import io.casehub.ledger.runtime.service.LedgerMerkleTree;
 @Alternative
 public class JpaLedgerEntryRepository implements LedgerEntryRepository {
 
+    private static final Logger log = Logger.getLogger(JpaLedgerEntryRepository.class);
+
     @Inject
     @LedgerPersistenceUnit
     EntityManager em;
@@ -86,6 +92,9 @@ public class JpaLedgerEntryRepository implements LedgerEntryRepository {
 
     @Inject
     LedgerSequenceAllocator sequenceAllocator;
+
+    @Inject
+    Event<AttestationRecordedEvent> attestationRecordedEvent;
 
     /** {@inheritDoc} */
     @Override
@@ -188,6 +197,16 @@ public class JpaLedgerEntryRepository implements LedgerEntryRepository {
             attestation.attestorId = actorIdentityProvider.tokenise(attestation.attestorId);
         }
         em.persist(attestation);
+
+        final LedgerEntry entry = em.find(LedgerEntry.class, attestation.ledgerEntryId);
+        if (entry != null && entry.actorId != null) {
+            attestationRecordedEvent.fire(
+                    new AttestationRecordedEvent(entry.actorId, entry.id, attestation.id));
+        } else if (entry == null) {
+            log.warnf("saveAttestation: no LedgerEntry found for ledgerEntryId=%s — "
+                    + "AttestationRecordedEvent not fired", attestation.ledgerEntryId);
+        }
+
         return attestation;
     }
 
@@ -204,6 +223,18 @@ public class JpaLedgerEntryRepository implements LedgerEntryRepository {
         return em.createQuery(
                 "SELECT e FROM LedgerEntry e WHERE e.entryType = :type",
                 LedgerEntry.class)
+                .setParameter("type", LedgerEntryType.EVENT)
+                .getResultList();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<LedgerEntry> findEventsByActorId(final String actorId) {
+        final String token = actorIdentityProvider.tokeniseForQuery(actorId);
+        return em.createQuery(
+                "SELECT e FROM LedgerEntry e WHERE e.actorId = :actorId AND e.entryType = :type",
+                LedgerEntry.class)
+                .setParameter("actorId", token)
                 .setParameter("type", LedgerEntryType.EVENT)
                 .getResultList();
     }

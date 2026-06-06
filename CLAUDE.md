@@ -314,7 +314,10 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── FrequencyWeightedGlobalStrategy.java — @Alternative: frequency-weighted from capability scores (Option C)
 │       │   ├── AttestationAggregator.java   — CDI bean: collapses (entryId, capabilityTag) attestation groups into consensus verdict (WEIGHTED_MAJORITY | UNANIMOUS_REQUIRED | FIRST_ATTESTOR)
 │       │   ├── EigenTrustComputer.java      — EigenTrust power iteration, transitive global trust scores (pure Java)
-│       │   ├── TrustScoreJob.java           — @Scheduled nightly recomputation (capability pass → dimension pass → global pass)
+│       │   ├── AttestationRecordedEvent.java — CDI event record fired from saveAttestation(); carries actorId (decision-maker), ledgerEntryId, attestationId
+│       │   ├── PerActorTrustComputer.java    — package-private CDI bean: four-pass trust scoring for a single actor (capability → dimension → capability×dimension → global); extracted from TrustScoreJob for batch and incremental reuse
+│       │   ├── IncrementalTrustUpdateObserver.java — CDI observer: @Observes(AFTER_SUCCESS) AttestationRecordedEvent → per-actor trust recomputation in REQUIRES_NEW; gated by casehub.ledger.trust-score.incremental.enabled
+│       │   ├── TrustScoreJob.java           — @Scheduled nightly recomputation; delegates per-actor work to PerActorTrustComputer
 │       │   ├── LedgerHealthJob.java         — @Scheduled gap detection + reconciliation (configurable interval, default 1h)
 │       │   ├── LedgerReconciliationSource.java — SPI: consumers implement to compare domain entity counts vs ledger counts
 │       │   ├── LedgerGapDetected.java       — CDI event fired on sequence gap or reconciliation mismatch
@@ -328,7 +331,8 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   │   ├── TrustScoreFullPayload.java      — all current scores (strategy: rebuild ranked list)
 │       │   │   ├── TrustScoreDeltaPayload.java     — changed actors only (strategy: incremental cache)
 │       │   │   ├── TrustScoreComputedAt.java       — lightweight notification (strategy: signal only)
-│       │   │   └── TrustScoreDelta.java            — single actor score change value type
+│       │   │   ├── TrustScoreDelta.java            — single actor score change value type
+│       │   │   └── TrustScoreActorUpdatedEvent.java — CDI event: per-actor score update notification (incremental path only); carries actorId, all score types, computedAt
 │       │   ├── federation/
 │       │   │   ├── TrustExportPayload.java         — record: exportedAt, exportingDeployment, actors
 │       │   │   ├── ActorExport.java                — record: actorId, actorType, globalScore, capabilityScores, dimensionScores, capabilityDimensionScores

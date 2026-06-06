@@ -1,7 +1,6 @@
 package io.casehub.ledger.runtime.service;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -10,14 +9,11 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import io.casehub.ledger.api.model.CapabilityTag;
-
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
-import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
@@ -57,16 +53,10 @@ public class TrustScoreJob {
     TrustScoreRoutingPublisher routingPublisher;
 
     @Inject
-    DecayFunction decayFunction;
-
-    @Inject
-    GlobalScoreStrategy globalScoreStrategy;
-
-    @Inject
-    AttestationAggregator attestationAggregator;
-
-    @Inject
     TrustBootstrapService bootstrapService;
+
+    @Inject
+    PerActorTrustComputer perActorComputer;
 
     @Inject
     @LedgerPersistenceUnit
@@ -124,143 +114,27 @@ public class TrustScoreJob {
             }
         }
 
-        final TrustScoreComputer computer = new TrustScoreComputer(decayFunction);
         final Instant now = Instant.now();
 
         final Set<UUID> entryIds = allEvents.stream()
                 .map(e -> e.id)
                 .collect(Collectors.toSet());
         final Map<UUID, List<LedgerAttestation>> attestationsByEntry = ledgerRepo.findAttestationsForEntries(entryIds);
-        final AttestationAggregator.Strategy aggregationStrategy = config.trustScore().aggregationStrategy();
 
         for (final Map.Entry<String, List<LedgerEntry>> actorEntry : byActor.entrySet()) {
             final String actorId = actorEntry.getKey();
             final List<LedgerEntry> decisions = actorEntry.getValue();
-            final ActorType actorType = decisions.stream()
-                    .map(e -> e.actorType)
-                    .filter(t -> t != null)
-                    .findFirst()
-                    .orElse(ActorType.HUMAN);
 
-            // Collect all attestations for this actor's decisions (used by the dimension pass and derive())
-            final List<LedgerAttestation> actorAttestations = new ArrayList<>();
-            for (final LedgerEntry decision : decisions) {
-                actorAttestations.addAll(attestationsByEntry.getOrDefault(decision.id, List.of()));
-            }
-
-            // Build aggregated view for capability and global passes.
-            // Dimension pass uses the original actorAttestations (dimensionScore is continuous, not verdict-based).
-            final List<LedgerAttestation> effectiveAttestations =
-                    buildEffectiveAttestations(decisions, attestationsByEntry, aggregationStrategy);
-
-            // ── Capability pass ────────────────────────────────────────────────────────
-            // Group aggregated attestations by (capabilityTag → entryId) in one pass
-            final Map<String, Map<UUID, List<LedgerAttestation>>> byCapabilityAndEntry = effectiveAttestations.stream()
-                    .filter(a -> !CapabilityTag.GLOBAL.equals(a.capabilityTag))
-                    .collect(Collectors.groupingBy(
-                            a -> a.capabilityTag,
-                            Collectors.groupingBy(a -> a.ledgerEntryId)));
-
-            final Map<String, TrustScoreComputer.ActorScore> capabilityScores = new LinkedHashMap<>();
-
-            for (final Map.Entry<String, Map<UUID, List<LedgerAttestation>>> capEntry : byCapabilityAndEntry.entrySet()) {
-                final String capabilityTag = capEntry.getKey();
-                final Map<UUID, List<LedgerAttestation>> capByEntry = capEntry.getValue();
-
-                final TrustScoreComputer.ActorScore capScore = computer.compute(decisions, capByEntry, now);
-                trustRepo.upsert(actorId, ActorTrustScore.ScoreType.CAPABILITY, capabilityTag, null,
-                        actorType, capScore.trustScore(),
-                        capScore.decisionCount(), capScore.overturnedCount(),
-                        capScore.alpha(), capScore.beta(),
-                        capScore.attestationPositive(), capScore.attestationNegative(), now);
-                capabilityScores.put(capabilityTag, capScore);
-            }
-
-            // ── Dimension pass ─────────────────────────────────────────────────────────
-            // Group actor's dimension-tagged attestations by dimension in one pass.
-            // Excludes attestations with null dimensionScore — they carry no quality signal.
-            final Map<String, List<LedgerAttestation>> byDimension = actorAttestations.stream()
-                    .filter(a -> a.trustDimension != null && a.dimensionScore != null)
-                    .collect(Collectors.groupingBy(a -> a.trustDimension));
-
-            for (final Map.Entry<String, List<LedgerAttestation>> dimEntry : byDimension.entrySet()) {
-                final String dimension = dimEntry.getKey();
-                final List<LedgerAttestation> dimAttestations = dimEntry.getValue();
-
-                computer.computeDimensionScore(dimAttestations, now).ifPresent(dimScore -> {
-                    // scores >= 0.5 count as positive; < 0.5 count as negative; 0.5 (neutral) maps to positive
-                    final int dimPositive = (int) dimAttestations.stream()
-                            .filter(a -> a.dimensionScore >= 0.5).count();
-                    final int dimNegative = (int) dimAttestations.stream()
-                            .filter(a -> a.dimensionScore < 0.5).count();
-                    // distinct entries where this actor was decision-maker, assessed on this dimension
-                    final int dimDecisionCount = (int) dimAttestations.stream()
-                            .map(a -> a.ledgerEntryId).distinct().count();
-
-                    trustRepo.upsert(actorId, ActorTrustScore.ScoreType.DIMENSION, null, dimension,
-                            actorType, dimScore,
-                            dimDecisionCount, 0,
-                            0.0, 0.0,
-                            dimPositive, dimNegative, now);
-                });
-            }
-
-            // ── CAPABILITY_DIMENSION pass ─────────────────────────────────────────────
-            // Attestations tagged with both a non-GLOBAL capabilityTag and a trustDimension.
-            // Uses raw actorAttestations (not aggregated synthetics) — same as dimension pass.
-            final Map<String, Map<String, List<LedgerAttestation>>> byCapabilityAndDimension =
-                    actorAttestations.stream()
-                            .filter(a -> a.trustDimension != null
-                                    && a.dimensionScore != null
-                                    && a.capabilityTag != null
-                                    && !CapabilityTag.GLOBAL.equals(a.capabilityTag))
-                            .collect(Collectors.groupingBy(
-                                    a -> a.capabilityTag,
-                                    Collectors.groupingBy(a -> a.trustDimension)));
-
-            for (final Map.Entry<String, Map<String, List<LedgerAttestation>>> capEntry :
-                    byCapabilityAndDimension.entrySet()) {
-                final String capabilityTag = capEntry.getKey();
-                for (final Map.Entry<String, List<LedgerAttestation>> dimEntry :
-                        capEntry.getValue().entrySet()) {
-                    final String dimension = dimEntry.getKey();
-                    final List<LedgerAttestation> compositeAttestations = dimEntry.getValue();
-
-                    computer.computeDimensionScore(compositeAttestations, now).ifPresent(score -> {
-                        final int cdPositive = (int) compositeAttestations.stream()
-                                .filter(a -> a.dimensionScore >= 0.5).count();
-                        final int cdNegative = (int) compositeAttestations.stream()
-                                .filter(a -> a.dimensionScore < 0.5).count();
-                        final int cdDecisionCount = (int) compositeAttestations.stream()
-                                .map(a -> a.ledgerEntryId).distinct().count();
-
-                        trustRepo.upsert(actorId, ActorTrustScore.ScoreType.CAPABILITY_DIMENSION,
-                                capabilityTag, dimension, actorType, score,
-                                cdDecisionCount, 0, 0.0, 0.0, cdPositive, cdNegative, now);
-                    });
+            final Set<UUID> actorEntryIds = decisions.stream()
+                    .map(e -> e.id).collect(Collectors.toSet());
+            final Map<UUID, List<LedgerAttestation>> actorAttestationsByEntry = new LinkedHashMap<>();
+            for (final UUID eid : actorEntryIds) {
+                if (attestationsByEntry.containsKey(eid)) {
+                    actorAttestationsByEntry.put(eid, attestationsByEntry.get(eid));
                 }
             }
 
-            // ── Global pass ────────────────────────────────────────────────────────────
-            // selectAttestations filters by capabilityTag/etc. — synthetics preserve all fields.
-            // Group directly by ledgerEntryId rather than using reference-equality set,
-            // since effectiveAttestations are synthetic instances not in attestationsByEntry.
-            final List<LedgerAttestation> selectedEffective =
-                    globalScoreStrategy.selectAttestations(effectiveAttestations);
-            final Map<UUID, List<LedgerAttestation>> selectedByEntry = selectedEffective.stream()
-                    .collect(Collectors.groupingBy(a -> a.ledgerEntryId));
-
-            final TrustScoreComputer.ActorScore globalScore = computer.compute(decisions, selectedByEntry, now);
-            // derive() receives original actorAttestations — capability frequency counts stay accurate
-            final TrustScoreComputer.ActorScore finalScore =
-                    globalScoreStrategy.derive(capabilityScores, actorAttestations)
-                            .orElse(globalScore);
-
-            trustRepo.upsert(actorId, ActorTrustScore.ScoreType.GLOBAL, null, null,
-                    actorType, finalScore.trustScore(),
-                    finalScore.decisionCount(), finalScore.overturnedCount(),
-                    finalScore.alpha(), finalScore.beta(),
-                    finalScore.attestationPositive(), finalScore.attestationNegative(), now);
+            perActorComputer.computeForActor(actorId, decisions, actorAttestationsByEntry, now);
         }
 
         if (config.trustScore().eigentrust().enabled()) {
@@ -273,56 +147,6 @@ public class TrustScoreJob {
                 .peek(em::detach)
                 .collect(Collectors.toList());
         routingPublisher.publish(currentScores, previousSnapshot, now);
-    }
-
-    /**
-     * Aggregates attestations per (entryId, capabilityTag) group and returns the flattened result.
-     * Each group is reduced to a single synthetic {@link LedgerAttestation} carrying the consensus
-     * verdict and aggregated confidence. The dimension pass is excluded — it uses raw attestations.
-     */
-    private List<LedgerAttestation> buildEffectiveAttestations(
-            final List<LedgerEntry> decisions,
-            final Map<UUID, List<LedgerAttestation>> attestationsByEntry,
-            final AttestationAggregator.Strategy strategy) {
-        final List<LedgerAttestation> result = new ArrayList<>();
-        for (final LedgerEntry decision : decisions) {
-            final List<LedgerAttestation> entryAttestations = attestationsByEntry.getOrDefault(decision.id, List.of());
-            if (entryAttestations.isEmpty()) {
-                continue;
-            }
-            // Aggregate per capabilityTag — different capability scopes are independent signals
-            final Map<String, List<LedgerAttestation>> byCapTag = entryAttestations.stream()
-                    .collect(Collectors.groupingBy(a -> a.capabilityTag != null ? a.capabilityTag : CapabilityTag.GLOBAL));
-            for (final List<LedgerAttestation> group : byCapTag.values()) {
-                attestationAggregator.aggregate(group, strategy)
-                        .map(agg -> toSynthetic(agg, group.get(0)))
-                        .ifPresent(result::add);
-            }
-        }
-        return result;
-    }
-
-    /**
-     * Builds a non-persisted synthetic {@link LedgerAttestation} from an aggregated result.
-     * {@code id}, {@code attestorId}, and {@code attestorType} are intentionally left null —
-     * the synthetic is never written to the database and is not attributed to a single attestor.
-     * {@code trustDimension} and {@code dimensionScore} are copied for structural completeness
-     * but are never read from synthetics; the dimension pass always uses raw attestations.
-     */
-    private static LedgerAttestation toSynthetic(
-            final AttestationAggregator.AggregatedAttestation agg,
-            final LedgerAttestation template) {
-        final LedgerAttestation synthetic = new LedgerAttestation();
-        synthetic.ledgerEntryId = template.ledgerEntryId;
-        synthetic.subjectId = template.subjectId;
-        synthetic.capabilityTag = template.capabilityTag;
-        synthetic.trustDimension = template.trustDimension;
-        synthetic.dimensionScore = template.dimensionScore;
-        synthetic.verdict = agg.consensusVerdict();
-        synthetic.confidence = agg.aggregatedConfidence();
-        synthetic.occurredAt = template.occurredAt;
-        synthetic.attestorRole = template.attestorRole;
-        return synthetic;
     }
 
     private void runEigenTrustPass(

@@ -16,8 +16,11 @@ import java.util.stream.Collectors;
 
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
+
+import org.jboss.logging.Logger;
 
 import io.casehub.ledger.api.model.CapabilityTag;
 import io.casehub.ledger.api.model.LedgerEntryType;
@@ -29,6 +32,7 @@ import io.casehub.ledger.runtime.privacy.ActorIdentityProvider;
 import io.casehub.ledger.runtime.privacy.DecisionContextSanitiser;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.repository.LedgerMerkleFrontierRepository;
+import io.casehub.ledger.runtime.service.AttestationRecordedEvent;
 import io.casehub.ledger.runtime.service.LedgerEnricherPipeline;
 import io.casehub.ledger.runtime.service.LedgerMerklePublisher;
 import io.casehub.ledger.runtime.service.LedgerMerkleTree;
@@ -49,6 +53,8 @@ import io.casehub.ledger.runtime.service.LedgerMerkleTree;
 @ApplicationScoped
 public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
 
+    private static final Logger log = Logger.getLogger(InMemoryLedgerEntryRepository.class);
+
     @Inject
     LedgerMerkleFrontierRepository frontierRepo;
 
@@ -66,6 +72,9 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
 
     @Inject
     LedgerConfig ledgerConfig;
+
+    @Inject
+    Event<AttestationRecordedEvent> attestationRecordedEvent;
 
     // package-private so InMemoryKeyRotationRepository can read it
     final ConcurrentHashMap<UUID, LedgerEntry> entries = new ConcurrentHashMap<>();
@@ -168,6 +177,16 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
             attestation.attestorId = actorIdentityProvider.tokenise(attestation.attestorId);
         }
         attestations.put(attestation.id, attestation);
+
+        final LedgerEntry entry = entries.get(attestation.ledgerEntryId);
+        if (entry != null && entry.actorId != null) {
+            attestationRecordedEvent.fire(
+                    new AttestationRecordedEvent(entry.actorId, entry.id, attestation.id));
+        } else if (entry == null) {
+            log.warnf("saveAttestation: no LedgerEntry found for ledgerEntryId=%s — "
+                    + "AttestationRecordedEvent not fired", attestation.ledgerEntryId);
+        }
+
         return attestation;
     }
 
@@ -180,6 +199,15 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
     public List<LedgerEntry> findAllEvents() {
         return entries.values().stream()
                 .filter(e -> LedgerEntryType.EVENT.equals(e.entryType))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<LedgerEntry> findEventsByActorId(final String actorId) {
+        final String token = actorIdentityProvider.tokeniseForQuery(actorId);
+        return entries.values().stream()
+                .filter(e -> LedgerEntryType.EVENT.equals(e.entryType))
+                .filter(e -> token.equals(e.actorId))
                 .collect(Collectors.toList());
     }
 

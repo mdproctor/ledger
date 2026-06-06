@@ -303,6 +303,7 @@ The extension is configured under the `casehub.ledger` prefix via `application.p
 | `trust-score.eigentrust.alpha` | `0.15` | EigenTrust dampening constant α — higher values anchor the eigenvector closer to the pre-trusted set |
 | `trust-score.eigentrust.pre-trusted-actors` | (empty) | Comma-separated actor IDs used as the EigenTrust seed; uniform distribution used when empty |
 | `trust-score.schedule` | `24h` | Recomputation interval as a Quarkus duration string; reduce for high-interaction agent mesh deployments |
+| `trust-score.incremental.enabled` | `false` | Trigger per-actor trust recomputation on each attestation persist (`AFTER_SUCCESS` + `REQUIRES_NEW`). Batch job remains as backstop. (#115) |
 | `trust-score.aggregation-strategy` | `WEIGHTED_MAJORITY` | How multiple attestations on the same entry are resolved before trust scoring (`WEIGHTED_MAJORITY`, `UNANIMOUS_REQUIRED`, `FIRST_ATTESTOR`) |
 | `health.enabled` | `true` | Enable scheduled audit health checks (sequence gap detection + reconciliation) |
 | `health.check-interval` | `1h` | Interval between health check runs as a Quarkus duration string (e.g. `30m`, `2h`) |
@@ -358,8 +359,9 @@ Prior is Beta(1,1) → score 0.5 with no history. Score = α/(α+β).
 set — ✅ #62), or `CAPABILITY_DIMENSION` (both keys set — ✅ #76).
 The unique constraint `NULLS NOT DISTINCT (actor_id, capability_key, dimension_key)` enforces
 one GLOBAL row per actor. A CHECK constraint ties the score_type to the nullity of the key
-columns, making the schema self-enforcing. `TrustScoreJob` runs four passes per actor: capability,
-dimension, capability-dimension, global.
+columns, making the schema self-enforcing. `PerActorTrustComputer` runs four passes per actor:
+capability, dimension, capability-dimension, global. Both `TrustScoreJob` (batch) and
+`IncrementalTrustUpdateObserver` (per-attestation, #115) delegate to it.
 
 `LedgerAttestation.capabilityTag` (✅ #60) — nullable-free `"*"` sentinel (`CapabilityTag.GLOBAL`) marks cross-capability attestations. Capability-specific attestations carry an explicit tag (e.g. `"security-review"`). Three new SPI query methods allow `TrustScoreJob` (#61) to retrieve per-actor, per-capability attestation history.
 
