@@ -1,9 +1,0 @@
-branch: issue-118-on-read-trust-computation
-project-sha: ce293c0eac3686c50b5b354d3378704edcc047ff
-date: 2026-06-06
-issue: 118
-issue-repo: casehubio/ledger
-covers: 118
-flyway-next-v: none
-design-repo: project
-design-section-hashes:
