@@ -39,6 +39,10 @@ public interface TrustScoreSource {
 
 **Return types:** `OptionalDouble` throughout (primitive specialization, no boxing). `TrustGateService` score-returning methods change from `Optional<Double>` to `OptionalDouble` to match — breaking change for engine consumers, deliberate. This platform has no end users; forcing every call site to be explicit about the primitive type is the right design. The conversion boilerplate (`Optional<Double>` ↔ `OptionalDouble`) at every delegation site is the wrong answer.
 
+**Empty-actor contract:** All implementations return `OptionalDouble.empty()` when no EVENT entries exist for the actor. `ComputedTrustScoreSource` checks for empty decisions before calling `computeAll()` and returns empty — it does NOT return the Bayesian Beta prior (0.5). This matches materialized/cached (no row → empty) and keeps the contract test clean. The engine's `TrustCandidateClassifier` classifies zero-event actors as BOOTSTRAP regardless of score, so the practical impact is nil, but `TrustGateService.meetsThreshold()` called directly would silently change behavior if computed returned 0.5 while materialized returned empty.
+
+**Package convention:** `api/spi/` is a new package — no `spi` package currently exists in the api module (existing types are under `api/model/`). The consumer-spi-placement protocol justifies this placement. This sets precedent for where future consumer-facing SPIs land in the ledger api module. Noted in the DESIGN.md update scope.
+
 ### TrustScoreCalculator — Pure Computation Extraction
 
 **Location:** `runtime/src/main/java/io/casehub/ledger/runtime/service/TrustScoreCalculator.java`
@@ -195,7 +199,7 @@ This disables the batch job and incremental observer. Trust scores are computed 
 This pattern ensures agreement is by contract, not coincidence.
 
 **Specific tests:**
-- **Contract test** — parameterized across all three implementations using the setup pattern above. Covers `capabilityScore()`, `globalScore()`, `dimensionScore()`, `capabilityDimensionScore()`, `decisionCount()`, and all batch methods.
+- **Contract test** — parameterized across all three implementations using the setup pattern above. Covers `capabilityScore()`, `globalScore()`, `dimensionScore()`, `capabilityDimensionScore()`, `decisionCount()`, and all batch methods. Includes edge cases: (a) actor with EVENT entries but zero attestations — all scores empty, decisionCount = 0; (b) unknown capability tag for a known actor — `capabilityScore` returns empty, `decisionCount` returns 0.
 - **CachedTrustScoreSource event wiring test** — verifies that firing `TrustScoreActorUpdatedEvent` updates all four cache maps (the bug fix). Also verifies `TrustScoreFullPayload` batch refresh.
 - **ComputedTrustScoreSource cache invalidation test** — verifies that firing `AttestationRecordedEvent` invalidates the per-actor computation cache, causing the next call to recompute.
 - **TrustScoreCalculator unit test** — pure computation tests with no persistence. Seeds decisions + attestations, verifies all four score types. Tests `derive()` path with `FrequencyWeightedGlobalStrategy`.
