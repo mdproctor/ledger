@@ -160,7 +160,7 @@ class TrustScoreCapabilityDimensionIT {
 
         final var score = trustGateService.qualityScore(actorId, "security-review", "thoroughness");
         assertThat(score).isPresent();
-        assertThat(score.get()).isGreaterThan(0.5);
+        assertThat(score.getAsDouble()).isGreaterThan(0.5);
     }
 
     // ── TrustGateService integration ─────────────────────────────────────────
@@ -178,7 +178,7 @@ class TrustScoreCapabilityDimensionIT {
 
         assertThat(trustGateService.qualityScore(actorId, "security-review", "thoroughness"))
                 .isPresent();
-        assertThat(trustGateService.qualityScore(actorId, "security-review", "thoroughness").get())
+        assertThat(trustGateService.qualityScore(actorId, "security-review", "thoroughness").getAsDouble())
                 .isCloseTo(0.88, within(0.05));
     }
 

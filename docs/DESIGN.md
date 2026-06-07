@@ -277,7 +277,7 @@ runtime accessor.
 
 ### OutcomeRecorder write API — CAPABILITY scores are what routing reads
 
-`TrustWeightedAgentStrategy` (casehub-engine) reads `TrustScoreCache`, not `TrustGateService`. `TrustScoreCache` is keyed by `"actorId:capabilityKey"` and refreshes only from `TrustScoreFullPayload` events fired at the end of each `TrustScoreJob` run — gated by `casehub.ledger.trust-score.routing-enabled=true`. The `onDelta()` path is a no-op for CAPABILITY scores; delta payloads carry only GLOBAL scores. Consequence: `OutcomeRecord.of()` requires `capabilityTag` explicitly — writes tagged GLOBAL do not reach routing. The `ofGlobal()` factory makes the intentional GLOBAL choice visible at the call site. `casehub.ledger.trust-score.routing-enabled=true` is the single most critical config key for routing consumers; without it, `TrustScoreFullPayload` is never fired and `TrustScoreCache` never refreshes. See ADR 0016 for EigenTrust inapplicability in single-attestor game-AI deployments.
+`TrustWeightedAgentStrategy` (casehub-engine) reads trust scores via `TrustScoreSource` SPI (`api/spi/`), not `TrustGateService`. Three implementations exist: `MaterializedTrustScoreSource` (@DefaultBean, reads `ActorTrustScoreRepository` per call), `CachedTrustScoreSource` (@Alternative, in-memory cache refreshed by `TrustScoreFullPayload` and `TrustScoreActorUpdatedEvent`), and `ComputedTrustScoreSource` (@Alternative, computes from raw attestation history on-read with per-actor computation cache, zero staleness). `TrustGateService` injects `TrustScoreSource` and adds threshold/fallback policy — it returns `OptionalDouble`, not `Optional<Double>`. `TrustScoreCalculator` extracts pure four-pass computation from `PerActorTrustComputer` — shared by the batch/incremental write path and on-read computation path. Consequence: `OutcomeRecord.of()` requires `capabilityTag` explicitly — writes tagged GLOBAL do not reach routing. The `ofGlobal()` factory makes the intentional GLOBAL choice visible at the call site. See ADR 0016 for EigenTrust inapplicability in single-attestor game-AI deployments. See issue #118 spec for the full TrustScoreSource design.
 
 ### OutcomeRecorder transaction demarcation — non-`@Transactional` outer + `@Transactional` delegate
 
@@ -380,7 +380,7 @@ Pure time-based decay (no valence asymmetry) — `TrustScoreComputer.computeDime
 
 **Audit counters:** `attestation_positive` counts dimension attestations with `dimensionScore >= 0.5`; `attestation_negative` counts `dimensionScore < 0.5`. These do not affect `trustScore` but appear in reporting.
 
-**Query surface:** `TrustGateService.dimensionScores(actorId)` → `Map<String, Double>` (all dimensions for an actor). `TrustGateService.dimensionScore(actorId, dimension)` → `Optional<Double>` (one specific dimension).
+**Query surface:** `TrustGateService.allDimensionScores(actorId)` → `Map<String, Double>` (all dimensions for an actor). `TrustGateService.dimensionScore(actorId, dimension)` → `OptionalDouble` (one specific dimension).
 
 ### Capability-Dimension Composite Trust Scores (✅ #76)
 
@@ -388,7 +388,7 @@ Composite scores answer "how thorough is this actor specifically when doing secu
 
 **Computation model:** Same decay-weighted average as DIMENSION scores, applied to attestations carrying both a non-GLOBAL `capabilityTag` and a `trustDimension`. The capability-dimension pass runs between the dimension pass and the global pass in `TrustScoreJob`.
 
-**Query surface:** `TrustGateService.qualityScore(actorId, capabilityTag, dimension)` → `Optional<Double>`. `TrustGateService.qualityScores(actorId, capabilityTag)` → `Map<String, Double>` (all dimensions for one capability). `TrustGateService.meetsQualityThreshold(actorId, capabilityTag, dimension, minScore)` → `boolean`.
+**Query surface:** `TrustGateService.qualityScore(actorId, capabilityTag, dimension)` → `OptionalDouble`. `TrustGateService.qualityScores(actorId, capabilityTag)` → `Map<String, Double>` (all dimensions for one capability). `TrustGateService.meetsQualityThreshold(actorId, capabilityTag, dimension, minScore)` → `boolean`.
 
 **Federation:** `CapabilityDimensionScoreExport` is included in `ActorExport` payloads from `TrustExportService`. `JpaTrustImportService` seeds CAPABILITY_DIMENSION rows on import.
 

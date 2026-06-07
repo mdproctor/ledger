@@ -2,159 +2,68 @@ package io.casehub.ledger.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.time.Instant;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
+import java.util.OptionalDouble;
 
 import org.junit.jupiter.api.Test;
 
-import io.casehub.ledger.api.model.ActorTrustScore.ScoreType;
-import io.casehub.platform.api.identity.ActorType;
-import io.casehub.ledger.runtime.model.ActorTrustScore;
-import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
+import io.casehub.ledger.api.spi.TrustScoreSource;
 import io.casehub.ledger.runtime.service.TrustGateService;
 
 /**
  * Pure unit tests for {@link TrustGateService} — no Quarkus runtime, no CDI.
+ * Tests the policy layer (thresholds, fallbacks) on top of {@link TrustScoreSource}.
  */
 class TrustGateServiceTest {
 
-    private static ActorTrustScoreRepository repoWith(final String actorId, final double trustScore) {
-        final ActorTrustScore score = new ActorTrustScore();
-        score.id = UUID.randomUUID();
-        score.actorId = actorId;
-        score.scoreType = ScoreType.GLOBAL;
-        score.actorType = ActorType.AGENT;
-        score.trustScore = trustScore;
-        score.lastComputedAt = Instant.now();
-        return new StubRepository(score);
-    }
-
-    private static ActorTrustScoreRepository emptyRepo() {
-        return new StubRepository(null);
-    }
-
-    private static ActorTrustScoreRepository repoWith(
-            final String actorId, final double globalScore,
-            final String capabilityTag, final double capabilityScore) {
-        final ActorTrustScore global = new ActorTrustScore();
-        global.id = UUID.randomUUID();
-        global.actorId = actorId;
-        global.scoreType = ScoreType.GLOBAL;
-        global.actorType = ActorType.AGENT;
-        global.trustScore = globalScore;
-        global.lastComputedAt = Instant.now();
-
-        final ActorTrustScore capability = new ActorTrustScore();
-        capability.id = UUID.randomUUID();
-        capability.actorId = actorId;
-        capability.scoreType = ScoreType.CAPABILITY;
-        capability.capabilityKey = capabilityTag;
-        capability.actorType = ActorType.AGENT;
-        capability.trustScore = capabilityScore;
-        capability.lastComputedAt = Instant.now();
-
-        return new StubRepository(global) {
+    private static TrustScoreSource sourceWith(final String actorId, final double globalScore) {
+        return new StubTrustScoreSource() {
             @Override
-            public Optional<ActorTrustScore> findCapabilityScore(
-                    final String id, final String tag) {
-                if (actorId.equals(id) && capabilityTag.equals(tag)) {
-                    return Optional.of(capability);
-                }
-                return Optional.empty();
+            public OptionalDouble globalScore(final String id) {
+                return actorId.equals(id) ? OptionalDouble.of(globalScore) : OptionalDouble.empty();
             }
         };
     }
 
-    private static class StubRepository implements ActorTrustScoreRepository {
-        private final ActorTrustScore score;
+    private static TrustScoreSource emptySource() {
+        return new StubTrustScoreSource();
+    }
 
-        StubRepository(final ActorTrustScore score) {
-            this.score = score;
-        }
+    private static TrustScoreSource sourceWith(
+            final String actorId, final double globalScore,
+            final String capabilityTag, final double capabilityScore) {
+        return new StubTrustScoreSource() {
+            @Override
+            public OptionalDouble globalScore(final String id) {
+                return actorId.equals(id) ? OptionalDouble.of(globalScore) : OptionalDouble.empty();
+            }
 
-        @Override
-        public Optional<ActorTrustScore> findByActorId(final String actorId) {
-            return score != null && score.actorId.equals(actorId)
-                    ? Optional.of(score)
-                    : Optional.empty();
-        }
-
-        @Override
-        public Optional<ActorTrustScore> findCapabilityScore(final String actorId, final String capabilityTag) {
-            return Optional.empty();
-        }
-
-        @Override
-        public Optional<ActorTrustScore> findDimensionScore(final String actorId, final String dimension) {
-            return Optional.empty();
-        }
-
-        @Override
-        public Optional<ActorTrustScore> findCapabilityDimension(final String actorId,
-                final String capabilityTag, final String dimension) {
-            return Optional.empty();
-        }
-
-        @Override
-        public List<ActorTrustScore> findCapabilityDimensions(final String actorId, final String capabilityTag) {
-            return List.of();
-        }
-
-        @Override
-        public List<ActorTrustScore> findByActorIdAndScoreType(
-                final String actorId, final ScoreType scoreType) {
-            return List.of();
-        }
-
-        @Override
-        public void upsert(final String actorId, final ScoreType scoreType,
-                final String capabilityKey, final String dimensionKey,
-                final ActorType actorType, final double trustScore,
-                final int decisionCount, final int overturnedCount,
-                final double alpha, final double beta,
-                final int attestationPositive, final int attestationNegative,
-                final Instant lastComputedAt) {
-        }
-
-        @Override
-        public void updateGlobalTrustScore(final String actorId, final double globalTrustScore) {
-        }
-
-        @Override
-        public List<ActorTrustScore> findAll() {
-            return score != null ? List.of(score) : List.of();
-        }
-
-        @Override
-        public List<ActorTrustScore> findAllByLastComputedAtAfter(final Instant since) {
-            return List.of();
-        }
+            @Override
+            public OptionalDouble capabilityScore(final String id, final String tag) {
+                return actorId.equals(id) && capabilityTag.equals(tag)
+                        ? OptionalDouble.of(capabilityScore)
+                        : OptionalDouble.empty();
+            }
+        };
     }
 
     // ── meetsThresholdAsync (global) ─────────────────────────────────────────
 
     @Test
     void meetsThresholdAsync_true_whenScoreAboveMin() {
-        final TrustGateService gate = new TrustGateService(repoWith("actor-a", 0.8));
-
+        final TrustGateService gate = new TrustGateService(sourceWith("actor-a", 0.8));
         assertThat(gate.meetsThresholdAsync("actor-a", 0.7).await().indefinitely()).isTrue();
     }
 
     @Test
     void meetsThresholdAsync_false_whenScoreBelowMin() {
-        final TrustGateService gate = new TrustGateService(repoWith("actor-a", 0.6));
-
+        final TrustGateService gate = new TrustGateService(sourceWith("actor-a", 0.6));
         assertThat(gate.meetsThresholdAsync("actor-a", 0.7).await().indefinitely()).isFalse();
     }
 
     @Test
     void meetsThresholdAsync_false_whenNoScoreExists() {
-        final TrustGateService gate = new TrustGateService(emptyRepo());
-
+        final TrustGateService gate = new TrustGateService(emptySource());
         assertThat(gate.meetsThresholdAsync("unknown-actor", 0.5).await().indefinitely()).isFalse();
     }
 
@@ -162,206 +71,125 @@ class TrustGateServiceTest {
 
     @Test
     void meetsThreshold_true_whenScoreAboveMin() {
-        final TrustGateService gate = new TrustGateService(repoWith("actor-a", 0.8));
-
+        final TrustGateService gate = new TrustGateService(sourceWith("actor-a", 0.8));
         assertThat(gate.meetsThreshold("actor-a", 0.7)).isTrue();
     }
 
     @Test
     void meetsThreshold_true_whenScoreEqualsMin() {
-        final TrustGateService gate = new TrustGateService(repoWith("actor-a", 0.7));
-
+        final TrustGateService gate = new TrustGateService(sourceWith("actor-a", 0.7));
         assertThat(gate.meetsThreshold("actor-a", 0.7)).isTrue();
     }
 
     @Test
     void meetsThreshold_false_whenScoreBelowMin() {
-        final TrustGateService gate = new TrustGateService(repoWith("actor-a", 0.6));
-
+        final TrustGateService gate = new TrustGateService(sourceWith("actor-a", 0.6));
         assertThat(gate.meetsThreshold("actor-a", 0.7)).isFalse();
     }
 
     @Test
     void meetsThreshold_false_whenNoScoreExists() {
-        final TrustGateService gate = new TrustGateService(emptyRepo());
-
+        final TrustGateService gate = new TrustGateService(emptySource());
         assertThat(gate.meetsThreshold("unknown-actor", 0.0)).isFalse();
     }
 
-    // ── meetsThreshold (capability overload — Phase 2) ────────────────────────
+    // ── meetsThreshold (capability — Phase 2) ────────────────────────────────
 
     @Test
     void meetsThreshold_withCapability_usesCapabilityScore_whenAvailable() {
-        // global = 0.4 (would fail), capability "security-review" = 0.9 (should pass)
         final TrustGateService gate = new TrustGateService(
-                repoWith("actor-x", 0.4, "security-review", 0.9));
-
+                sourceWith("actor-x", 0.4, "security-review", 0.9));
         assertThat(gate.meetsThreshold("actor-x", "security-review", 0.8)).isTrue();
     }
 
     @Test
     void meetsThreshold_withCapability_capabilityScoreBelowThreshold() {
-        // global = 0.9 (would pass), capability "style-review" = 0.3 (should fail)
         final TrustGateService gate = new TrustGateService(
-                repoWith("actor-y", 0.9, "style-review", 0.3));
-
+                sourceWith("actor-y", 0.9, "style-review", 0.3));
         assertThat(gate.meetsThreshold("actor-y", "style-review", 0.8)).isFalse();
     }
 
     @Test
     void meetsThreshold_withCapability_fallsBackToGlobal_whenNoCapabilityScore() {
-        // No capability row for "unknown-tag" → falls back to global = 0.85
-        final TrustGateService gate = new TrustGateService(repoWith("actor-z", 0.85));
-
+        final TrustGateService gate = new TrustGateService(sourceWith("actor-z", 0.85));
         assertThat(gate.meetsThreshold("actor-z", "unknown-tag", 0.8)).isTrue();
         assertThat(gate.meetsThreshold("actor-z", "unknown-tag", 0.9)).isFalse();
     }
 
     @Test
     void meetsThreshold_withCapability_falseWhenNoScoreAtAll() {
-        final TrustGateService gate = new TrustGateService(emptyRepo());
-
+        final TrustGateService gate = new TrustGateService(emptySource());
         assertThat(gate.meetsThreshold("ghost", "security-review", 0.0)).isFalse();
     }
 
-    // ── currentScore (capability overload) ───────────────────────────────────
+    // ── currentScore (capability) ────────────────────────────────────────────
 
     @Test
     void currentScore_withCapability_returnsCapabilityScore() {
         final TrustGateService gate = new TrustGateService(
-                repoWith("actor-q", 0.5, "security-review", 0.9));
-
-        assertThat(gate.currentScore("actor-q", "security-review")).isPresent();
-        assertThat(gate.currentScore("actor-q", "security-review").get()).isEqualTo(0.9);
+                sourceWith("actor-q", 0.5, "security-review", 0.9));
+        assertThat(gate.currentScore("actor-q", "security-review")).hasValue(0.9);
     }
 
     @Test
     void currentScore_withCapability_emptyWhenNoCapabilityScore() {
-        final TrustGateService gate = new TrustGateService(repoWith("actor-r", 0.7));
-
+        final TrustGateService gate = new TrustGateService(sourceWith("actor-r", 0.7));
         assertThat(gate.currentScore("actor-r", "unknown-tag")).isEmpty();
     }
 
-    // ── currentScore ─────────────────────────────────────────────────────────
+    // ── currentScore (global) ────────────────────────────────────────────────
 
     @Test
     void currentScore_returnsScore_whenActorKnown() {
-        final TrustGateService gate = new TrustGateService(repoWith("actor-c", 0.75));
-
-        assertThat(gate.currentScore("actor-c")).isPresent();
-        assertThat(gate.currentScore("actor-c").get()).isEqualTo(0.75);
+        final TrustGateService gate = new TrustGateService(sourceWith("actor-c", 0.75));
+        assertThat(gate.currentScore("actor-c")).hasValue(0.75);
     }
 
     @Test
     void currentScore_returnsEmpty_whenActorUnknown() {
-        final TrustGateService gate = new TrustGateService(emptyRepo());
-
+        final TrustGateService gate = new TrustGateService(emptySource());
         assertThat(gate.currentScore("ghost")).isEmpty();
     }
 
-    private static ActorTrustScoreRepository repoWithDimensions(
-            final String actorId,
-            final Map<String, Double> dimensionScores) {
-        return new StubRepository(null) {
-            @Override
-            public List<ActorTrustScore> findByActorIdAndScoreType(
-                    final String id, final ScoreType type) {
-                if (!actorId.equals(id) || type != ScoreType.DIMENSION) {
-                    return List.of();
-                }
-                return dimensionScores.entrySet().stream().map(e -> {
-                    final ActorTrustScore s = new ActorTrustScore();
-                    s.id = UUID.randomUUID();
-                    s.actorId = actorId;
-                    s.scoreType = ScoreType.DIMENSION;
-                    s.dimensionKey = e.getKey();
-                    s.actorType = ActorType.AGENT;
-                    s.trustScore = e.getValue();
-                    s.lastComputedAt = Instant.now();
-                    return s;
-                }).collect(Collectors.toList());
-            }
-
-            @Override
-            public Optional<ActorTrustScore> findDimensionScore(
-                    final String id, final String dimension) {
-                if (!actorId.equals(id)) {
-                    return Optional.empty();
-                }
-                final Double score = dimensionScores.get(dimension);
-                if (score == null) {
-                    return Optional.empty();
-                }
-                final ActorTrustScore s = new ActorTrustScore();
-                s.id = UUID.randomUUID();
-                s.actorId = actorId;
-                s.scoreType = ScoreType.DIMENSION;
-                s.dimensionKey = dimension;
-                s.actorType = ActorType.AGENT;
-                s.trustScore = score;
-                s.lastComputedAt = Instant.now();
-                return Optional.of(s);
-            }
-        };
-    }
-
-    // ── dimensionScores ───────────────────────────────────────────────────────
+    // ── allDimensionScores ───────────────────────────────────────────────────
 
     @Test
-    void dimensionScores_returnsAllDimensionScores() {
-        final TrustGateService gate = new TrustGateService(
-                repoWithDimensions("actor-d",
-                        Map.of("thoroughness", 0.8, "false-positive-rate", 0.2)));
+    void allDimensionScores_returnsAllDimensionScores() {
+        final TrustGateService gate = new TrustGateService(new StubTrustScoreSource() {
+            @Override
+            public Map<String, Double> allDimensionScores(final String id) {
+                return "actor-d".equals(id)
+                        ? Map.of("thoroughness", 0.8, "false-positive-rate", 0.2)
+                        : Map.of();
+            }
+        });
 
-        final Map<String, Double> scores = gate.dimensionScores("actor-d");
-
+        final Map<String, Double> scores = gate.allDimensionScores("actor-d");
         assertThat(scores).hasSize(2);
         assertThat(scores.get("thoroughness")).isEqualTo(0.8);
         assertThat(scores.get("false-positive-rate")).isEqualTo(0.2);
     }
 
     @Test
-    void dimensionScores_returnsEmptyMap_whenNoDimensionRows() {
-        final TrustGateService gate = new TrustGateService(emptyRepo());
-
-        assertThat(gate.dimensionScores("ghost")).isEmpty();
+    void allDimensionScores_returnsEmptyMap_whenNoDimensionRows() {
+        final TrustGateService gate = new TrustGateService(emptySource());
+        assertThat(gate.allDimensionScores("ghost")).isEmpty();
     }
 
-    private static ActorTrustScoreRepository repoWithCapabilities(
-            final String actorId,
-            final Map<String, Double> capabilityScores) {
-        return new StubRepository(null) {
-            @Override
-            public List<ActorTrustScore> findByActorIdAndScoreType(
-                    final String id, final ScoreType type) {
-                if (!actorId.equals(id) || type != ScoreType.CAPABILITY) {
-                    return List.of();
-                }
-                return capabilityScores.entrySet().stream().map(e -> {
-                    final ActorTrustScore s = new ActorTrustScore();
-                    s.id = UUID.randomUUID();
-                    s.actorId = actorId;
-                    s.scoreType = ScoreType.CAPABILITY;
-                    s.capabilityKey = e.getKey();
-                    s.actorType = ActorType.AGENT;
-                    s.trustScore = e.getValue();
-                    s.lastComputedAt = Instant.now();
-                    return s;
-                }).collect(Collectors.toList());
-            }
-        };
-    }
-
-    // ── allCapabilityScores ────────────────────────────────────────────────────
+    // ── allCapabilityScores ──────────────────────────────────────────────────
 
     @Test
     void allCapabilityScores_returnsAllCapabilityScores() {
-        final TrustGateService gate = new TrustGateService(
-                repoWithCapabilities("actor-cap",
-                        Map.of("sar-drafting", 0.79, "osint-screening", 0.85)));
+        final TrustGateService gate = new TrustGateService(new StubTrustScoreSource() {
+            @Override
+            public Map<String, Double> allCapabilityScores(final String id) {
+                return "actor-cap".equals(id)
+                        ? Map.of("sar-drafting", 0.79, "osint-screening", 0.85)
+                        : Map.of();
+            }
+        });
 
         final Map<String, Double> scores = gate.allCapabilityScores("actor-cap");
-
         assertThat(scores).hasSize(2);
         assertThat(scores.get("sar-drafting")).isEqualTo(0.79);
         assertThat(scores.get("osint-screening")).isEqualTo(0.85);
@@ -369,122 +197,84 @@ class TrustGateServiceTest {
 
     @Test
     void allCapabilityScores_returnsEmptyMap_whenNoCapabilityRows() {
-        final TrustGateService gate = new TrustGateService(emptyRepo());
-
+        final TrustGateService gate = new TrustGateService(emptySource());
         assertThat(gate.allCapabilityScores("ghost")).isEmpty();
     }
 
-    // ── dimensionScore ────────────────────────────────────────────────────────
+    // ── dimensionScore ───────────────────────────────────────────────────────
 
     @Test
     void dimensionScore_returnsScore_whenDimensionExists() {
-        final TrustGateService gate = new TrustGateService(
-                repoWithDimensions("actor-e", Map.of("thoroughness", 0.75)));
-
-        assertThat(gate.dimensionScore("actor-e", "thoroughness")).isPresent();
-        assertThat(gate.dimensionScore("actor-e", "thoroughness").get()).isEqualTo(0.75);
+        final TrustGateService gate = new TrustGateService(new StubTrustScoreSource() {
+            @Override
+            public OptionalDouble dimensionScore(final String id, final String dim) {
+                return "actor-e".equals(id) && "thoroughness".equals(dim)
+                        ? OptionalDouble.of(0.75) : OptionalDouble.empty();
+            }
+        });
+        assertThat(gate.dimensionScore("actor-e", "thoroughness")).hasValue(0.75);
     }
 
     @Test
     void dimensionScore_returnsEmpty_whenDimensionNotFound() {
-        final TrustGateService gate = new TrustGateService(
-                repoWithDimensions("actor-f", Map.of("thoroughness", 0.75)));
-
+        final TrustGateService gate = new TrustGateService(emptySource());
         assertThat(gate.dimensionScore("actor-f", "false-positive-rate")).isEmpty();
     }
 
     @Test
     void dimensionScore_returnsEmpty_whenActorUnknown() {
-        final TrustGateService gate = new TrustGateService(emptyRepo());
-
+        final TrustGateService gate = new TrustGateService(emptySource());
         assertThat(gate.dimensionScore("ghost", "thoroughness")).isEmpty();
     }
 
-    private static ActorTrustScoreRepository repoWithCapabilityDimension(
-            final String actorId,
-            final String capabilityTag,
-            final Map<String, Double> dimensionScores) {
-        return new StubRepository(null) {
-            @Override
-            public Optional<ActorTrustScore> findCapabilityDimension(
-                    final String id, final String cap, final String dim) {
-                if (!actorId.equals(id) || !capabilityTag.equals(cap)) {
-                    return Optional.empty();
-                }
-                final Double score = dimensionScores.get(dim);
-                if (score == null) {
-                    return Optional.empty();
-                }
-                final ActorTrustScore s = new ActorTrustScore();
-                s.id = UUID.randomUUID();
-                s.actorId = actorId;
-                s.scoreType = ScoreType.CAPABILITY_DIMENSION;
-                s.capabilityKey = cap;
-                s.dimensionKey = dim;
-                s.actorType = ActorType.AGENT;
-                s.trustScore = score;
-                s.lastComputedAt = Instant.now();
-                return Optional.of(s);
-            }
-
-            @Override
-            public List<ActorTrustScore> findCapabilityDimensions(
-                    final String id, final String cap) {
-                if (!actorId.equals(id) || !capabilityTag.equals(cap)) {
-                    return List.of();
-                }
-                return dimensionScores.entrySet().stream().map(e -> {
-                    final ActorTrustScore s = new ActorTrustScore();
-                    s.id = UUID.randomUUID();
-                    s.actorId = actorId;
-                    s.scoreType = ScoreType.CAPABILITY_DIMENSION;
-                    s.capabilityKey = capabilityTag;
-                    s.dimensionKey = e.getKey();
-                    s.actorType = ActorType.AGENT;
-                    s.trustScore = e.getValue();
-                    s.lastComputedAt = Instant.now();
-                    return s;
-                }).collect(Collectors.toList());
-            }
-        };
-    }
-
-    // ── qualityScore ──────────────────────────────────────────────────────────
+    // ── qualityScore ─────────────────────────────────────────────────────────
 
     @Test
     void qualityScore_returnsScore_whenCompositeExists() {
-        final TrustGateService gate = new TrustGateService(
-                repoWithCapabilityDimension("actor-cd", "security-review",
-                        Map.of("thoroughness", 0.92)));
-
-        assertThat(gate.qualityScore("actor-cd", "security-review", "thoroughness")).isPresent();
-        assertThat(gate.qualityScore("actor-cd", "security-review", "thoroughness").get())
-                .isEqualTo(0.92);
+        final TrustGateService gate = new TrustGateService(new StubTrustScoreSource() {
+            @Override
+            public OptionalDouble capabilityDimensionScore(final String id, final String cap,
+                    final String dim) {
+                return "actor-cd".equals(id) && "security-review".equals(cap)
+                        && "thoroughness".equals(dim)
+                        ? OptionalDouble.of(0.92) : OptionalDouble.empty();
+            }
+        });
+        assertThat(gate.qualityScore("actor-cd", "security-review", "thoroughness")).hasValue(0.92);
     }
 
     @Test
     void qualityScore_returnsEmpty_whenNotComputed() {
-        final TrustGateService gate = new TrustGateService(emptyRepo());
-
+        final TrustGateService gate = new TrustGateService(emptySource());
         assertThat(gate.qualityScore("ghost", "security-review", "thoroughness")).isEmpty();
     }
 
     @Test
     void qualityScore_returnsEmpty_whenCapabilityMismatch() {
-        final TrustGateService gate = new TrustGateService(
-                repoWithCapabilityDimension("actor-cd2", "security-review",
-                        Map.of("thoroughness", 0.92)));
-
+        final TrustGateService gate = new TrustGateService(new StubTrustScoreSource() {
+            @Override
+            public OptionalDouble capabilityDimensionScore(final String id, final String cap,
+                    final String dim) {
+                return "actor-cd2".equals(id) && "security-review".equals(cap)
+                        && "thoroughness".equals(dim)
+                        ? OptionalDouble.of(0.92) : OptionalDouble.empty();
+            }
+        });
         assertThat(gate.qualityScore("actor-cd2", "architecture-review", "thoroughness")).isEmpty();
     }
 
-    // ── qualityScores ─────────────────────────────────────────────────────────
+    // ── qualityScores ────────────────────────────────────────────────────────
 
     @Test
     void qualityScores_returnsAllDimensionsForCapability() {
-        final TrustGateService gate = new TrustGateService(
-                repoWithCapabilityDimension("actor-qs", "security-review",
-                        Map.of("thoroughness", 0.9, "false-positive-rate", 0.1)));
+        final TrustGateService gate = new TrustGateService(new StubTrustScoreSource() {
+            @Override
+            public Map<String, Double> qualityScores(final String id, final String cap) {
+                return "actor-qs".equals(id) && "security-review".equals(cap)
+                        ? Map.of("thoroughness", 0.9, "false-positive-rate", 0.1)
+                        : Map.of();
+            }
+        });
 
         final Map<String, Double> scores = gate.qualityScores("actor-qs", "security-review");
         assertThat(scores).hasSize(2);
@@ -494,38 +284,59 @@ class TrustGateServiceTest {
 
     @Test
     void qualityScores_returnsEmptyMap_whenNoneComputed() {
-        final TrustGateService gate = new TrustGateService(emptyRepo());
-
+        final TrustGateService gate = new TrustGateService(emptySource());
         assertThat(gate.qualityScores("ghost", "security-review")).isEmpty();
     }
 
-    // ── meetsQualityThreshold ─────────────────────────────────────────────────
+    // ── meetsQualityThreshold ────────────────────────────────────────────────
 
     @Test
     void meetsQualityThreshold_true_whenScoreMeetsMin() {
-        final TrustGateService gate = new TrustGateService(
-                repoWithCapabilityDimension("actor-mqt", "security-review",
-                        Map.of("thoroughness", 0.8)));
-
+        final TrustGateService gate = new TrustGateService(new StubTrustScoreSource() {
+            @Override
+            public OptionalDouble capabilityDimensionScore(final String id, final String cap,
+                    final String dim) {
+                return "actor-mqt".equals(id) && "security-review".equals(cap)
+                        && "thoroughness".equals(dim)
+                        ? OptionalDouble.of(0.8) : OptionalDouble.empty();
+            }
+        });
         assertThat(gate.meetsQualityThreshold("actor-mqt", "security-review", "thoroughness", 0.75))
                 .isTrue();
     }
 
     @Test
     void meetsQualityThreshold_false_whenScoreBelowMin() {
-        final TrustGateService gate = new TrustGateService(
-                repoWithCapabilityDimension("actor-mqt2", "security-review",
-                        Map.of("thoroughness", 0.6)));
-
+        final TrustGateService gate = new TrustGateService(new StubTrustScoreSource() {
+            @Override
+            public OptionalDouble capabilityDimensionScore(final String id, final String cap,
+                    final String dim) {
+                return "actor-mqt2".equals(id) && "security-review".equals(cap)
+                        && "thoroughness".equals(dim)
+                        ? OptionalDouble.of(0.6) : OptionalDouble.empty();
+            }
+        });
         assertThat(gate.meetsQualityThreshold("actor-mqt2", "security-review", "thoroughness", 0.75))
                 .isFalse();
     }
 
     @Test
     void meetsQualityThreshold_false_whenNoScoreExists() {
-        final TrustGateService gate = new TrustGateService(emptyRepo());
-
+        final TrustGateService gate = new TrustGateService(emptySource());
         assertThat(gate.meetsQualityThreshold("ghost", "security-review", "thoroughness", 0.0))
                 .isFalse();
+    }
+
+    // ── Base stub ────────────────────────────────────────────────────────────
+
+    private static class StubTrustScoreSource implements TrustScoreSource {
+        @Override public OptionalDouble globalScore(final String id) { return OptionalDouble.empty(); }
+        @Override public OptionalDouble capabilityScore(final String id, final String t) { return OptionalDouble.empty(); }
+        @Override public OptionalDouble dimensionScore(final String id, final String d) { return OptionalDouble.empty(); }
+        @Override public OptionalDouble capabilityDimensionScore(final String id, final String c, final String d) { return OptionalDouble.empty(); }
+        @Override public int decisionCount(final String id, final String t) { return 0; }
+        @Override public Map<String, Double> allCapabilityScores(final String id) { return Map.of(); }
+        @Override public Map<String, Double> allDimensionScores(final String id) { return Map.of(); }
+        @Override public Map<String, Double> qualityScores(final String id, final String t) { return Map.of(); }
     }
 }

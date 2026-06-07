@@ -307,7 +307,11 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── DecayFunction.java           — SPI: attestation decay weight (ageInDays, verdict) → weight
 │       │   ├── ExponentialDecayFunction.java — @DefaultBean: 2^(-age/halfLife) × valence multiplier (FLAGGED slower decay)
 │       │   ├── TrustScoreComputer.java      — Bayesian Beta trust scoring (compute) + decay-weighted dimension average (computeDimensionScore); delegates decay to DecayFunction (pure Java)
-│       │   ├── TrustGateService.java        — CDI bean: trust threshold enforcement (meetsThreshold, currentScore, dimensionScores, dimensionScore, qualityScore, qualityScores, meetsQualityThreshold); `allCapabilityScores(String actorId): Map<String, Double>` returns all CAPABILITY-scoped scores for an actor (added in ledger#56, used by actor state view)
+│       │   ├── TrustScoreCalculator.java    — @ApplicationScoped: pure four-pass computation (capability → dimension → cap×dim → global); no persistence, no CDI events; used by PerActorTrustComputer (write path) and ComputedTrustScoreSource (read path)
+│       │   ├── MaterializedTrustScoreSource.java — @DefaultBean TrustScoreSource: reads ActorTrustScoreRepository per call
+│       │   ├── CachedTrustScoreSource.java  — @Alternative TrustScoreSource: in-memory ConcurrentHashMap cache; observes TrustScoreFullPayload + TrustScoreActorUpdatedEvent for refresh
+│       │   ├── ComputedTrustScoreSource.java — @Alternative TrustScoreSource: on-read computation from raw attestation history; per-actor computation cache with event-driven invalidation
+│       │   ├── TrustGateService.java        — CDI bean: trust threshold enforcement; injects TrustScoreSource (not repo directly); returns OptionalDouble; methods: meetsThreshold, currentScore, allDimensionScores, dimensionScore, qualityScore, qualityScores, meetsQualityThreshold, allCapabilityScores
 │       │   ├── GlobalScoreStrategy.java          — SPI: select attestations / derive global trust score (ADR 0008)
 │       │   ├── AllAttestationsGlobalStrategy.java — @DefaultBean: all attestations → global Beta (Option B)
 │       │   ├── ExplicitGlobalAttestationsStrategy.java — @Alternative: only "*" attestations (Option A)
@@ -315,7 +319,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── AttestationAggregator.java   — CDI bean: collapses (entryId, capabilityTag) attestation groups into consensus verdict (WEIGHTED_MAJORITY | UNANIMOUS_REQUIRED | FIRST_ATTESTOR)
 │       │   ├── EigenTrustComputer.java      — EigenTrust power iteration, transitive global trust scores (pure Java)
 │       │   ├── AttestationRecordedEvent.java — CDI event record fired from saveAttestation(); carries actorId (decision-maker), ledgerEntryId, attestationId
-│       │   ├── PerActorTrustComputer.java    — package-private CDI bean: four-pass trust scoring for a single actor (capability → dimension → capability×dimension → global); extracted from TrustScoreJob for batch and incremental reuse
+│       │   ├── PerActorTrustComputer.java    — package-private CDI bean: delegates computation to TrustScoreCalculator, persists results, fires events; used by TrustScoreJob and IncrementalTrustUpdateObserver
 │       │   ├── IncrementalTrustUpdateObserver.java — CDI observer: @Observes(AFTER_SUCCESS) AttestationRecordedEvent → per-actor trust recomputation in REQUIRES_NEW; gated by casehub.ledger.trust-score.incremental.enabled
 │       │   ├── TrustScoreJob.java           — @Scheduled nightly recomputation; delegates per-actor work to PerActorTrustComputer
 │       │   ├── LedgerHealthJob.java         — @Scheduled gap detection + reconciliation (configurable interval, default 1h)

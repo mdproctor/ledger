@@ -90,7 +90,7 @@ class TrustScoreDimensionIT {
 
         trustScoreJob.runComputation();
 
-        final Map<String, Double> scores = trustGateService.dimensionScores(actorId);
+        final Map<String, Double> scores = trustGateService.allDimensionScores(actorId);
         assertThat(scores).containsKey("thoroughness");
         assertThat(scores).containsKey("accuracy");
         assertThat(scores.get("thoroughness")).isCloseTo(0.8, within(0.05));
@@ -110,7 +110,7 @@ class TrustScoreDimensionIT {
         trustScoreJob.runComputation();
 
         assertThat(trustGateService.dimensionScore(actorId, "thoroughness")).isPresent();
-        assertThat(trustGateService.dimensionScore(actorId, "thoroughness").get())
+        assertThat(trustGateService.dimensionScore(actorId, "thoroughness").getAsDouble())
                 .isCloseTo(0.85, within(0.05));
     }
 
@@ -129,7 +129,7 @@ class TrustScoreDimensionIT {
 
         final var score = trustGateService.dimensionScore(actorId, "thoroughness");
         assertThat(score).isPresent();
-        assertThat(score.get()).isGreaterThan(0.5);
+        assertThat(score.getAsDouble()).isGreaterThan(0.5);
     }
 
     // ── Correctness: separate dimensions are isolated ─────────────────────────
