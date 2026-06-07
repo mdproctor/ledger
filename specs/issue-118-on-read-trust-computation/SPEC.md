@@ -29,6 +29,7 @@ public interface TrustScoreSource {
     OptionalDouble capabilityScore(String actorId, String capabilityTag);
     OptionalDouble dimensionScore(String actorId, String dimensionKey);
     OptionalDouble capabilityDimensionScore(String actorId, String capabilityTag, String dimensionKey);
+    /** Returns 0 when no trust history exists for the actor+capability pair. */
     int decisionCount(String actorId, String capabilityTag);
     Map<String, Double> allCapabilityScores(String actorId);
     Map<String, Double> allDimensionScores(String actorId);
@@ -52,8 +53,7 @@ public class TrustScoreCalculator {
         Map<String, ActorScore> capabilityScores,
         Map<String, Double> dimensionScores,
         Map<String, Map<String, Double>> capabilityDimensionScores,
-        ActorScore globalScore,
-        int totalDecisionCount
+        ActorScore globalScore
     ) {}
 
     ComputedScores computeAll(
@@ -90,12 +90,16 @@ All in `runtime/src/main/java/io/casehub/ledger/runtime/service/`.
 **CachedTrustScoreSource** — `@Alternative`
 
 Separate `ConcurrentHashMap` per score type (not a single map with composite key — avoids key format ambiguity):
-```
+```java
+record CachedCapabilityScore(double trustScore, int decisionCount) {}
+
 ConcurrentHashMap<String, Double> globalScores;                    // key: actorId
 ConcurrentHashMap<String, CachedCapabilityScore> capabilityScores; // key: actorId:capabilityKey
 ConcurrentHashMap<String, Double> dimensionScores;                 // key: actorId:dimensionKey
 ConcurrentHashMap<String, Double> capDimScores;                    // key: actorId:capabilityKey:dimensionKey
 ```
+
+`CachedCapabilityScore` bundles score + count because the SPI exposes both `capabilityScore()` and `decisionCount()` for the same key, and `TrustCandidateClassifier` calls both per candidate. The other three maps store plain `Double` — no secondary fields exposed by the SPI for those score types.
 
 - `@PostConstruct` hydrates from `ActorTrustScoreRepository.findAll()`
 - `@Observes TrustScoreFullPayload` — batch refresh
@@ -108,11 +112,13 @@ Injects `LedgerEntryRepository` and `TrustScoreCalculator`.
 
 **Per-actor computation cache** — eliminates multiplicative query cost. Without caching, `TrustCandidateClassifier` issues per candidate: `capabilityScore()` + `decisionCount()` + N × `capabilityDimensionScore()`. For 3 candidates with 2 quality dimensions: 12 full event loads and computations loading the same data.
 
-Design: `ConcurrentHashMap<String, ComputedScores>` keyed by actorId. On first score request for an actor, loads events + attestations, calls `TrustScoreCalculator.computeAll()`, caches the full `ComputedScores` bundle. Subsequent requests for the same actor return from cache. Invalidation: `@Observes AttestationRecordedEvent` → remove cache entry for the affected actor.
+Design: `ConcurrentHashMap<String, ComputedScores>` keyed by actorId. On first score request for an actor, loads events + attestations, calls `TrustScoreCalculator.computeAll()`, caches the full `ComputedScores` bundle. Subsequent requests for the same actor return from cache. Invalidation: `@Observes AttestationRecordedEvent` → remove cache entry for `event.actorId()` — the decision-maker whose trust score is affected, not the attestor who recorded the attestation.
 
 This is zero-staleness caching: the cache is invalidated exactly when the underlying data changes (new attestation). Between attestations, the cached result is correct because no new data exists. Conceptually different from `CachedTrustScoreSource` — computed caches on-demand computation results, cached caches materialized store snapshots.
 
-**Global score — `derive()` path:** `computeAll()` runs the full four-pass flow including `GlobalScoreStrategy.derive(capabilityScores, allAttestations)`. `FrequencyWeightedGlobalStrategy.derive()` returns a score computed from capability scores, bypassing attestations entirely. This works correctly because capability scores are computed in pass 1 before the global pass uses them. EigenTrust global scores are not available (requires full actor graph) — `globalScore()` returns the Bayesian Beta or derived score.
+No size bound on the cache — acceptable for lightweight deployments with bounded actor counts (the target use case). If future use cases require unbounded actor sets with computed scores, add LRU eviction at that point.
+
+**Global score — `derive()` path:** `computeAll()` runs the full four-pass flow. The global pass calls `selectAttestations()` with effective (aggregated) attestations and `derive()` with raw (original) attestations — these are different lists and must not be confused. `FrequencyWeightedGlobalStrategy.derive()` counts attestations per capabilityTag to compute frequency weights; passing aggregated synthetics (one per group) instead of raw attestations would produce wrong frequency counts. This mirrors the existing `PerActorTrustComputer` global pass exactly. EigenTrust global scores are not available (requires full actor graph) — `globalScore()` returns the Bayesian Beta or derived score.
 
 **CDI activation** (follows `GlobalScoreStrategy` pattern):
 ```properties
@@ -220,5 +226,6 @@ This pattern ensures agreement is by contract, not coincidence.
 | `runtime/src/.../service/ComputedTrustScoreSource.java` | New — @Alternative, on-read computation with per-actor cache |
 | `runtime/src/.../service/TrustGateService.java` | Refactor — inject TrustScoreSource, return OptionalDouble, remove findScore(), rename dimensionScores→allDimensionScores |
 | `runtime/src/.../service/PerActorTrustComputer.java` | Simplify — delegate computation to TrustScoreCalculator, keep only load + persist + events |
+| `docs/DESIGN.md` | Update trust scoring sections — new source abstraction, calculator extraction, three-implementation model |
 | `persistence-memory/` | No changes — MaterializedTrustScoreSource uses InMemoryActorTrustScoreRepository automatically |
 | Tests | Contract test, calculator unit test, cached event test, computed cache invalidation test, TrustGateService test update |
