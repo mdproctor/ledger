@@ -433,6 +433,8 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home \
 
 **Use `mvn` not `./mvnw`** — maven wrapper not configured on this machine.
 
+**Docker required for PostgreSQL tests.** Two test classes (`JpaSequenceNumberPgIT`, `LedgerHealthJobPgIT`) use Testcontainers to start a PostgreSQL 17 container. Docker must be running for these tests. All other tests use H2 in-memory and do not require Docker.
+
 ---
 
 ## Java and GraalVM on This Machine
