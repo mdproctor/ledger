@@ -134,7 +134,7 @@ class JpaSequenceNumberIT {
                     .setParameter(2, subjectId)
                     .executeUpdate();
             em.flush();
-        }).hasMessageContaining("IDX_LEDGER_ENTRY_SUBJECT_SEQ");
+        }).hasMessageMatching("(?is).*idx_ledger_entry_subject_seq.*");
     }
 
     @Test
