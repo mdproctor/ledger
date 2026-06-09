@@ -204,11 +204,36 @@ class ActorIdentityValidationEnricherTest {
     }
 
     @Test
+    void firesValidatedEventOnValid_carriesTenancyId() {
+        byte[] key = {1};
+        var vm = new VerificationMethod("id", "Ed25519", key);
+        var doc = new DIDDocument("did:web:x", List.of(vm), List.of("claude:r@v1"));
+        when(resolver.resolve("did:web:x")).thenReturn(Optional.of(doc));
+        var e = entry("claude:r@v1", "did:web:x", key);
+        e.tenancyId = "tenant-alpha";
+        enricher.enrich(e);
+        verify(event).fireAsync(argThat(ev ->
+            ev instanceof AgentIdentityValidatedEvent validated
+            && "tenant-alpha".equals(validated.tenancyId())));
+    }
+
+    @Test
     void firesViolationEventOnNonValid() {
         when(resolver.resolve("did:web:x")).thenReturn(Optional.empty());
         var e = entry("claude:r@v1", "did:web:x", null);
         enricher.enrich(e);
         verify(event).fireAsync(argThat(ev -> ev instanceof AgentIdentityViolationEvent));
+    }
+
+    @Test
+    void firesViolationEvent_carriesTenancyId() {
+        when(resolver.resolve("did:web:x")).thenReturn(Optional.empty());
+        var e = entry("claude:r@v1", "did:web:x", null);
+        e.tenancyId = "tenant-beta";
+        enricher.enrich(e);
+        verify(event).fireAsync(argThat(ev ->
+            ev instanceof AgentIdentityViolationEvent violation
+            && "tenant-beta".equals(violation.tenancyId())));
     }
 
     static class ConcreteEntry extends LedgerEntry {}

@@ -8,7 +8,6 @@ import jakarta.transaction.Transactional;
 import io.casehub.ledger.runtime.model.ActorIdentityBindingEntry;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 import io.casehub.ledger.runtime.repository.ActorIdentityBindingRepository;
-import io.casehub.platform.api.identity.TenancyConstants;
 
 import java.util.List;
 import java.util.Optional;
@@ -48,9 +47,6 @@ public class JpaActorIdentityBindingRepository implements ActorIdentityBindingRe
             throw new IllegalArgumentException("ActorIdentityBindingEntry.subjectId must not be null");
         }
         entry.sequenceNumber = sequenceAllocator.nextSequenceNumber(entry.subjectId);
-        if (entry.tenancyId == null) {
-            entry.tenancyId = TenancyConstants.DEFAULT_TENANT_ID;
-        }
         em.persist(entry);
         return entry;
     }

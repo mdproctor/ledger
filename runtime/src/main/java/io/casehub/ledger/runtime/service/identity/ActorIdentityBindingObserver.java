@@ -38,21 +38,22 @@ public class ActorIdentityBindingObserver {
     @Inject
     ActorIdentityBindingRepository repository;
 
-    void onValidated(@ObservesAsync AgentIdentityValidatedEvent event) {
+    void onValidated(@ObservesAsync final AgentIdentityValidatedEvent event) {
         persistBinding(
-            event.actorId(), event.actorDid(), event.status(),
+            event.tenancyId(), event.actorId(), event.actorDid(), event.status(),
             event.alsoKnownAsVerified(), event.keyMatchVerified(),
             event.verifiedKeyRef(), event.credentialResult(), event.didMethod());
     }
 
-    void onViolation(@ObservesAsync AgentIdentityViolationEvent event) {
+    void onViolation(@ObservesAsync final AgentIdentityViolationEvent event) {
         persistBinding(
-            event.actorId(), event.actorDid(), event.status(),
+            event.tenancyId(), event.actorId(), event.actorDid(), event.status(),
             false, false, null, null, extractDidMethod(event.actorDid()));
     }
 
     @Transactional(REQUIRES_NEW)
     void persistBinding(
+            final String tenancyId,
             final String actorId,
             final String actorDid,
             final IdentityBindingStatus status,
@@ -64,6 +65,7 @@ public class ActorIdentityBindingObserver {
         try {
             final ActorIdentityBindingEntry entry = new ActorIdentityBindingEntry();
             entry.id = UUID.randomUUID();
+            entry.tenancyId = tenancyId;
             entry.subjectId = UUID.nameUUIDFromBytes(actorId.getBytes(StandardCharsets.UTF_8));
             entry.actorId = actorId;
             entry.actorType = io.casehub.platform.api.identity.ActorType.AGENT;
