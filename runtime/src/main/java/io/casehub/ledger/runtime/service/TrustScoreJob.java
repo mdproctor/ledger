@@ -31,8 +31,9 @@ import io.quarkus.scheduler.Scheduled;
  * decision-making actors in the ledger.
  *
  * <p>
- * The job is gated by {@code casehub.ledger.trust-score.enabled}. When disabled, the
- * scheduled trigger fires but immediately returns without doing any work.
+ * The job is gated by {@code casehub.ledger.trust-score.enabled} and
+ * {@code casehub.ledger.trust-score.materialization.enabled}. When either is disabled,
+ * the scheduled trigger fires but immediately returns without doing any work.
  *
  * <p>
  * {@link #runComputation()} is exposed with package-accessible visibility for direct
@@ -68,7 +69,8 @@ public class TrustScoreJob {
     @Scheduled(every = "{casehub.ledger.trust-score.schedule:24h}", identity = "ledger-trust-score-job")
     @Transactional
     public void computeTrustScores() {
-        if (!config.trustScore().enabled()) {
+        if (!config.trustScore().enabled()
+                || !config.trustScore().materialization().enabled()) {
             return;
         }
         runComputation();

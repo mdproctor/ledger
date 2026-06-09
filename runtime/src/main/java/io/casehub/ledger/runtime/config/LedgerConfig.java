@@ -402,6 +402,31 @@ public interface LedgerConfig {
         }
 
         /**
+         * Materialization settings — controls whether trust scores are persisted to
+         * {@code ActorTrustScoreRepository}.
+         *
+         * <p>When disabled, {@code TrustScoreJob} and {@code IncrementalTrustUpdateObserver}
+         * skip all computation and persistence. {@code ComputedTrustScoreSource} continues
+         * to compute scores on read from raw attestation history, unaffected by this flag.
+         *
+         * @return the materialization sub-configuration
+         */
+        MaterializationConfig materialization();
+
+        /** Trust score materialization (persistence to ActorTrustScoreRepository). */
+        interface MaterializationConfig {
+            /**
+             * When {@code false}, the batch job and incremental observer skip computation
+             * and persistence entirely. Trust score config (decay, aggregation strategy)
+             * remains active for on-read computation via {@code ComputedTrustScoreSource}.
+             *
+             * @return {@code true} if materialization is active (default)
+             */
+            @WithDefault("true")
+            boolean enabled();
+        }
+
+        /**
          * Incremental per-actor trust recomputation settings.
          *
          * @return the incremental sub-configuration

@@ -36,8 +36,9 @@ import io.casehub.ledger.runtime.service.routing.TrustScoreActorUpdatedEvent;
  * {@link PerActorTrustComputer}.
  *
  * <p>
- * Gated by both {@code casehub.ledger.trust-score.enabled} and
- * {@code casehub.ledger.trust-score.incremental.enabled} — when either
+ * Gated by {@code casehub.ledger.trust-score.enabled},
+ * {@code casehub.ledger.trust-score.incremental.enabled}, and
+ * {@code casehub.ledger.trust-score.materialization.enabled} — when any
  * is {@code false}, the observer returns immediately.
  *
  * <p>
@@ -67,7 +68,8 @@ public class IncrementalTrustUpdateObserver {
             final AttestationRecordedEvent event) {
 
         if (!config.trustScore().enabled()
-                || !config.trustScore().incremental().enabled()) {
+                || !config.trustScore().incremental().enabled()
+                || !config.trustScore().materialization().enabled()) {
             return;
         }
 

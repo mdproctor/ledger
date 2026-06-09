@@ -47,5 +47,6 @@ public interface CrossTenantReactiveLedgerEntryRepository {
 
     Uni<Map<UUID, List<LedgerAttestation>>> findAttestationsForEntries(Set<UUID> entryIds);
 
+    /** Reactive counterpart of {@link CrossTenantLedgerEntryRepository#findAttestationsByActorId}. */
     Uni<Map<UUID, List<LedgerAttestation>>> findAttestationsByActorId(String actorId);
 }
