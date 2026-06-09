@@ -368,6 +368,12 @@ class TrustScoreSourceContractTest {
             }
             return r;
         }
+        @Override public Map<UUID, List<LedgerAttestation>> findAttestationsByActorId(final String actorId) {
+            final Set<UUID> eventIds = entries.stream()
+                    .filter(e -> actorId.equals(e.actorId) && e.entryType == LedgerEntryType.EVENT)
+                    .map(e -> e.id).collect(java.util.stream.Collectors.toSet());
+            return findAttestationsForEntries(eventIds);
+        }
         @Override public List<LedgerEntry> listAll() { return entries; }
         @Override public List<LedgerEntry> findAllEvents() { return entries.stream().filter(e -> e.entryType == LedgerEntryType.EVENT).toList(); }
         @Override public List<LedgerEntry> findByTimeRange(final Instant f, final Instant t) { return List.of(); }

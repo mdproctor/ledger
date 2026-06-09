@@ -238,6 +238,55 @@ class ComputedTrustScoreSourceTest {
         assertThat(after.getAsDouble()).isGreaterThan(before.getAsDouble());
     }
 
+    // ── findAttestationsByActorId SPI contract ─────────────────────────────
+
+    @Test
+    void findAttestationsByActorId_returnsGroupedAttestations() {
+        final TestLedgerEntry entry = decision("alice");
+        ledgerRepo.addEntry(entry);
+        final LedgerAttestation att = attestation(entry.id, entry.subjectId,
+                AttestationVerdict.SOUND, "review");
+        ledgerRepo.addAttestation(att);
+
+        final Map<UUID, List<LedgerAttestation>> result =
+                ledgerRepo.findAttestationsByActorId("alice");
+
+        assertThat(result).containsKey(entry.id);
+        assertThat(result.get(entry.id)).hasSize(1);
+        assertThat(result.get(entry.id).get(0).id).isEqualTo(att.id);
+    }
+
+    @Test
+    void findAttestationsByActorId_excludesNonEventEntries() {
+        final TestLedgerEntry command = decision("alice");
+        command.entryType = LedgerEntryType.COMMAND;
+        ledgerRepo.addEntry(command);
+        ledgerRepo.addAttestation(attestation(command.id, command.subjectId,
+                AttestationVerdict.SOUND, "review"));
+
+        final Map<UUID, List<LedgerAttestation>> result =
+                ledgerRepo.findAttestationsByActorId("alice");
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void findAttestationsByActorId_excludesOtherActors() {
+        final TestLedgerEntry aliceEntry = decision("alice");
+        ledgerRepo.addEntry(aliceEntry);
+        ledgerRepo.addAttestation(attestation(aliceEntry.id, aliceEntry.subjectId,
+                AttestationVerdict.SOUND, "review"));
+        final TestLedgerEntry bobEntry = decision("bob");
+        ledgerRepo.addEntry(bobEntry);
+        ledgerRepo.addAttestation(attestation(bobEntry.id, bobEntry.subjectId,
+                AttestationVerdict.FLAGGED, "review"));
+
+        final Map<UUID, List<LedgerAttestation>> result =
+                ledgerRepo.findAttestationsByActorId("alice");
+
+        assertThat(result).containsOnlyKeys(aliceEntry.id);
+    }
+
     // ── Stub repository ──────────────────────────────────────────────────────
 
     private static class StubLedgerEntryRepository implements CrossTenantLedgerEntryRepository {
@@ -263,6 +312,15 @@ class ComputedTrustScoreSourceTest {
                 }
             }
             return result;
+        }
+
+        @Override
+        public Map<UUID, List<LedgerAttestation>> findAttestationsByActorId(final String actorId) {
+            final Set<UUID> eventIds = entries.stream()
+                    .filter(e -> actorId.equals(e.actorId) && e.entryType == LedgerEntryType.EVENT)
+                    .map(e -> e.id)
+                    .collect(java.util.stream.Collectors.toSet());
+            return findAttestationsForEntries(eventIds);
         }
 
         @Override public List<LedgerEntry> listAll() { return entries; }

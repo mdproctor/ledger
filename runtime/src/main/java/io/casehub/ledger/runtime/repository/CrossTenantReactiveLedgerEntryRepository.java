@@ -46,4 +46,6 @@ public interface CrossTenantReactiveLedgerEntryRepository {
     Uni<List<LedgerEntry>> findByTimeRange(Instant from, Instant to);
 
     Uni<Map<UUID, List<LedgerAttestation>>> findAttestationsForEntries(Set<UUID> entryIds);
+
+    Uni<Map<UUID, List<LedgerAttestation>>> findAttestationsByActorId(String actorId);
 }

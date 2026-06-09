@@ -56,4 +56,9 @@ public class InMemoryCrossTenantReactiveLedgerEntryRepository implements CrossTe
     public Uni<Map<UUID, List<LedgerAttestation>>> findAttestationsForEntries(final Set<UUID> entryIds) {
         return Uni.createFrom().item(() -> blocking.findAttestationsForEntries(entryIds));
     }
+
+    @Override
+    public Uni<Map<UUID, List<LedgerAttestation>>> findAttestationsByActorId(final String actorId) {
+        return Uni.createFrom().item(() -> blocking.findAttestationsByActorId(actorId));
+    }
 }

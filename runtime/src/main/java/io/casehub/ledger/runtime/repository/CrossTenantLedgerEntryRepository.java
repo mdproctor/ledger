@@ -63,4 +63,16 @@ public interface CrossTenantLedgerEntryRepository {
      * @return map from entry ID to its attestations; empty map if {@code entryIds} is empty
      */
     Map<UUID, List<LedgerAttestation>> findAttestationsForEntries(Set<UUID> entryIds);
+
+    /**
+     * Return all attestations for EVENT entries by the given actor, grouped by entry ID.
+     *
+     * <p>Encapsulates the actorId→entryIds→attestations lookup in a single call,
+     * eliminating the manual ID bridging required by the separate
+     * {@link #findEventsByActorId} + {@link #findAttestationsForEntries} pattern.
+     *
+     * @param actorId the actor identity to filter by
+     * @return map from entry ID to its attestations; empty map if no EVENT entries exist
+     */
+    Map<UUID, List<LedgerAttestation>> findAttestationsByActorId(String actorId);
 }

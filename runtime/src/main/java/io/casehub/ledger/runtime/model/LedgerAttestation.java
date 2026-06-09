@@ -33,6 +33,10 @@ import jakarta.persistence.Table;
 @NamedQuery(
         name = "LedgerAttestation.findByAttestorIdAndCapabilityTag",
         query = "SELECT a FROM LedgerAttestation a WHERE a.attestorId = :attestorId AND a.capabilityTag = :capabilityTag ORDER BY a.occurredAt ASC")
+@NamedQuery(
+        name = "LedgerAttestation.findByActorIdEvents",
+        query = "SELECT a FROM LedgerAttestation a WHERE a.ledgerEntryId IN ("
+              + "SELECT e.id FROM LedgerEntry e WHERE e.actorId = :actorId AND e.entryType = :type)")
 public class LedgerAttestation extends io.casehub.ledger.api.model.LedgerAttestation {
 
     @PrePersist

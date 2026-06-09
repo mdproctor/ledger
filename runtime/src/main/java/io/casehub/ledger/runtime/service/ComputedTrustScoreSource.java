@@ -159,11 +159,8 @@ public class ComputedTrustScoreSource implements TrustScoreSource {
         if (decisions.isEmpty()) {
             return EMPTY_SENTINEL;
         }
-        final Set<UUID> entryIds = decisions.stream()
-                .map(e -> e.id)
-                .collect(Collectors.toSet());
         final Map<UUID, List<LedgerAttestation>> attestationsByEntry =
-                ledgerRepo.findAttestationsForEntries(entryIds);
+                ledgerRepo.findAttestationsByActorId(actorId);
         return calculator.computeAll(decisions, attestationsByEntry, Instant.now());
     }
 }

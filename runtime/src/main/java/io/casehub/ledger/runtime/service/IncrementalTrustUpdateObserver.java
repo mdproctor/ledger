@@ -3,9 +3,7 @@ package io.casehub.ledger.runtime.service;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
@@ -81,11 +79,8 @@ public class IncrementalTrustUpdateObserver {
                 return;
             }
 
-            final Set<UUID> entryIds = decisions.stream()
-                    .map(e -> e.id)
-                    .collect(Collectors.toSet());
             final Map<UUID, List<LedgerAttestation>> attestationsByEntry =
-                    ledgerRepo.findAttestationsForEntries(entryIds);
+                    ledgerRepo.findAttestationsByActorId(event.actorId());
 
             final List<ActorTrustScore> scores =
                     perActorComputer.computeForActor(event.actorId(), decisions, attestationsByEntry, now);

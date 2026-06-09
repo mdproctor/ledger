@@ -94,4 +94,16 @@ public class JpaCrossTenantLedgerEntryRepository implements CrossTenantLedgerEnt
                 .getResultList();
         return all.stream().collect(Collectors.groupingBy(a -> a.ledgerEntryId));
     }
+
+    /** {@inheritDoc} */
+    @Override
+    public Map<UUID, List<LedgerAttestation>> findAttestationsByActorId(final String actorId) {
+        final String token = actorIdentityProvider.tokeniseForQuery(actorId);
+        final List<LedgerAttestation> all = em
+                .createNamedQuery("LedgerAttestation.findByActorIdEvents", LedgerAttestation.class)
+                .setParameter("actorId", token)
+                .setParameter("type", LedgerEntryType.EVENT)
+                .getResultList();
+        return all.stream().collect(Collectors.groupingBy(a -> a.ledgerEntryId));
+    }
 }

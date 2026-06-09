@@ -72,4 +72,19 @@ public class InMemoryCrossTenantLedgerEntryRepository implements CrossTenantLedg
                 .filter(a -> entryIds.contains(a.ledgerEntryId))
                 .collect(Collectors.groupingBy(a -> a.ledgerEntryId));
     }
+
+    @Override
+    public Map<UUID, List<LedgerAttestation>> findAttestationsByActorId(final String actorId) {
+        final Set<UUID> eventIds = blocking.allEntries().stream()
+                .filter(e -> e.entryType == LedgerEntryType.EVENT)
+                .filter(e -> actorId.equals(e.actorId))
+                .map(e -> e.id)
+                .collect(Collectors.toSet());
+        if (eventIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return blocking.allAttestations().stream()
+                .filter(a -> eventIds.contains(a.ledgerEntryId))
+                .collect(Collectors.groupingBy(a -> a.ledgerEntryId));
+    }
 }
