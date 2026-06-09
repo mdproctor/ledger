@@ -41,7 +41,8 @@ public class AgentSignatureVerificationService {
     /**
      * Verifies the agent signature on the given entry.
      *
-     * @param entryId the entry to verify
+     * @param entryId   the entry to verify
+     * @param tenancyId the tenant scope
      * @return {@link VerificationResult#UNSIGNED} if no signature stored;
      *         {@link VerificationResult#VALID} if the signature verifies and the key is not compromised;
      *         {@link VerificationResult#SUSPECT} if the signature verifies but the key was subsequently
@@ -51,8 +52,8 @@ public class AgentSignatureVerificationService {
      * @throws IllegalArgumentException if the entry does not exist
      */
     @Transactional
-    public VerificationResult verifyAgentSignature(final UUID entryId) {
-        final LedgerEntry entry = ledgerRepo.findEntryById(entryId)
+    public VerificationResult verifyAgentSignature(final UUID entryId, final String tenancyId) {
+        final LedgerEntry entry = ledgerRepo.findEntryById(entryId, tenancyId)
                 .orElseThrow(() -> new IllegalArgumentException("Entry not found: " + entryId));
 
         if (entry.agentSignature == null) {

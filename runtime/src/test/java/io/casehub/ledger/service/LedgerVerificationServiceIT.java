@@ -21,6 +21,7 @@ import io.casehub.ledger.runtime.service.LedgerVerificationService;
 import io.casehub.ledger.runtime.service.model.InclusionProof;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.junit.QuarkusTest;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 @QuarkusTest
 class LedgerVerificationServiceIT {
@@ -40,7 +41,7 @@ class LedgerVerificationServiceIT {
         e.actorId = actorId;
         e.actorType = ActorType.SYSTEM;
         e.actorRole = "Tester";
-        return (TestEntry) repo.save(e);
+        return (TestEntry) repo.save(e, DEFAULT_TENANT_ID);
     }
 
     @Test
@@ -49,7 +50,7 @@ class LedgerVerificationServiceIT {
         UUID sub = UUID.randomUUID();
         seedEntry(sub, 1, "actor-a");
 
-        String root = verificationService.treeRoot(sub);
+        String root = verificationService.treeRoot(sub, DEFAULT_TENANT_ID);
         List<LedgerMerkleFrontier> frontier = em
                 .createNamedQuery("LedgerMerkleFrontier.findBySubjectId", LedgerMerkleFrontier.class)
                 .setParameter("subjectId", sub)
@@ -66,7 +67,7 @@ class LedgerVerificationServiceIT {
         for (int i = 1; i <= 5; i++)
             seedEntry(sub, i, "actor-" + i);
 
-        verificationService.treeRoot(sub);
+        verificationService.treeRoot(sub, DEFAULT_TENANT_ID);
 
         List<LedgerMerkleFrontier> frontier = em
                 .createNamedQuery("LedgerMerkleFrontier.findBySubjectId", LedgerMerkleFrontier.class)
@@ -81,7 +82,7 @@ class LedgerVerificationServiceIT {
         UUID sub = UUID.randomUUID();
         TestEntry e = seedEntry(sub, 1, "actor-a");
 
-        InclusionProof proof = verificationService.inclusionProof(e.id);
+        InclusionProof proof = verificationService.inclusionProof(e.id, DEFAULT_TENANT_ID);
 
         assertThat(proof).isNotNull();
         assertThat(proof.entryId()).isEqualTo(e.id);
@@ -99,9 +100,9 @@ class LedgerVerificationServiceIT {
         for (int i = 0; i < 4; i++)
             entries[i] = seedEntry(sub, i + 1, "actor-" + i);
 
-        String root = verificationService.treeRoot(sub);
+        String root = verificationService.treeRoot(sub, DEFAULT_TENANT_ID);
         for (TestEntry e : entries) {
-            InclusionProof proof = verificationService.inclusionProof(e.id);
+            InclusionProof proof = verificationService.inclusionProof(e.id, DEFAULT_TENANT_ID);
             assertThat(LedgerMerkleTree.verifyProof(proof, root))
                     .as("entry %s should verify", e.id).isTrue();
         }
@@ -115,8 +116,8 @@ class LedgerVerificationServiceIT {
         for (int i = 1; i <= 7; i++)
             last = seedEntry(sub, i, "actor-" + i);
 
-        String root = verificationService.treeRoot(sub);
-        InclusionProof proof = verificationService.inclusionProof(last.id);
+        String root = verificationService.treeRoot(sub, DEFAULT_TENANT_ID);
+        InclusionProof proof = verificationService.inclusionProof(last.id, DEFAULT_TENANT_ID);
         assertThat(LedgerMerkleTree.verifyProof(proof, root)).isTrue();
     }
 
@@ -126,7 +127,7 @@ class LedgerVerificationServiceIT {
         UUID sub = UUID.randomUUID();
         for (int i = 1; i <= 5; i++)
             seedEntry(sub, i, "actor-" + i);
-        assertThat(verificationService.verify(sub)).isTrue();
+        assertThat(verificationService.verify(sub, DEFAULT_TENANT_ID)).isTrue();
     }
 
     @Test
@@ -135,11 +136,11 @@ class LedgerVerificationServiceIT {
         UUID sub = UUID.randomUUID();
         TestEntry e = seedEntry(sub, 1, "actor-a");
 
-        LedgerEntry stored = repo.findEntryById(e.id).orElseThrow();
+        LedgerEntry stored = repo.findEntryById(e.id, DEFAULT_TENANT_ID).orElseThrow();
         stored.digest = "0000000000000000000000000000000000000000000000000000000000000000";
-        repo.save(stored);
+        repo.save(stored, DEFAULT_TENANT_ID);
 
-        assertThat(verificationService.verify(sub)).isFalse();
+        assertThat(verificationService.verify(sub, DEFAULT_TENANT_ID)).isFalse();
     }
 
 }

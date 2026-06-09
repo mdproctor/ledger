@@ -32,6 +32,7 @@ import io.casehub.ledger.runtime.service.model.VerificationResult;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 /**
  * Integration tests for {@link ReactiveAgentSignatureVerificationService}.
@@ -77,7 +78,7 @@ class ReactiveAgentSignatureVerificationServiceIT {
         e.actorId = actorId;
         e.actorType = ActorType.SYSTEM;
         e.actorRole = "Tester";
-        return (TestEntry) repo.save(e);
+        return (TestEntry) repo.save(e, DEFAULT_TENANT_ID);
     }
 
     private TestEntry seedAgent(final UUID subjectId, final String actorId) {
@@ -87,7 +88,7 @@ class ReactiveAgentSignatureVerificationServiceIT {
         e.actorId = actorId;
         e.actorType = ActorType.AGENT;
         e.actorRole = "Reviewer";
-        return (TestEntry) repo.save(e);
+        return (TestEntry) repo.save(e, DEFAULT_TENANT_ID);
     }
 
     private static AgentSignature signEntry(final TestEntry e, final java.security.KeyPair kp) {
@@ -105,7 +106,7 @@ class ReactiveAgentSignatureVerificationServiceIT {
         final TestEntry e = seedEntry(sub, "unsigned-actor");
 
         final VerificationResult result = reactiveVerificationService
-                .verifyAgentSignatureAsync(e.id)
+                .verifyAgentSignatureAsync(e.id, DEFAULT_TENANT_ID)
                 .await().atMost(Duration.ofSeconds(5));
 
         assertThat(result).isEqualTo(VerificationResult.UNSIGNED);
@@ -121,7 +122,7 @@ class ReactiveAgentSignatureVerificationServiceIT {
         em.flush();
 
         final VerificationResult result = reactiveVerificationService
-                .verifyAgentSignatureAsync(e.id)
+                .verifyAgentSignatureAsync(e.id, DEFAULT_TENANT_ID)
                 .await().atMost(Duration.ofSeconds(5));
 
         assertThat(result).isEqualTo(VerificationResult.VALID);
@@ -138,7 +139,7 @@ class ReactiveAgentSignatureVerificationServiceIT {
         em.flush();
 
         final VerificationResult result = reactiveVerificationService
-                .verifyAgentSignatureAsync(e.id)
+                .verifyAgentSignatureAsync(e.id, DEFAULT_TENANT_ID)
                 .await().atMost(Duration.ofSeconds(5));
 
         assertThat(result).isEqualTo(VerificationResult.INVALID);
@@ -155,10 +156,10 @@ class ReactiveAgentSignatureVerificationServiceIT {
 
         final java.time.Instant compromisedSince = e.occurredAt.minusSeconds(60);
         rotationService.recordRotation("claude:reviewer@v1", sig.keyRef(), null,
-                KeyRotationReason.COMPROMISED, compromisedSince);
+                KeyRotationReason.COMPROMISED, compromisedSince, DEFAULT_TENANT_ID);
 
         final VerificationResult result = reactiveVerificationService
-                .verifyAgentSignatureAsync(e.id)
+                .verifyAgentSignatureAsync(e.id, DEFAULT_TENANT_ID)
                 .await().atMost(Duration.ofSeconds(5));
 
         assertThat(result).isEqualTo(VerificationResult.SUSPECT);

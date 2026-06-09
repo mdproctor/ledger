@@ -18,6 +18,7 @@ import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.junit.QuarkusTest;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 /**
  * Integration tests for {@link LedgerEntryRepository#findCausedBy(UUID)}.
@@ -40,7 +41,7 @@ class CausalityQueryIT {
         final TestEntry eb = seedEntry("qhorus-agent", now().minus(1, ChronoUnit.MINUTES), rootId);
         seedEntry("unrelated", now(), null);
 
-        final List<LedgerEntry> results = repo.findCausedBy(rootId);
+        final List<LedgerEntry> results = repo.findCausedBy(rootId, DEFAULT_TENANT_ID);
 
         assertThat(results).hasSize(2);
         assertThat(results.stream().map(e -> e.id).toList())
@@ -54,7 +55,7 @@ class CausalityQueryIT {
         final TestEntry tarkus = seedEntry("tarkus", now().minus(2, ChronoUnit.MINUTES), rootId);
         final TestEntry qhorus = seedEntry("qhorus", now().minus(1, ChronoUnit.MINUTES), tarkus.id);
 
-        final List<LedgerEntry> results = repo.findCausedBy(tarkus.id);
+        final List<LedgerEntry> results = repo.findCausedBy(tarkus.id, DEFAULT_TENANT_ID);
 
         assertThat(results).hasSize(1);
         assertThat(results.get(0).id).isEqualTo(qhorus.id);
@@ -66,13 +67,13 @@ class CausalityQueryIT {
         final UUID rootId = UUID.randomUUID();
         final TestEntry leaf = seedEntry("leaf", now(), rootId);
 
-        assertThat(repo.findCausedBy(leaf.id)).isEmpty();
+        assertThat(repo.findCausedBy(leaf.id, DEFAULT_TENANT_ID)).isEmpty();
     }
 
     @Test
     @Transactional
     void findCausedBy_unknownId_returnsEmpty() {
-        assertThat(repo.findCausedBy(UUID.randomUUID())).isEmpty();
+        assertThat(repo.findCausedBy(UUID.randomUUID(), DEFAULT_TENANT_ID)).isEmpty();
     }
 
     @Test
@@ -82,7 +83,7 @@ class CausalityQueryIT {
         final TestEntry late = seedEntry("agent-b", now().minus(1, ChronoUnit.MINUTES), rootId);
         final TestEntry early = seedEntry("agent-a", now().minus(5, ChronoUnit.MINUTES), rootId);
 
-        final List<LedgerEntry> results = repo.findCausedBy(rootId);
+        final List<LedgerEntry> results = repo.findCausedBy(rootId, DEFAULT_TENANT_ID);
 
         assertThat(results).hasSize(2);
         assertThat(results.get(0).id).isEqualTo(early.id);
@@ -100,19 +101,19 @@ class CausalityQueryIT {
                 now().minus(1, ChronoUnit.MINUTES), tarkus.id);
 
         // Hop 1: claudony → tarkus
-        final List<LedgerEntry> hop1 = repo.findCausedBy(claudonyId);
+        final List<LedgerEntry> hop1 = repo.findCausedBy(claudonyId, DEFAULT_TENANT_ID);
         assertThat(hop1).hasSize(1);
         assertThat(hop1.get(0).id).isEqualTo(tarkus.id);
         assertThat(hop1.get(0).actorId).isEqualTo("tarkus-worker");
 
         // Hop 2: tarkus → qhorus
-        final List<LedgerEntry> hop2 = repo.findCausedBy(tarkus.id);
+        final List<LedgerEntry> hop2 = repo.findCausedBy(tarkus.id, DEFAULT_TENANT_ID);
         assertThat(hop2).hasSize(1);
         assertThat(hop2.get(0).id).isEqualTo(qhorus.id);
         assertThat(hop2.get(0).actorId).isEqualTo("qhorus-agent");
 
         // Leaf: qhorus causes nothing
-        assertThat(repo.findCausedBy(qhorus.id)).isEmpty();
+        assertThat(repo.findCausedBy(qhorus.id, DEFAULT_TENANT_ID)).isEmpty();
     }
 
     private TestEntry seedEntry(final String actorId, final Instant occurredAt,
@@ -126,7 +127,7 @@ class CausalityQueryIT {
         e.actorRole = "Processor";
         e.occurredAt = occurredAt;
         e.causedByEntryId = causedByEntryId;
-        repo.save(e);
+        repo.save(e, DEFAULT_TENANT_ID);
         return e;
     }
 

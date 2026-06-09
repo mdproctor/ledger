@@ -23,6 +23,7 @@ import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 /**
  * Integration tests verifying write-path and query-path privacy wiring
@@ -45,7 +46,7 @@ class LedgerPrivacyWiringIT {
     void save_actorIdStoredAsToken_notRawIdentity() {
         final String rawActorId = "alice-" + UUID.randomUUID();
         final TestEntry entry = entry(rawActorId);
-        repo.save(entry);
+        repo.save(entry, DEFAULT_TENANT_ID);
 
         final LedgerEntry stored = em.find(LedgerEntry.class, entry.id);
         assertThat(stored.actorId)
@@ -62,9 +63,9 @@ class LedgerPrivacyWiringIT {
         final Instant from = Instant.now().minus(1, ChronoUnit.HOURS);
         final Instant to = Instant.now().plus(1, ChronoUnit.HOURS);
 
-        repo.save(entry(rawActorId));
+        repo.save(entry(rawActorId), DEFAULT_TENANT_ID);
 
-        final List<LedgerEntry> results = repo.findByActorId(rawActorId, from, to);
+        final List<LedgerEntry> results = repo.findByActorId(rawActorId, from, to, DEFAULT_TENANT_ID);
         assertThat(results).hasSize(1);
     }
 
@@ -76,7 +77,7 @@ class LedgerPrivacyWiringIT {
         final String rawActorId = "carol-" + UUID.randomUUID();
         final String rawAttestorId = "attestor-" + UUID.randomUUID();
         final TestEntry entry = entry(rawActorId);
-        repo.save(entry);
+        repo.save(entry, DEFAULT_TENANT_ID);
 
         final LedgerAttestation att = new LedgerAttestation();
         att.id = UUID.randomUUID();
@@ -87,7 +88,7 @@ class LedgerPrivacyWiringIT {
         att.verdict = AttestationVerdict.SOUND;
         att.confidence = 0.9;
         att.occurredAt = Instant.now();
-        repo.saveAttestation(att);
+        repo.saveAttestation(att, DEFAULT_TENANT_ID);
 
         final LedgerAttestation stored = em.find(LedgerAttestation.class, att.id);
         assertThat(stored.attestorId)
@@ -106,7 +107,7 @@ class LedgerPrivacyWiringIT {
         cs.decisionContext = "{\"riskScore\":42,\"region\":\"EU\"}";
         entry.attach(cs);
 
-        repo.save(entry);
+        repo.save(entry, DEFAULT_TENANT_ID);
 
         final LedgerEntry stored = em.find(LedgerEntry.class, entry.id);
         stored.supplements.size(); // force lazy load
@@ -123,8 +124,8 @@ class LedgerPrivacyWiringIT {
         final String rawActorId = "eve-" + UUID.randomUUID();
         final TestEntry e1 = entry(rawActorId);
         final TestEntry e2 = entry(rawActorId);
-        repo.save(e1);
-        repo.save(e2);
+        repo.save(e1, DEFAULT_TENANT_ID);
+        repo.save(e2, DEFAULT_TENANT_ID);
 
         final String token1 = em.find(LedgerEntry.class, e1.id).actorId;
         final String token2 = em.find(LedgerEntry.class, e2.id).actorId;
@@ -139,7 +140,7 @@ class LedgerPrivacyWiringIT {
         final Instant from = Instant.now().minus(1, ChronoUnit.HOURS);
         final Instant to = Instant.now().plus(1, ChronoUnit.HOURS);
 
-        assertThat(repo.findByActorId("never-saved-" + UUID.randomUUID(), from, to)).isEmpty();
+        assertThat(repo.findByActorId("never-saved-" + UUID.randomUUID(), from, to, DEFAULT_TENANT_ID)).isEmpty();
     }
 
     // ── Happy path: findAttestationsByAttestorIdAndCapabilityTag uses tokenised attestorId ──
@@ -149,7 +150,7 @@ class LedgerPrivacyWiringIT {
     void findByAttestorIdAndCapabilityTag_withPseudonymisation_findsTokenisedAttestation() {
         final String rawAttestorId = "attestor-" + UUID.randomUUID();
         final TestEntry entry = entry(rawAttestorId);
-        repo.save(entry);
+        repo.save(entry, DEFAULT_TENANT_ID);
 
         final LedgerAttestation att = new LedgerAttestation();
         att.ledgerEntryId = entry.id;
@@ -160,10 +161,10 @@ class LedgerPrivacyWiringIT {
         att.confidence = 1.0;
         att.capabilityTag = "security-review";
         att.occurredAt = Instant.now().truncatedTo(ChronoUnit.MILLIS);
-        repo.saveAttestation(att);
+        repo.saveAttestation(att, DEFAULT_TENANT_ID);
 
         // Query by raw attestorId — tokeniseForQuery must translate to the stored token
-        final var results = repo.findAttestationsByAttestorIdAndCapabilityTag(rawAttestorId, "security-review");
+        final var results = repo.findAttestationsByAttestorIdAndCapabilityTag(rawAttestorId, "security-review", DEFAULT_TENANT_ID);
 
         assertThat(results).hasSize(1);
         assertThat(results.get(0).capabilityTag).isEqualTo("security-review");

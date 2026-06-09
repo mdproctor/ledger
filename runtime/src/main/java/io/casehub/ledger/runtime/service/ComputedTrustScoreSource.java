@@ -19,7 +19,8 @@ import jakarta.inject.Inject;
 import io.casehub.ledger.api.spi.TrustScoreSource;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.model.LedgerEntry;
-import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
+import io.casehub.ledger.runtime.qualifier.CrossTenant;
+import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
 
 /**
  * On-read {@link TrustScoreSource}: computes trust scores from raw attestation history
@@ -42,7 +43,7 @@ import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 @Alternative
 public class ComputedTrustScoreSource implements TrustScoreSource {
 
-    private final LedgerEntryRepository ledgerRepo;
+    private final CrossTenantLedgerEntryRepository ledgerRepo;
     private final TrustScoreCalculator calculator;
     private static final TrustScoreCalculator.ComputedScores EMPTY_SENTINEL =
             new TrustScoreCalculator.ComputedScores(Map.of(), Map.of(), Map.of(),
@@ -52,7 +53,7 @@ public class ComputedTrustScoreSource implements TrustScoreSource {
             new ConcurrentHashMap<>();
 
     @Inject
-    public ComputedTrustScoreSource(final LedgerEntryRepository ledgerRepo,
+    public ComputedTrustScoreSource(@CrossTenant final CrossTenantLedgerEntryRepository ledgerRepo,
                                     final TrustScoreCalculator calculator) {
         this.ledgerRepo = ledgerRepo;
         this.calculator = calculator;

@@ -23,6 +23,7 @@ import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 /**
  * Integration tests for {@link LedgerComplianceReportService}.
@@ -55,7 +56,7 @@ class LedgerComplianceReportServiceIT {
         final TestEntry e2 = entryWithCompliance(actorId, "algorithm-v2", 0.8);
         final TestEntry e3 = bareEntry(actorId);
 
-        final ComplianceReport report = reportService.reportForActor(actorId, from, to);
+        final ComplianceReport report = reportService.reportForActor(actorId, from, to, DEFAULT_TENANT_ID);
 
         assertThat(report.actorId()).isEqualTo(actorId);
         assertThat(report.totalDecisions()).isEqualTo(2);
@@ -75,7 +76,7 @@ class LedgerComplianceReportServiceIT {
 
         entryWithCompliance(actorId, "alg-v1", 0.9);
 
-        final ComplianceReport report = reportService.reportForActor(actorId, from, to);
+        final ComplianceReport report = reportService.reportForActor(actorId, from, to, DEFAULT_TENANT_ID);
 
         assertThat(report.totalDecisions()).isEqualTo(0);
         assertThat(report.decisions()).isEmpty();
@@ -93,7 +94,7 @@ class LedgerComplianceReportServiceIT {
 
         entryWithComplianceForSubject(subjectId, actorId, "alg-v3", 0.7);
 
-        final ComplianceReport report = reportService.reportForSubject(subjectId, from, to);
+        final ComplianceReport report = reportService.reportForSubject(subjectId, from, to, DEFAULT_TENANT_ID);
 
         assertThat(report.subjectId()).isEqualTo(subjectId);
         assertThat(report.totalDecisions()).isEqualTo(1);
@@ -114,7 +115,7 @@ class LedgerComplianceReportServiceIT {
         final Instant pastFrom = Instant.now().minus(2, ChronoUnit.DAYS);
         final Instant pastTo = Instant.now().minus(1, ChronoUnit.DAYS);
 
-        final ComplianceReport report = reportService.reportForSubject(subjectId, pastFrom, pastTo);
+        final ComplianceReport report = reportService.reportForSubject(subjectId, pastFrom, pastTo, DEFAULT_TENANT_ID);
 
         assertThat(report.totalDecisions()).isEqualTo(0);
     }
@@ -130,7 +131,7 @@ class LedgerComplianceReportServiceIT {
 
         entryWithComplianceAndProvenance(actorId, "alg-v4", 0.85, "WorkItem", UUID.randomUUID());
 
-        final ComplianceReport report = reportService.reportForActor(actorId, from, to);
+        final ComplianceReport report = reportService.reportForActor(actorId, from, to, DEFAULT_TENANT_ID);
 
         assertThat(report.decisions()).hasSize(1);
         assertThat(report.decisions().get(0).sourceEntityType()).isEqualTo("WorkItem");
@@ -148,7 +149,7 @@ class LedgerComplianceReportServiceIT {
 
         entryWithCompliance(actorId, "alg-csv", 0.95);
 
-        final ComplianceReport report = reportService.reportForActor(actorId, from, to);
+        final ComplianceReport report = reportService.reportForActor(actorId, from, to, DEFAULT_TENANT_ID);
         final String csv = report.format(ReportFormat.CSV);
 
         assertThat(csv).contains("entryId");
@@ -167,7 +168,7 @@ class LedgerComplianceReportServiceIT {
 
         entryWithCompliance(actorId, "alg-jsonld", 0.9);
 
-        final ComplianceReport report = reportService.reportForActor(actorId, from, to);
+        final ComplianceReport report = reportService.reportForActor(actorId, from, to, DEFAULT_TENANT_ID);
         final String jsonLd = report.format(ReportFormat.JSON_LD);
 
         assertThat(jsonLd).contains("@context");
@@ -183,7 +184,7 @@ class LedgerComplianceReportServiceIT {
         cs.contestationUri = "https://example.com/challenge";
         cs.humanOverrideAvailable = true;
         e.attach(cs);
-        return (TestEntry) repo.save(e);
+        return (TestEntry) repo.save(e, DEFAULT_TENANT_ID);
     }
 
     private TestEntry entryWithComplianceForSubject(final UUID subjectId, final String actorId,
@@ -193,7 +194,7 @@ class LedgerComplianceReportServiceIT {
         cs.algorithmRef = algorithmRef;
         cs.confidenceScore = confidence;
         e.attach(cs);
-        return (TestEntry) repo.save(e);
+        return (TestEntry) repo.save(e, DEFAULT_TENANT_ID);
     }
 
     private TestEntry entryWithComplianceAndProvenance(final String actorId, final String algorithmRef,
@@ -207,11 +208,11 @@ class LedgerComplianceReportServiceIT {
         ps.sourceEntityType = entityType;
         ps.sourceEntityId = entityId.toString();
         e.attach(ps);
-        return (TestEntry) repo.save(e);
+        return (TestEntry) repo.save(e, DEFAULT_TENANT_ID);
     }
 
     private TestEntry bareEntry(final String actorId) {
-        return (TestEntry) repo.save(base(UUID.randomUUID(), actorId));
+        return (TestEntry) repo.save(base(UUID.randomUUID(), actorId), DEFAULT_TENANT_ID);
     }
 
     private static TestEntry base(final UUID subjectId, final String actorId) {

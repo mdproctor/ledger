@@ -6,6 +6,7 @@ import jakarta.inject.Inject;
 import io.quarkus.arc.DefaultBean;
 
 import io.casehub.platform.api.identity.ActorType;
+import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.ledger.api.model.OutcomeRecord;
 import io.casehub.ledger.api.spi.OutcomeRecorder;
 import io.casehub.ledger.runtime.config.LedgerConfig;
@@ -31,10 +32,13 @@ public class DefaultOutcomeRecorder implements OutcomeRecorder {
     @Inject
     LedgerConfig config;
 
+    @Inject
+    CurrentPrincipal currentPrincipal;
+
     @Override
     public void record(final OutcomeRecord record) {
         final AttestorDefaults attestor = resolveAttestor(record);
-        saveService.save(record, attestor);
+        saveService.save(record, attestor, currentPrincipal.tenancyId());
     }
 
     private AttestorDefaults resolveAttestor(final OutcomeRecord record) {

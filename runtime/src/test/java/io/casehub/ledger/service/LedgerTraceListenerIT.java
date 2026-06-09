@@ -20,6 +20,7 @@ import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.junit.QuarkusTest;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 /**
  * Verifies that {@link io.casehub.ledger.runtime.service.LedgerTraceListener} is
@@ -42,7 +43,7 @@ class LedgerTraceListenerIT {
         final SpanContext ctx = activeSpanContext();
 
         try (Scope ignored = Span.wrap(ctx).makeCurrent()) {
-            repo.save(entry);
+            repo.save(entry, DEFAULT_TENANT_ID);
         }
 
         assertThat(entry.traceId).isEqualTo(TRACE_ID);
@@ -56,7 +57,7 @@ class LedgerTraceListenerIT {
         final SpanContext ctx = activeSpanContext();
 
         try (Scope ignored = Span.wrap(ctx).makeCurrent()) {
-            repo.save(entry);
+            repo.save(entry, DEFAULT_TENANT_ID);
         }
 
         assertThat(entry.traceId).isEqualTo("caller-supplied-trace");
@@ -67,7 +68,7 @@ class LedgerTraceListenerIT {
     void traceId_nullWhenNoActiveSpan() {
         final TestEntry entry = buildEntry();
 
-        repo.save(entry);
+        repo.save(entry, DEFAULT_TENANT_ID);
 
         assertThat(entry.traceId).isNull();
     }

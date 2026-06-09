@@ -34,6 +34,7 @@ import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 /**
  * Integration tests for {@code LedgerIdentityEnforcementListener} in ENFORCE mode.
@@ -94,7 +95,7 @@ class LedgerIdentityEnforcementIT {
         entry.actorDid = DID;
         // AgentSignatureEnricher will populate agentSignature + agentPublicKey from AgentSigner
 
-        ledgerRepo.save(entry);
+        ledgerRepo.save(entry, DEFAULT_TENANT_ID);
         assertThat(entry.id).isNotNull();
         assertThat(entry.pendingIdentityStatus).isEqualTo(IdentityBindingStatus.VALID);
     }
@@ -106,7 +107,7 @@ class LedgerIdentityEnforcementIT {
         final TestEntry entry = buildEntry();
         entry.actorDid = DID;
 
-        assertThatThrownBy(() -> ledgerRepo.save(entry))
+        assertThatThrownBy(() -> ledgerRepo.save(entry, DEFAULT_TENANT_ID))
             .isInstanceOf(LedgerIdentityViolationException.class)
             .hasMessageContaining(ACTOR_ID)
             .extracting(ex -> ((LedgerIdentityViolationException) ex).status)
@@ -124,7 +125,7 @@ class LedgerIdentityEnforcementIT {
         final TestEntry entry = buildEntry();
         entry.actorDid = DID;
 
-        assertThatThrownBy(() -> ledgerRepo.save(entry))
+        assertThatThrownBy(() -> ledgerRepo.save(entry, DEFAULT_TENANT_ID))
             .isInstanceOf(LedgerIdentityViolationException.class)
             .extracting(ex -> ((LedgerIdentityViolationException) ex).status)
             .isEqualTo(IdentityBindingStatus.IDENTITY_MISMATCH);
@@ -141,7 +142,7 @@ class LedgerIdentityEnforcementIT {
         final TestEntry entry = buildEntry();
         entry.actorDid = DID;
 
-        assertThatThrownBy(() -> ledgerRepo.save(entry))
+        assertThatThrownBy(() -> ledgerRepo.save(entry, DEFAULT_TENANT_ID))
             .isInstanceOf(LedgerIdentityViolationException.class)
             .extracting(ex -> ((LedgerIdentityViolationException) ex).status)
             .isEqualTo(IdentityBindingStatus.KEY_MISMATCH);
@@ -154,7 +155,7 @@ class LedgerIdentityEnforcementIT {
         final TestEntry entry = buildEntry();
         // actorDid is null — no signing needed for this path
 
-        ledgerRepo.save(entry);
+        ledgerRepo.save(entry, DEFAULT_TENANT_ID);
         assertThat(entry.id).isNotNull();
         assertThat(entry.pendingIdentityStatus).isNull();
     }

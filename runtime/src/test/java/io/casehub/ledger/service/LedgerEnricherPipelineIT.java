@@ -27,6 +27,7 @@ import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 /**
  * Verifies the LedgerEntryEnricher pipeline properties: non-fatal failure and full execution.
@@ -76,9 +77,9 @@ class LedgerEnricherPipelineIT {
         final TestEntry entry = buildEntry();
 
         // Must not throw even though ThrowingEnricher is registered
-        repo.save(entry);
+        repo.save(entry, DEFAULT_TENANT_ID);
 
-        assertThat(repo.findEntryById(entry.id)).isPresent();
+        assertThat(repo.findEntryById(entry.id, DEFAULT_TENANT_ID)).isPresent();
     }
 
     @Test
@@ -86,7 +87,7 @@ class LedgerEnricherPipelineIT {
     void allEnrichersRun_despiteFailingEnricher() {
         final TestEntry entry = buildEntry();
 
-        repo.save(entry);
+        repo.save(entry, DEFAULT_TENANT_ID);
 
         // CountingEnricher must have run (pipeline did not short-circuit on ThrowingEnricher)
         assertThat(CountingEnricher.count.get()).isGreaterThanOrEqualTo(1);
@@ -103,7 +104,7 @@ class LedgerEnricherPipelineIT {
                 TraceFlags.getSampled(), TraceState.getDefault());
 
         try (Scope ignored = Span.wrap(ctx).makeCurrent()) {
-            repo.save(entry);
+            repo.save(entry, DEFAULT_TENANT_ID);
         }
 
         assertThat(entry.traceId).isEqualTo("4bf92f3577b34da6a3ce929d0e0e4736");

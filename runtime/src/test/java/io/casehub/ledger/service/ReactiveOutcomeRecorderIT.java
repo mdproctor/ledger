@@ -17,6 +17,7 @@ import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.service.TrustScoreJob;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 @QuarkusTest
 @TestProfile(OutcomeRecorderIT.Profile.class)
@@ -36,12 +37,12 @@ class ReactiveOutcomeRecorderIT {
                 OutcomeRecord.of(pluginId, gameId, "economics", SOUND, 0.7)
         ).await().indefinitely();
 
-        final var entries = ledgerRepo.findBySubjectId(gameId);
+        final var entries = ledgerRepo.findBySubjectId(gameId, DEFAULT_TENANT_ID);
         assertThat(entries).hasSize(1);
         assertThat(entries.get(0).actorId).isEqualTo(pluginId);
         assertThat(entries.get(0).entryType).isEqualTo(LedgerEntryType.EVENT);
 
-        final var attestations = ledgerRepo.findAttestationsByEntryId(entries.get(0).id);
+        final var attestations = ledgerRepo.findAttestationsByEntryId(entries.get(0).id, DEFAULT_TENANT_ID);
         assertThat(attestations).hasSize(1);
         assertThat(attestations.get(0).verdict).isEqualTo(SOUND);
         assertThat(attestations.get(0).confidence).isEqualTo(0.7);

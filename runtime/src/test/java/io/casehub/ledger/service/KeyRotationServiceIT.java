@@ -22,6 +22,7 @@ import io.casehub.ledger.runtime.service.KeyRotationService;
 import io.casehub.ledger.runtime.service.identity.ActorIdentityValidationEnricher;
 import io.casehub.ledger.runtime.service.model.CompromisedWindow;
 import io.quarkus.test.junit.QuarkusTest;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 @QuarkusTest
 class KeyRotationServiceIT {
@@ -49,7 +50,7 @@ class KeyRotationServiceIT {
 
         final KeyRotationEntry entry = rotationService.recordRotation(
                 actorId, oldKeyRef, newKeyRef,
-                KeyRotationReason.SCHEDULED, Instant.now());
+                KeyRotationReason.SCHEDULED, Instant.now(), DEFAULT_TENANT_ID);
 
         assertThat(entry.id).isNotNull();
         assertThat(entry.actorId).isEqualTo(actorId);
@@ -67,7 +68,7 @@ class KeyRotationServiceIT {
 
         final KeyRotationEntry entry = rotationService.recordRotation(
                 actorId, oldKeyRef, null,
-                KeyRotationReason.COMPROMISED, Instant.now());
+                KeyRotationReason.COMPROMISED, Instant.now(), DEFAULT_TENANT_ID);
 
         final UUID expectedSubjectId = UUID.nameUUIDFromBytes(
                 actorId.getBytes(StandardCharsets.UTF_8));
@@ -82,9 +83,9 @@ class KeyRotationServiceIT {
         final String keyRef2 = newKeyRef();
 
         rotationService.recordRotation(actorId, keyRef1, keyRef2,
-                KeyRotationReason.SCHEDULED, Instant.now().minusSeconds(60));
+                KeyRotationReason.SCHEDULED, Instant.now().minusSeconds(60), DEFAULT_TENANT_ID);
         rotationService.recordRotation(actorId, keyRef2, null,
-                KeyRotationReason.COMPROMISED, Instant.now());
+                KeyRotationReason.COMPROMISED, Instant.now(), DEFAULT_TENANT_ID);
 
         final List<KeyRotationEntry> history = rotationService.rotationHistory(actorId);
         assertThat(history).hasSize(2);
@@ -101,9 +102,9 @@ class KeyRotationServiceIT {
         final Instant compromisedSince = Instant.now().minusSeconds(3600);
 
         rotationService.recordRotation(actorId, oldKeyRef, newKeyRef,
-                KeyRotationReason.SCHEDULED, Instant.now());
+                KeyRotationReason.SCHEDULED, Instant.now(), DEFAULT_TENANT_ID);
         rotationService.recordRotation(actorId, oldKeyRef, null,
-                KeyRotationReason.COMPROMISED, compromisedSince);
+                KeyRotationReason.COMPROMISED, compromisedSince, DEFAULT_TENANT_ID);
 
         final List<CompromisedWindow> windows =
                 rotationService.compromisedWindows(actorId, oldKeyRef);
@@ -133,7 +134,7 @@ class KeyRotationServiceIT {
 
         // Record a rotation — fires AgentKeyRotatedEvent which enricher observes
         rotationService.recordRotation(actorId, newKeyRef(), newKeyRef(),
-                KeyRotationReason.SCHEDULED, Instant.now());
+                KeyRotationReason.SCHEDULED, Instant.now(), DEFAULT_TENANT_ID);
 
         // Idempotent call confirms enricher is wired and not throwing
         identityEnricher.invalidateAll();
@@ -148,7 +149,7 @@ class KeyRotationServiceIT {
         final String newRef = newKeyRef();
 
         rotationService.recordRotation(actorId, oldRef, newRef,
-                KeyRotationReason.SCHEDULED, Instant.now());
+                KeyRotationReason.SCHEDULED, Instant.now(), DEFAULT_TENANT_ID);
 
         assertThat(eventCapture.events()).hasSize(1);
         final AgentKeyRotatedEvent fired = eventCapture.events().get(0);

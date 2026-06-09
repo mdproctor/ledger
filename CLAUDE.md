@@ -197,6 +197,16 @@ Major version bump resets the trust baseline; tuning/bug-fix does not. See ADR 0
 `docs/DESIGN-capabilities.md` (Agent Identity Model) for concrete bump criteria and the no-inheritance
 rationale.
 
+**Multi-tenancy — explicit `tenancyId` parameter, unconditional filtering**
+`tenancyId` is an explicit `String` parameter on every tenant-scoped SPI method. Cross-tenant
+methods (trust computation, health checks, retention) live in separate `CrossTenant*Repository`
+interfaces, injected via `@CrossTenant` CDI qualifier and guarded by
+`LedgerSystemCurrentPrincipal.isCrossTenantAdmin()`. Per PP-20260520-439daf, filtering is
+unconditional — single-tenant deployments use `TenancyConstants.DEFAULT_TENANT_ID` as a sentinel
+that always matches. Per PP-20260520-e6a5f0, `CurrentPrincipal.tenancyId()` is never called
+inside repositories or services — callers pass tenancyId from the HTTP boundary. Same pattern
+as casehub-engine (#299, #405, #406).
+
 ---
 
 ## Identity Infrastructure — casehub-platform-identity
@@ -255,7 +265,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │   └── src/main/java/io/casehub/ledger/runtime/
 │       ├── config/LedgerConfig.java         — @ConfigMapping(prefix = "casehub.ledger")
 │       ├── model/
-│       │   ├── LedgerEntry.java             — abstract base entity (JOINED inheritance); agentSignature + agentPublicKey + agentKeyRef for bilateral signing (V1005/V1006); actorDid + @Transient pendingIdentityStatus (V1008)
+│       │   ├── LedgerEntry.java             — abstract base entity (JOINED inheritance); tenancyId (multi-tenancy, V1000); agentSignature + agentPublicKey + agentKeyRef for bilateral signing (V1005/V1006); actorDid + @Transient pendingIdentityStatus (V1008)
 │       │   ├── LedgerAttestation.java       — peer attestation entity
 │       │   ├── ActorTrustScore.java         — trust score entity; four ScoreType values (GLOBAL|CAPABILITY|DIMENSION|CAPABILITY_DIMENSION) × two-column key (capability_key, dimension_key); see ADR 0010
 │       │   ├── LedgerMerkleFrontier.java    — Merkle frontier node entity (log₂(N) rows per subject)
@@ -274,15 +284,21 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │       ├── ProvenanceSupplement.java    — workflow source entity; agentConfigHash for LLM config drift detection
 │       │       └── LedgerSupplementSerializer.java — JSON serialiser for supplementJson
 │       ├── repository/
-│       │   ├── LedgerEntryRepository.java        — blocking SPI (uses subjectId); findById → findEntryById
-│       │   ├── ReactiveLedgerEntryRepository.java — reactive SPI (Uni<T> return types)
+│       │   ├── LedgerEntryRepository.java        — tenant-scoped SPI (all methods take tenancyId); findById → findEntryById
+│       │   ├── ReactiveLedgerEntryRepository.java — tenant-scoped reactive SPI (Uni<T> return types; all methods take tenancyId)
+│       │   ├── CrossTenantLedgerEntryRepository.java — cross-tenant read operations (trust, health, retention)
+│       │   ├── CrossTenantReactiveLedgerEntryRepository.java — reactive cross-tenant counterpart
 │       │   ├── ActorTrustScoreRepository.java     — SPI
 │       │   ├── KeyRotationRepository.java         — SPI: query-only (findByActorId, findCompromisedByActorIdAndKeyRef); save via LedgerEntryRepository
 │       │   ├── ReactiveKeyRotationRepository.java — reactive SPI: same two query methods with Uni<List<>> returns; no bundled JPA impl — consumers provide; test suite uses BlockingReactiveKeyRotationRepository shim
 │       │   ├── ActorIdentityBindingRepository.java         — SPI: latestBindingFor / bindingHistoryFor / save
 │       │   └── jpa/                              — JPA implementations (EntityManager-based)
 │       │       ├── JpaActorIdentityBindingRepository.java
+│       │       ├── JpaCrossTenantLedgerEntryRepository.java
 │       │       └── LedgerSequenceAllocator.java     — CDI bean: atomic per-subject sequence allocation via SQL-standard MERGE on ledger_subject_sequence
+│       ├── qualifier/
+│       │   ├── CrossTenant.java              — CDI qualifier: marks cross-tenant injection points
+│       │   └── LedgerSystem.java             — CDI qualifier: marks system-level CurrentPrincipal
 │       ├── service/
 │       │   ├── LedgerEntryEnricher.java         — SPI: pluggable @PrePersist enrichment pipeline
 │       │   ├── TraceIdEnricher.java             — auto-populates traceId from active OTel span
@@ -374,7 +390,9 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │       ├── ReactiveAgentIdentityVerificationService.java — @DefaultBean @Unremovable: Uni<IdentityVerificationResult> bridge wrapping blocking service on worker pool; no Hibernate Reactive dep, always active
 │       │       ├── IdentityCacheInvalidator.java         — bridges AgentKeyRotatedEvent → platform cache invalidation; @Observes AgentKeyRotatedEvent, calls actorDIDProvider.invalidate(actorId) if provider is AbstractCachingIdentityProvider
 │       │       ├── LedgerIdentityEnforcementListener.java — @EntityListeners @PrePersist: ENFORCE mode gate (JPA-only)
-│       │       └── LedgerIdentityViolationException.java — thrown by enforcement listener in ENFORCE mode
+│       │       ├── LedgerIdentityViolationException.java — thrown by enforcement listener in ENFORCE mode
+│       │       ├── LedgerSystemCurrentPrincipal.java — @ApplicationScoped @LedgerSystem: system actor, always isCrossTenantAdmin()
+│       │       └── CrossTenantProducer.java — @ApplicationScoped: produces @CrossTenant-qualified repository beans
 │       └── privacy/
 │           ├── ActorIdentityProvider.java   — SPI: tokenise/resolve/erase actor identities
 │           ├── DecisionContextSanitiser.java — SPI: sanitise decisionContext JSON before persist
@@ -403,7 +421,9 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
         ├── InMemoryKeyRotationRepository.java        — @Alternative @Priority(1); reads via blocking.allEntries()
         ├── InMemoryAgentSigner.java              — @Alternative @Priority(1); ConcurrentHashMap<String,KeyPair>; register(actorId,keyPair) + clear() for session-boundary reset; see #104
         ├── InMemoryReactiveLedgerEntryRepository.java — @IfBuildProperty(reactive.enabled=true); delegates to blocking
-        └── InMemoryReactiveKeyRotationRepository.java — @IfBuildProperty(reactive.enabled=true); delegates to blocking
+        ├── InMemoryReactiveKeyRotationRepository.java — @IfBuildProperty(reactive.enabled=true); delegates to blocking
+        ├── InMemoryCrossTenantLedgerEntryRepository.java — @Alternative @Priority(1); cross-tenant delegate
+        └── InMemoryCrossTenantReactiveLedgerEntryRepository.java — @IfBuildProperty(reactive.enabled=true); delegates to blocking
 ```
 
 ---

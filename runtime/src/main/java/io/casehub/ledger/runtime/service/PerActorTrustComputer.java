@@ -13,6 +13,7 @@ import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.model.LedgerEntry;
+import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
 
 /**
@@ -30,7 +31,7 @@ class PerActorTrustComputer {
 
     @Inject
     PerActorTrustComputer(final TrustScoreCalculator calculator,
-                          final ActorTrustScoreRepository trustRepo) {
+                          @CrossTenant final ActorTrustScoreRepository trustRepo) {
         this.calculator = calculator;
         this.trustRepo = trustRepo;
     }

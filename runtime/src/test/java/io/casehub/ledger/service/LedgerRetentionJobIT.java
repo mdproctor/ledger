@@ -24,6 +24,7 @@ import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 @QuarkusTest
 @TestProfile(LedgerRetentionJobIT.RetentionProfile.class)
@@ -54,7 +55,7 @@ class LedgerRetentionJobIT {
 
         retentionJob.runRetention();
 
-        assertThat(repo.findBySubjectId(subjectId)).isEmpty();
+        assertThat(repo.findBySubjectId(subjectId, DEFAULT_TENANT_ID)).isEmpty();
         assertThat(archiveCountForSubject(subjectId)).isEqualTo(2);
     }
 
@@ -66,7 +67,7 @@ class LedgerRetentionJobIT {
 
         retentionJob.runRetention();
 
-        assertThat(repo.findBySubjectId(subjectId)).hasSize(1);
+        assertThat(repo.findBySubjectId(subjectId, DEFAULT_TENANT_ID)).hasSize(1);
         assertThat(archiveCountForSubject(subjectId)).isZero();
     }
 
@@ -101,7 +102,7 @@ class LedgerRetentionJobIT {
         // FK ordering wrong → would throw constraint violation
         retentionJob.runRetention();
 
-        assertThat(repo.findBySubjectId(subjectId)).isEmpty();
+        assertThat(repo.findBySubjectId(subjectId, DEFAULT_TENANT_ID)).isEmpty();
         final long attestCount = (Long) em.createQuery(
                 "SELECT COUNT(a) FROM LedgerAttestation a WHERE a.ledgerEntryId = :entryId")
                 .setParameter("entryId", e.id)
@@ -118,7 +119,7 @@ class LedgerRetentionJobIT {
 
         retentionJob.runRetention();
 
-        assertThat(repo.findBySubjectId(subjectId)).hasSize(2);
+        assertThat(repo.findBySubjectId(subjectId, DEFAULT_TENANT_ID)).hasSize(2);
         assertThat(archiveCountForSubject(subjectId)).isZero();
     }
 
@@ -129,11 +130,11 @@ class LedgerRetentionJobIT {
         final TestEntry e = chainedEntry(subjectId, 1, now().minus(50, ChronoUnit.DAYS));
         // Tamper: corrupt the digest so chain verification fails
         e.digest = "000000000000000000000000000000000000000000000000000000000000dead";
-        repo.save(e);
+        repo.save(e, DEFAULT_TENANT_ID);
 
         retentionJob.runRetention();
 
-        assertThat(repo.findBySubjectId(subjectId)).hasSize(1);
+        assertThat(repo.findBySubjectId(subjectId, DEFAULT_TENANT_ID)).hasSize(1);
         assertThat(archiveCountForSubject(subjectId)).isZero();
     }
 
@@ -154,7 +155,7 @@ class LedgerRetentionJobIT {
         e.actorType = ActorType.AGENT;
         e.actorRole = "Classifier";
         e.occurredAt = occurredAt;
-        return (TestEntry) repo.save(e);
+        return (TestEntry) repo.save(e, DEFAULT_TENANT_ID);
     }
 
     private void seedAttestation(final UUID entryId, final UUID subjectId,

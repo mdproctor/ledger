@@ -20,6 +20,7 @@ import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.junit.QuarkusTest;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 /**
  * Integration tests for capability-scoped attestation queries (issue #60).
@@ -38,10 +39,10 @@ class LedgerAttestationCapabilityIT {
     @Transactional
     void findByEntryIdAndCapabilityTag_matchingTag_returnsAttestation() {
         final TestEntry entry = savedEntry();
-        repo.saveAttestation(attestation(entry.id, entry.subjectId, "security-review"));
+        repo.saveAttestation(attestation(entry.id, entry.subjectId, "security-review"), DEFAULT_TENANT_ID);
 
         final List<LedgerAttestation> results =
-                repo.findAttestationsByEntryIdAndCapabilityTag(entry.id, "security-review");
+                repo.findAttestationsByEntryIdAndCapabilityTag(entry.id, "security-review", DEFAULT_TENANT_ID);
 
         assertThat(results).hasSize(1);
         assertThat(results.get(0).capabilityTag).isEqualTo("security-review");
@@ -53,10 +54,10 @@ class LedgerAttestationCapabilityIT {
     @Transactional
     void save_globalCapabilityTag_retrievedByGlobalQuery() {
         final TestEntry entry = savedEntry();
-        repo.saveAttestation(attestation(entry.id, entry.subjectId, CapabilityTag.GLOBAL));
+        repo.saveAttestation(attestation(entry.id, entry.subjectId, CapabilityTag.GLOBAL), DEFAULT_TENANT_ID);
 
         final List<LedgerAttestation> results =
-                repo.findAttestationsByEntryIdGlobal(entry.id);
+                repo.findAttestationsByEntryIdGlobal(entry.id, DEFAULT_TENANT_ID);
 
         assertThat(results).hasSize(1);
         assertThat(results.get(0).capabilityTag).isEqualTo(CapabilityTag.GLOBAL);
@@ -68,11 +69,11 @@ class LedgerAttestationCapabilityIT {
     @Transactional
     void findByEntryIdAndCapabilityTag_doesNotReturnGlobal() {
         final TestEntry entry = savedEntry();
-        repo.saveAttestation(attestation(entry.id, entry.subjectId, CapabilityTag.GLOBAL));
-        repo.saveAttestation(attestation(entry.id, entry.subjectId, "security-review"));
+        repo.saveAttestation(attestation(entry.id, entry.subjectId, CapabilityTag.GLOBAL), DEFAULT_TENANT_ID);
+        repo.saveAttestation(attestation(entry.id, entry.subjectId, "security-review"), DEFAULT_TENANT_ID);
 
         final List<LedgerAttestation> results =
-                repo.findAttestationsByEntryIdAndCapabilityTag(entry.id, "security-review");
+                repo.findAttestationsByEntryIdAndCapabilityTag(entry.id, "security-review", DEFAULT_TENANT_ID);
 
         assertThat(results).hasSize(1);
         assertThat(results.get(0).capabilityTag).isEqualTo("security-review");
@@ -84,11 +85,11 @@ class LedgerAttestationCapabilityIT {
     @Transactional
     void findByEntryIdGlobal_doesNotReturnCapabilitySpecific() {
         final TestEntry entry = savedEntry();
-        repo.saveAttestation(attestation(entry.id, entry.subjectId, CapabilityTag.GLOBAL));
-        repo.saveAttestation(attestation(entry.id, entry.subjectId, "security-review"));
+        repo.saveAttestation(attestation(entry.id, entry.subjectId, CapabilityTag.GLOBAL), DEFAULT_TENANT_ID);
+        repo.saveAttestation(attestation(entry.id, entry.subjectId, "security-review"), DEFAULT_TENANT_ID);
 
         final List<LedgerAttestation> results =
-                repo.findAttestationsByEntryIdGlobal(entry.id);
+                repo.findAttestationsByEntryIdGlobal(entry.id, DEFAULT_TENANT_ID);
 
         assertThat(results).hasSize(1);
         assertThat(results.get(0).capabilityTag).isEqualTo(CapabilityTag.GLOBAL);
@@ -100,11 +101,11 @@ class LedgerAttestationCapabilityIT {
     @Transactional
     void findByEntryIdAndCapabilityTag_isolatesFromOtherTags() {
         final TestEntry entry = savedEntry();
-        repo.saveAttestation(attestation(entry.id, entry.subjectId, "security-review"));
-        repo.saveAttestation(attestation(entry.id, entry.subjectId, "architecture-review"));
+        repo.saveAttestation(attestation(entry.id, entry.subjectId, "security-review"), DEFAULT_TENANT_ID);
+        repo.saveAttestation(attestation(entry.id, entry.subjectId, "architecture-review"), DEFAULT_TENANT_ID);
 
         final List<LedgerAttestation> results =
-                repo.findAttestationsByEntryIdAndCapabilityTag(entry.id, "security-review");
+                repo.findAttestationsByEntryIdAndCapabilityTag(entry.id, "security-review", DEFAULT_TENANT_ID);
 
         assertThat(results).hasSize(1);
         assertThat(results.get(0).capabilityTag).isEqualTo("security-review");
@@ -120,12 +121,12 @@ class LedgerAttestationCapabilityIT {
         final TestEntry e2 = savedEntry();
         final TestEntry e3 = savedEntry();
 
-        repo.saveAttestation(attestationBy(e1.id, e1.subjectId, attestorId, "security-review"));
-        repo.saveAttestation(attestationBy(e2.id, e2.subjectId, attestorId, "security-review"));
-        repo.saveAttestation(attestationBy(e3.id, e3.subjectId, attestorId, "architecture-review"));
+        repo.saveAttestation(attestationBy(e1.id, e1.subjectId, attestorId, "security-review"), DEFAULT_TENANT_ID);
+        repo.saveAttestation(attestationBy(e2.id, e2.subjectId, attestorId, "security-review"), DEFAULT_TENANT_ID);
+        repo.saveAttestation(attestationBy(e3.id, e3.subjectId, attestorId, "architecture-review"), DEFAULT_TENANT_ID);
 
         final List<LedgerAttestation> results =
-                repo.findAttestationsByAttestorIdAndCapabilityTag(attestorId, "security-review");
+                repo.findAttestationsByAttestorIdAndCapabilityTag(attestorId, "security-review", DEFAULT_TENANT_ID);
 
         assertThat(results).hasSize(2);
         assertThat(results).allMatch(a -> "security-review".equals(a.capabilityTag));
@@ -139,10 +140,10 @@ class LedgerAttestationCapabilityIT {
     @Transactional
     void findByEntryIdAndCapabilityTag_noMatch_returnsEmpty() {
         final TestEntry entry = savedEntry();
-        repo.saveAttestation(attestation(entry.id, entry.subjectId, "security-review"));
+        repo.saveAttestation(attestation(entry.id, entry.subjectId, "security-review"), DEFAULT_TENANT_ID);
 
         final List<LedgerAttestation> results =
-                repo.findAttestationsByEntryIdAndCapabilityTag(entry.id, "nonexistent-capability");
+                repo.findAttestationsByEntryIdAndCapabilityTag(entry.id, "nonexistent-capability", DEFAULT_TENANT_ID);
 
         assertThat(results).isEmpty();
     }
@@ -151,10 +152,10 @@ class LedgerAttestationCapabilityIT {
     @Transactional
     void findByEntryIdGlobal_noGlobalAttestations_returnsEmpty() {
         final TestEntry entry = savedEntry();
-        repo.saveAttestation(attestation(entry.id, entry.subjectId, "security-review"));
+        repo.saveAttestation(attestation(entry.id, entry.subjectId, "security-review"), DEFAULT_TENANT_ID);
 
         final List<LedgerAttestation> results =
-                repo.findAttestationsByEntryIdGlobal(entry.id);
+                repo.findAttestationsByEntryIdGlobal(entry.id, DEFAULT_TENANT_ID);
 
         assertThat(results).isEmpty();
     }
@@ -175,10 +176,10 @@ class LedgerAttestationCapabilityIT {
         att.confidence = 1.0;
         att.occurredAt = Instant.now().truncatedTo(ChronoUnit.MILLIS);
         // capabilityTag intentionally NOT set — field default must be CapabilityTag.GLOBAL
-        repo.saveAttestation(att);
+        repo.saveAttestation(att, DEFAULT_TENANT_ID);
 
         final List<LedgerAttestation> results =
-                repo.findAttestationsByEntryIdGlobal(entry.id);
+                repo.findAttestationsByEntryIdGlobal(entry.id, DEFAULT_TENANT_ID);
 
         assertThat(results).hasSize(1);
         assertThat(results.get(0).capabilityTag).isEqualTo(CapabilityTag.GLOBAL);
@@ -195,7 +196,7 @@ class LedgerAttestationCapabilityIT {
         entry.actorType = ActorType.AGENT;
         entry.actorRole = "Classifier";
         entry.occurredAt = Instant.now().truncatedTo(ChronoUnit.MILLIS);
-        repo.save(entry);
+        repo.save(entry, DEFAULT_TENANT_ID);
         return entry;
     }
 

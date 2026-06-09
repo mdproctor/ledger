@@ -17,6 +17,7 @@ import io.casehub.ledger.runtime.model.supplement.LedgerSupplement;
 import io.casehub.ledger.runtime.model.supplement.ProvenanceSupplement;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.quarkus.test.junit.QuarkusTest;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 /**
  * Integration tests for the LedgerSupplement system.
@@ -40,7 +41,7 @@ class LedgerSupplementIT {
     @Transactional
     void bareEntry_supplementTablesNotTouched() {
         final TestEntry entry = bareEntry();
-        repo.save(entry);
+        repo.save(entry, DEFAULT_TENANT_ID);
 
         final long count = (Long) em.createQuery(
                 "SELECT COUNT(s) FROM LedgerSupplement s WHERE s.ledgerEntry.id = :id")
@@ -66,9 +67,9 @@ class LedgerSupplementIT {
         cs.humanOverrideAvailable = true;
         cs.decisionContext = "{\"score\":88}";
         entry.attach(cs);
-        repo.save(entry);
+        repo.save(entry, DEFAULT_TENANT_ID);
 
-        final TestEntry found = (TestEntry) repo.findEntryById(entry.id).orElseThrow();
+        final TestEntry found = (TestEntry) repo.findEntryById(entry.id, DEFAULT_TENANT_ID).orElseThrow();
         assertThat(found).isNotNull();
         assertThat(found.supplementJson).isNotNull();
         assertThat(found.supplementJson).contains("classifier-v2");
@@ -97,9 +98,9 @@ class LedgerSupplementIT {
         final ProvenanceSupplement ps = new ProvenanceSupplement();
         ps.sourceEntitySystem = "quarkus-flow";
         entry.attach(ps);
-        repo.save(entry);
+        repo.save(entry, DEFAULT_TENANT_ID);
 
-        final TestEntry found = (TestEntry) repo.findEntryById(entry.id).orElseThrow();
+        final TestEntry found = (TestEntry) repo.findEntryById(entry.id, DEFAULT_TENANT_ID).orElseThrow();
         assertThat(found.supplementJson).contains("\"COMPLIANCE\"");
         assertThat(found.supplementJson).contains("\"PROVENANCE\"");
         assertThat(found.supplementJson).contains("quarkus-flow");
@@ -117,9 +118,9 @@ class LedgerSupplementIT {
         ps.sourceEntityType = "Flow:WorkflowInstance";
         ps.sourceEntitySystem = "quarkus-flow";
         entry.attach(ps);
-        repo.save(entry);
+        repo.save(entry, DEFAULT_TENANT_ID);
 
-        final ProvenanceSupplement loaded = ((TestEntry) repo.findEntryById(entry.id).orElseThrow())
+        final ProvenanceSupplement loaded = ((TestEntry) repo.findEntryById(entry.id, DEFAULT_TENANT_ID).orElseThrow())
                 .provenance().orElseThrow();
         assertThat(loaded.sourceEntityId).isEqualTo("wf-42");
         assertThat(loaded.sourceEntitySystem).isEqualTo("quarkus-flow");
@@ -136,9 +137,9 @@ class LedgerSupplementIT {
         final ProvenanceSupplement ps = new ProvenanceSupplement();
         ps.agentConfigHash = "a".repeat(64); // simulated sha256 hex
         entry.attach(ps);
-        repo.save(entry);
+        repo.save(entry, DEFAULT_TENANT_ID);
 
-        final ProvenanceSupplement loaded = ((TestEntry) repo.findEntryById(entry.id).orElseThrow())
+        final ProvenanceSupplement loaded = ((TestEntry) repo.findEntryById(entry.id, DEFAULT_TENANT_ID).orElseThrow())
                 .provenance().orElseThrow();
         assertThat(loaded.agentConfigHash).isEqualTo("a".repeat(64));
         assertThat(loaded.sourceEntityId).isNull();
@@ -154,9 +155,9 @@ class LedgerSupplementIT {
         ps.sourceEntitySystem = "quarkus-flow";
         // no agentConfigHash — workflow entry, not an LLM agent entry
         entry.attach(ps);
-        repo.save(entry);
+        repo.save(entry, DEFAULT_TENANT_ID);
 
-        final ProvenanceSupplement loaded = ((TestEntry) repo.findEntryById(entry.id).orElseThrow())
+        final ProvenanceSupplement loaded = ((TestEntry) repo.findEntryById(entry.id, DEFAULT_TENANT_ID).orElseThrow())
                 .provenance().orElseThrow();
         assertThat(loaded.agentConfigHash).isNull();
         assertThat(loaded.sourceEntityId).isEqualTo("wf-99");
@@ -190,9 +191,9 @@ class LedgerSupplementIT {
     @Transactional
     void bareEntry_supplementJson_isNull() {
         final TestEntry entry = bareEntry();
-        repo.save(entry);
+        repo.save(entry, DEFAULT_TENANT_ID);
 
-        final TestEntry found = (TestEntry) repo.findEntryById(entry.id).orElseThrow();
+        final TestEntry found = (TestEntry) repo.findEntryById(entry.id, DEFAULT_TENANT_ID).orElseThrow();
         assertThat(found.supplementJson).isNull();
     }
 

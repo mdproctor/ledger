@@ -27,7 +27,7 @@ import io.casehub.ledger.runtime.model.ActorTrustScore;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
-import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
+import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
 import io.casehub.ledger.runtime.service.AllAttestationsGlobalStrategy;
 import io.casehub.ledger.runtime.service.AttestationAggregator;
 import io.casehub.ledger.runtime.service.CachedTrustScoreSource;
@@ -349,7 +349,7 @@ class TrustScoreSourceContractTest {
         @Override public List<ActorTrustScore> findAllByLastComputedAtAfter(final Instant s) { return List.of(); }
     }
 
-    private static class InlineLedgerRepo implements LedgerEntryRepository {
+    private static class InlineLedgerRepo implements CrossTenantLedgerEntryRepository {
         private final List<LedgerEntry> entries;
         private final List<LedgerAttestation> attestations;
 
@@ -368,21 +368,8 @@ class TrustScoreSourceContractTest {
             }
             return r;
         }
-        @Override public LedgerEntry save(final LedgerEntry e) { return e; }
-        @Override public LedgerAttestation saveAttestation(final LedgerAttestation a) { return a; }
-        @Override public List<LedgerEntry> findBySubjectId(final UUID s) { return List.of(); }
-        @Override public List<LedgerEntry> findBySubjectIdAndTimeRange(final UUID s, final Instant f, final Instant t) { return List.of(); }
-        @Override public Optional<LedgerEntry> findLatestBySubjectId(final UUID s) { return Optional.empty(); }
-        @Override public Optional<LedgerEntry> findEntryById(final UUID id) { return Optional.empty(); }
-        @Override public List<LedgerAttestation> findAttestationsByEntryId(final UUID id) { return List.of(); }
         @Override public List<LedgerEntry> listAll() { return entries; }
         @Override public List<LedgerEntry> findAllEvents() { return entries.stream().filter(e -> e.entryType == LedgerEntryType.EVENT).toList(); }
-        @Override public List<LedgerEntry> findByActorId(final String a, final Instant f, final Instant t) { return List.of(); }
-        @Override public List<LedgerEntry> findByActorRole(final String r, final Instant f, final Instant t) { return List.of(); }
         @Override public List<LedgerEntry> findByTimeRange(final Instant f, final Instant t) { return List.of(); }
-        @Override public List<LedgerEntry> findCausedBy(final UUID id) { return List.of(); }
-        @Override public List<LedgerAttestation> findAttestationsByEntryIdAndCapabilityTag(final UUID id, final String t) { return List.of(); }
-        @Override public List<LedgerAttestation> findAttestationsByEntryIdGlobal(final UUID id) { return List.of(); }
-        @Override public List<LedgerAttestation> findAttestationsByAttestorIdAndCapabilityTag(final String a, final String t) { return List.of(); }
     }
 }

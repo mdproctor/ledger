@@ -20,11 +20,13 @@ import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.CapabilityTag;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
 import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
+import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.service.TrustGateService;
 import io.casehub.ledger.runtime.service.TrustScoreJob;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 /**
  * End-to-end integration tests for multi-dimensional trust scoring (#62).
@@ -43,6 +45,9 @@ class TrustScoreDimensionIT {
 
     @Inject
     LedgerEntryRepository repo;
+
+    @Inject
+    CrossTenantLedgerEntryRepository crossTenantRepo;
 
     @Inject
     ActorTrustScoreRepository trustRepo;
@@ -215,7 +220,7 @@ class TrustScoreDimensionIT {
                 CapabilityTag.GLOBAL, repo, em);
 
         // Persist a dimension attestation with null dimensionScore via em
-        final List<io.casehub.ledger.runtime.model.LedgerEntry> entries = repo.findAllEvents();
+        final List<io.casehub.ledger.runtime.model.LedgerEntry> entries = crossTenantRepo.findAllEvents();
         final var myEntry = entries.stream()
                 .filter(e -> actorId.equals(e.actorId)).findFirst().orElseThrow();
 

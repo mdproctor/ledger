@@ -22,6 +22,7 @@ import io.casehub.ledger.runtime.service.intercept.ProvenanceContext;
 import io.casehub.ledger.runtime.service.intercept.SourceEntityId;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.junit.QuarkusTest;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 /**
  * Integration tests for the {@link ProvenanceCapture} CDI interceptor end-to-end.
@@ -44,25 +45,25 @@ class ProvenanceCaptureIT {
         @ProvenanceCapture(sourceEntityType = "WorkItem", sourceEntitySystem = "casehub-work")
         @Transactional
         public LedgerEntry complete(@SourceEntityId final UUID workItemId) {
-            return repo.save(entry(workItemId));
+            return repo.save(entry(workItemId), DEFAULT_TENANT_ID);
         }
 
         @ProvenanceCapture(sourceEntityType = "Task")
         @Transactional
         public LedgerEntry completeTask(final UUID taskId) {
             // First UUID param — no @SourceEntityId, falls back to first UUID
-            return repo.save(entry(taskId));
+            return repo.save(entry(taskId), DEFAULT_TENANT_ID);
         }
 
         @Transactional
         public LedgerEntry uncaptured(final UUID someId) {
-            return repo.save(entry(someId));
+            return repo.save(entry(someId), DEFAULT_TENANT_ID);
         }
 
         @ProvenanceCapture(sourceEntityType = "WorkItem")
         @Transactional
         public LedgerEntry throwingMethod(@SourceEntityId final UUID workItemId) {
-            repo.save(entry(workItemId));
+            repo.save(entry(workItemId), DEFAULT_TENANT_ID);
             throw new RuntimeException("simulated failure");
         }
 
@@ -71,20 +72,20 @@ class ProvenanceCaptureIT {
         public LedgerEntry noUuidParam(final String stringParam) {
             // No UUID, no @SourceEntityId — sourceEntityId should be null
             final UUID subjectId = UUID.randomUUID();
-            return repo.save(entry(subjectId));
+            return repo.save(entry(subjectId), DEFAULT_TENANT_ID);
         }
 
         @ProvenanceCapture(sourceEntityType = "WorkItem")
         @Transactional
         public LedgerEntry completeWithConfigHash(@SourceEntityId final UUID workItemId, final String configHash) {
             final TestEntry e = entry(workItemId);
-            // Manually attach a supplement with agentConfigHash before repo.save().
+            // Manually attach a supplement with agentConfigHash before repo.save(DEFAULT_TENANT_ID).
             // The enricher must preserve this hash when it attaches the provenance context.
             final io.casehub.ledger.runtime.model.supplement.ProvenanceSupplement existing =
                     new io.casehub.ledger.runtime.model.supplement.ProvenanceSupplement();
             existing.agentConfigHash = configHash;
             e.attach(existing);
-            return repo.save(e);
+            return repo.save(e, DEFAULT_TENANT_ID);
         }
 
         static TestEntry entry(final UUID subjectId) {
@@ -116,7 +117,7 @@ class ProvenanceCaptureIT {
         final UUID workItemId = UUID.randomUUID();
         final LedgerEntry saved = workItemService.complete(workItemId);
 
-        final LedgerEntry found = repo.findEntryById(saved.id).orElseThrow();
+        final LedgerEntry found = repo.findEntryById(saved.id, DEFAULT_TENANT_ID).orElseThrow();
         final ProvenanceSupplement ps = found.provenance().orElseThrow();
 
         assertThat(ps.sourceEntityType).isEqualTo("WorkItem");
@@ -131,7 +132,7 @@ class ProvenanceCaptureIT {
         final UUID taskId = UUID.randomUUID();
         final LedgerEntry saved = workItemService.completeTask(taskId);
 
-        final ProvenanceSupplement ps = repo.findEntryById(saved.id).orElseThrow()
+        final ProvenanceSupplement ps = repo.findEntryById(saved.id, DEFAULT_TENANT_ID).orElseThrow()
                 .provenance().orElseThrow();
 
         assertThat(ps.sourceEntityType).isEqualTo("Task");
@@ -144,7 +145,7 @@ class ProvenanceCaptureIT {
     void unannotatedMethod_noSupplementAttached() {
         final LedgerEntry saved = workItemService.uncaptured(UUID.randomUUID());
 
-        final LedgerEntry found = repo.findEntryById(saved.id).orElseThrow();
+        final LedgerEntry found = repo.findEntryById(saved.id, DEFAULT_TENANT_ID).orElseThrow();
         assertThat(found.provenance()).isEmpty();
     }
 
@@ -172,7 +173,7 @@ class ProvenanceCaptureIT {
     void noUuidParam_sourceEntityIdIsNull() {
         final LedgerEntry saved = workItemService.noUuidParam("some-string");
 
-        final ProvenanceSupplement ps = repo.findEntryById(saved.id).orElseThrow()
+        final ProvenanceSupplement ps = repo.findEntryById(saved.id, DEFAULT_TENANT_ID).orElseThrow()
                 .provenance().orElseThrow();
 
         assertThat(ps.sourceEntityType).isEqualTo("NoIdParam");
@@ -191,9 +192,9 @@ class ProvenanceCaptureIT {
         assertThat(context.isActive()).isFalse();
         final LedgerEntry taskEntry = workItemService.completeTask(taskId);
 
-        final ProvenanceSupplement wps = repo.findEntryById(workItemEntry.id).orElseThrow()
+        final ProvenanceSupplement wps = repo.findEntryById(workItemEntry.id, DEFAULT_TENANT_ID).orElseThrow()
                 .provenance().orElseThrow();
-        final ProvenanceSupplement tps = repo.findEntryById(taskEntry.id).orElseThrow()
+        final ProvenanceSupplement tps = repo.findEntryById(taskEntry.id, DEFAULT_TENANT_ID).orElseThrow()
                 .provenance().orElseThrow();
 
         assertThat(wps.sourceEntityType).isEqualTo("WorkItem");
@@ -211,7 +212,7 @@ class ProvenanceCaptureIT {
 
         final LedgerEntry saved = workItemService.completeWithConfigHash(workItemId, configHash);
 
-        final ProvenanceSupplement ps = repo.findEntryById(saved.id).orElseThrow()
+        final ProvenanceSupplement ps = repo.findEntryById(saved.id, DEFAULT_TENANT_ID).orElseThrow()
                 .provenance().orElseThrow();
 
         // Enricher must preserve the caller-supplied agentConfigHash while also

@@ -1,13 +1,9 @@
 package io.casehub.ledger.runtime.repository.jpa;
 
 import java.time.Instant;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
@@ -18,7 +14,6 @@ import jakarta.transaction.Transactional;
 
 import org.jboss.logging.Logger;
 
-import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.model.LedgerEntry;
@@ -36,6 +31,11 @@ import io.casehub.ledger.runtime.service.LedgerMerkleTree;
  * Hibernate ORM implementation of {@link LedgerEntryRepository} using EntityManager directly.
  *
  * <p>
+ * All queries are tenant-scoped — every method receives a {@code tenancyId} parameter
+ * and filters results to that tenant. Cross-tenant operations are provided by
+ * {@link JpaCrossTenantLedgerEntryRepository}.
+ *
+ * <p>
  * Queries on {@link LedgerEntry} are polymorphic — Hibernate joins to all registered
  * subclass tables and returns the correct concrete type for each row.
  *
@@ -43,9 +43,6 @@ import io.casehub.ledger.runtime.service.LedgerMerkleTree;
  * {@link LedgerEntry} is a plain {@code @Entity} (not a PanacheEntityBase subclass), so
  * Panache repository bytecode enhancement cannot be used here. All queries go through
  * {@link EntityManager} directly.
- *
- * <p>
- * All queries use EntityManager and named queries directly.
  *
  * <p>
  * Marked {@code @Alternative} so that domain-specific extensions (e.g. Tarkus's
@@ -99,7 +96,9 @@ public class JpaLedgerEntryRepository implements LedgerEntryRepository {
     /** {@inheritDoc} */
     @Override
     @Transactional
-    public LedgerEntry save(final LedgerEntry entry) {
+    public LedgerEntry save(final LedgerEntry entry, final String tenancyId) {
+        entry.tenancyId = tenancyId;
+
         if (entry.subjectId == null) {
             throw new IllegalArgumentException("LedgerEntry.subjectId must not be null");
         }
@@ -126,51 +125,55 @@ public class JpaLedgerEntryRepository implements LedgerEntryRepository {
         em.persist(entry);
 
         if (ledgerConfig.hashChain().enabled()) {
-            updateMerkleFrontier(entry);
+            updateMerkleFrontier(entry, tenancyId);
         }
 
         return entry;
     }
 
-    private void updateMerkleFrontier(final LedgerEntry entry) {
-        final List<LedgerMerkleFrontier> currentFrontier = frontierRepo.findBySubjectId(entry.subjectId);
+    private void updateMerkleFrontier(final LedgerEntry entry, final String tenancyId) {
+        final List<LedgerMerkleFrontier> currentFrontier = frontierRepo.findBySubjectId(entry.subjectId, tenancyId);
         final List<LedgerMerkleFrontier> newFrontier = LedgerMerkleTree.append(
                 entry.digest, currentFrontier, entry.subjectId);
-        frontierRepo.replace(entry.subjectId, newFrontier);
+        frontierRepo.replace(entry.subjectId, newFrontier, tenancyId);
         final String newRoot = LedgerMerkleTree.treeRoot(newFrontier);
         merklePublisher.publish(entry.subjectId, entry.sequenceNumber, newRoot);
     }
 
     /** {@inheritDoc} */
     @Override
-    public List<LedgerEntry> findBySubjectId(final UUID subjectId) {
+    public List<LedgerEntry> findBySubjectId(final UUID subjectId, final String tenancyId) {
         return em.createQuery(
-                "SELECT e FROM LedgerEntry e WHERE e.subjectId = :subjectId ORDER BY e.sequenceNumber ASC",
+                "SELECT e FROM LedgerEntry e WHERE e.subjectId = :subjectId AND e.tenancyId = :tenancyId ORDER BY e.sequenceNumber ASC",
                 LedgerEntry.class)
                 .setParameter("subjectId", subjectId)
+                .setParameter("tenancyId", tenancyId)
                 .getResultList();
     }
 
     /** {@inheritDoc} */
     @Override
-    public List<LedgerEntry> findBySubjectIdAndTimeRange(final UUID subjectId, final Instant from, final Instant to) {
+    public List<LedgerEntry> findBySubjectIdAndTimeRange(final UUID subjectId, final Instant from, final Instant to,
+            final String tenancyId) {
         return em.createQuery(
                 "SELECT e FROM LedgerEntry e WHERE e.subjectId = :subjectId" +
-                " AND e.occurredAt >= :from AND e.occurredAt <= :to ORDER BY e.occurredAt ASC",
+                " AND e.occurredAt >= :from AND e.occurredAt <= :to AND e.tenancyId = :tenancyId ORDER BY e.occurredAt ASC",
                 LedgerEntry.class)
                 .setParameter("subjectId", subjectId)
                 .setParameter("from", from)
                 .setParameter("to", to)
+                .setParameter("tenancyId", tenancyId)
                 .getResultList();
     }
 
     /** {@inheritDoc} */
     @Override
-    public Optional<LedgerEntry> findLatestBySubjectId(final UUID subjectId) {
+    public Optional<LedgerEntry> findLatestBySubjectId(final UUID subjectId, final String tenancyId) {
         return em.createQuery(
-                "SELECT e FROM LedgerEntry e WHERE e.subjectId = :subjectId ORDER BY e.sequenceNumber DESC",
+                "SELECT e FROM LedgerEntry e WHERE e.subjectId = :subjectId AND e.tenancyId = :tenancyId ORDER BY e.sequenceNumber DESC",
                 LedgerEntry.class)
                 .setParameter("subjectId", subjectId)
+                .setParameter("tenancyId", tenancyId)
                 .setMaxResults(1)
                 .getResultStream()
                 .findFirst();
@@ -178,33 +181,51 @@ public class JpaLedgerEntryRepository implements LedgerEntryRepository {
 
     /** {@inheritDoc} */
     @Override
-    public Optional<LedgerEntry> findEntryById(final UUID id) {
-        return Optional.ofNullable(em.find(LedgerEntry.class, id));
+    public Optional<LedgerEntry> findEntryById(final UUID id, final String tenancyId) {
+        return em.createQuery(
+                "SELECT e FROM LedgerEntry e WHERE e.id = :id AND e.tenancyId = :tenancyId",
+                LedgerEntry.class)
+                .setParameter("id", id)
+                .setParameter("tenancyId", tenancyId)
+                .getResultStream()
+                .findFirst();
     }
 
     /** {@inheritDoc} */
     @Override
-    public List<LedgerAttestation> findAttestationsByEntryId(final UUID ledgerEntryId) {
-        return em.createNamedQuery("LedgerAttestation.findByEntryId", LedgerAttestation.class)
+    public List<LedgerAttestation> findAttestationsByEntryId(final UUID ledgerEntryId, final String tenancyId) {
+        return em.createQuery(
+                "SELECT a FROM LedgerAttestation a JOIN LedgerEntry e ON a.ledgerEntryId = e.id " +
+                "WHERE a.ledgerEntryId = :entryId AND e.tenancyId = :tenancyId ORDER BY a.occurredAt ASC",
+                LedgerAttestation.class)
                 .setParameter("entryId", ledgerEntryId)
+                .setParameter("tenancyId", tenancyId)
                 .getResultList();
     }
 
     /** {@inheritDoc} */
     @Override
-    public LedgerAttestation saveAttestation(final LedgerAttestation attestation) {
+    @Transactional
+    public LedgerAttestation saveAttestation(final LedgerAttestation attestation, final String tenancyId) {
+        // Validate the referenced entry belongs to this tenant before persisting
+        final LedgerEntry entry = em.createQuery(
+                "SELECT e FROM LedgerEntry e WHERE e.id = :id AND e.tenancyId = :tenancyId", LedgerEntry.class)
+                .setParameter("id", attestation.ledgerEntryId)
+                .setParameter("tenancyId", tenancyId)
+                .getResultStream().findFirst().orElse(null);
+        if (entry == null) {
+            throw new IllegalArgumentException(
+                    "LedgerEntry " + attestation.ledgerEntryId + " not found in tenant " + tenancyId);
+        }
+
         if (attestation.attestorId != null) {
             attestation.attestorId = actorIdentityProvider.tokenise(attestation.attestorId);
         }
         em.persist(attestation);
 
-        final LedgerEntry entry = em.find(LedgerEntry.class, attestation.ledgerEntryId);
-        if (entry != null && entry.actorId != null) {
+        if (entry.actorId != null) {
             attestationRecordedEvent.fire(
                     new AttestationRecordedEvent(entry.actorId, entry.id, attestation.id));
-        } else if (entry == null) {
-            log.warnf("saveAttestation: no LedgerEntry found for ledgerEntryId=%s — "
-                    + "AttestationRecordedEvent not fired", attestation.ledgerEntryId);
         }
 
         return attestation;
@@ -212,123 +233,84 @@ public class JpaLedgerEntryRepository implements LedgerEntryRepository {
 
     /** {@inheritDoc} */
     @Override
-    public List<LedgerEntry> listAll() {
-        return em.createQuery("SELECT e FROM LedgerEntry e", LedgerEntry.class)
-                .getResultList();
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public List<LedgerEntry> findAllEvents() {
-        return em.createQuery(
-                "SELECT e FROM LedgerEntry e WHERE e.entryType = :type",
-                LedgerEntry.class)
-                .setParameter("type", LedgerEntryType.EVENT)
-                .getResultList();
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public List<LedgerEntry> findEventsByActorId(final String actorId) {
-        final String token = actorIdentityProvider.tokeniseForQuery(actorId);
-        return em.createQuery(
-                "SELECT e FROM LedgerEntry e WHERE e.actorId = :actorId AND e.entryType = :type",
-                LedgerEntry.class)
-                .setParameter("actorId", token)
-                .setParameter("type", LedgerEntryType.EVENT)
-                .getResultList();
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Map<UUID, List<LedgerAttestation>> findAttestationsForEntries(final Set<UUID> entryIds) {
-        if (entryIds.isEmpty()) {
-            return Collections.emptyMap();
-        }
-        final List<LedgerAttestation> all = em
-                .createNamedQuery("LedgerAttestation.findByEntryIds", LedgerAttestation.class)
-                .setParameter("entryIds", entryIds)
-                .getResultList();
-        return all.stream().collect(Collectors.groupingBy(a -> a.ledgerEntryId));
-    }
-
-    /** {@inheritDoc} */
-    @Override
     public List<LedgerEntry> findByActorId(final String actorId,
-            final Instant from, final Instant to) {
+            final Instant from, final Instant to, final String tenancyId) {
         final String token = actorIdentityProvider.tokeniseForQuery(actorId);
         return em.createQuery(
                 "SELECT e FROM LedgerEntry e WHERE e.actorId = :actorId" +
-                        " AND e.occurredAt >= :from AND e.occurredAt <= :to ORDER BY e.occurredAt ASC",
+                        " AND e.occurredAt >= :from AND e.occurredAt <= :to AND e.tenancyId = :tenancyId ORDER BY e.occurredAt ASC",
                 LedgerEntry.class)
                 .setParameter("actorId", token)
                 .setParameter("from", from)
                 .setParameter("to", to)
+                .setParameter("tenancyId", tenancyId)
                 .getResultList();
     }
 
     /** {@inheritDoc} */
     @Override
     public List<LedgerEntry> findByActorRole(final String actorRole,
-            final Instant from, final Instant to) {
+            final Instant from, final Instant to, final String tenancyId) {
         return em.createQuery(
                 "SELECT e FROM LedgerEntry e WHERE e.actorRole = :actorRole" +
-                        " AND e.occurredAt >= :from AND e.occurredAt <= :to ORDER BY e.occurredAt ASC",
+                        " AND e.occurredAt >= :from AND e.occurredAt <= :to AND e.tenancyId = :tenancyId ORDER BY e.occurredAt ASC",
                 LedgerEntry.class)
                 .setParameter("actorRole", actorRole)
                 .setParameter("from", from)
                 .setParameter("to", to)
+                .setParameter("tenancyId", tenancyId)
                 .getResultList();
     }
 
     /** {@inheritDoc} */
     @Override
-    public List<LedgerEntry> findByTimeRange(final Instant from, final Instant to) {
+    public List<LedgerEntry> findCausedBy(final UUID entryId, final String tenancyId) {
         return em.createQuery(
-                "SELECT e FROM LedgerEntry e WHERE e.occurredAt >= :from AND e.occurredAt <= :to" +
-                        " ORDER BY e.occurredAt ASC",
-                LedgerEntry.class)
-                .setParameter("from", from)
-                .setParameter("to", to)
-                .getResultList();
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public List<LedgerEntry> findCausedBy(final UUID entryId) {
-        return em.createQuery(
-                "SELECT e FROM LedgerEntry e WHERE e.causedByEntryId = :entryId ORDER BY e.occurredAt ASC",
+                "SELECT e FROM LedgerEntry e WHERE e.causedByEntryId = :entryId AND e.tenancyId = :tenancyId ORDER BY e.occurredAt ASC",
                 LedgerEntry.class)
                 .setParameter("entryId", entryId)
+                .setParameter("tenancyId", tenancyId)
                 .getResultList();
     }
 
     /** {@inheritDoc} */
     @Override
     public List<LedgerAttestation> findAttestationsByEntryIdAndCapabilityTag(final UUID entryId,
-            final String capabilityTag) {
-        return em.createNamedQuery("LedgerAttestation.findByEntryIdAndCapabilityTag", LedgerAttestation.class)
+            final String capabilityTag, final String tenancyId) {
+        return em.createQuery(
+                "SELECT a FROM LedgerAttestation a JOIN LedgerEntry e ON a.ledgerEntryId = e.id " +
+                "WHERE a.ledgerEntryId = :entryId AND a.capabilityTag = :capabilityTag AND e.tenancyId = :tenancyId ORDER BY a.occurredAt ASC",
+                LedgerAttestation.class)
                 .setParameter("entryId", entryId)
                 .setParameter("capabilityTag", capabilityTag)
+                .setParameter("tenancyId", tenancyId)
                 .getResultList();
     }
 
     /** {@inheritDoc} */
     @Override
-    public List<LedgerAttestation> findAttestationsByEntryIdGlobal(final UUID entryId) {
-        return em.createNamedQuery("LedgerAttestation.findGlobalByEntryId", LedgerAttestation.class)
+    public List<LedgerAttestation> findAttestationsByEntryIdGlobal(final UUID entryId, final String tenancyId) {
+        return em.createQuery(
+                "SELECT a FROM LedgerAttestation a JOIN LedgerEntry e ON a.ledgerEntryId = e.id " +
+                "WHERE a.ledgerEntryId = :entryId AND a.capabilityTag = '*' AND e.tenancyId = :tenancyId ORDER BY a.occurredAt ASC",
+                LedgerAttestation.class)
                 .setParameter("entryId", entryId)
+                .setParameter("tenancyId", tenancyId)
                 .getResultList();
     }
 
     /** {@inheritDoc} */
     @Override
     public List<LedgerAttestation> findAttestationsByAttestorIdAndCapabilityTag(final String attestorId,
-            final String capabilityTag) {
+            final String capabilityTag, final String tenancyId) {
         final String token = actorIdentityProvider.tokeniseForQuery(attestorId);
-        return em.createNamedQuery("LedgerAttestation.findByAttestorIdAndCapabilityTag", LedgerAttestation.class)
+        return em.createQuery(
+                "SELECT a FROM LedgerAttestation a JOIN LedgerEntry e ON a.ledgerEntryId = e.id " +
+                "WHERE a.attestorId = :attestorId AND a.capabilityTag = :capabilityTag AND e.tenancyId = :tenancyId ORDER BY a.occurredAt ASC",
+                LedgerAttestation.class)
                 .setParameter("attestorId", token)
                 .setParameter("capabilityTag", capabilityTag)
+                .setParameter("tenancyId", tenancyId)
                 .getResultList();
     }
 }

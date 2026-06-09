@@ -49,24 +49,25 @@ public class LedgerComplianceReportService {
      * Addresses GDPR Art.22 and EU AI Act Art.12: "show every automated decision
      * made by actor X between dates Y and Z, with tamper-evidence anchors."
      *
-     * @param actorId the actor identity
-     * @param from    start of the time range (inclusive)
-     * @param to      end of the time range (inclusive)
-     * @param format  desired output format (controls {@link ComplianceReport#format})
+     * @param actorId   the actor identity
+     * @param from      start of the time range (inclusive)
+     * @param to        end of the time range (inclusive)
+     * @param tenancyId the tenant scope
      * @return the compliance report; never null
      */
     @Transactional
     public ComplianceReport reportForActor(
             final String actorId,
             final Instant from,
-            final Instant to) {
-        final List<LedgerEntry> entries = repo.findByActorId(actorId, from, to);
+            final Instant to,
+            final String tenancyId) {
+        final List<LedgerEntry> entries = repo.findByActorId(actorId, from, to, tenancyId);
         final List<DecisionRecord> decisions = entries.stream()
                 .filter(e -> e.compliance().isPresent())
                 .map(this::toDecisionRecord)
                 .toList();
 
-        final String merkleRoot = buildActorMerkleRoot(entries);
+        final String merkleRoot = buildActorMerkleRoot(entries, tenancyId);
         return new ComplianceReport(actorId, null, from, to, decisions.size(), decisions, merkleRoot);
     }
 
@@ -76,21 +77,22 @@ public class LedgerComplianceReportService {
      * @param subjectId the aggregate identifier
      * @param from      start of the time range (inclusive)
      * @param to        end of the time range (inclusive)
-     * @param format    desired output format (controls {@link ComplianceReport#format})
+     * @param tenancyId the tenant scope
      * @return the compliance report; never null
      */
     @Transactional
     public ComplianceReport reportForSubject(
             final UUID subjectId,
             final Instant from,
-            final Instant to) {
-        final List<LedgerEntry> entries = repo.findBySubjectIdAndTimeRange(subjectId, from, to);
+            final Instant to,
+            final String tenancyId) {
+        final List<LedgerEntry> entries = repo.findBySubjectIdAndTimeRange(subjectId, from, to, tenancyId);
         final List<DecisionRecord> decisions = entries.stream()
                 .filter(e -> e.compliance().isPresent())
                 .map(this::toDecisionRecord)
                 .toList();
 
-        final String merkleRoot = resolveSubjectMerkleRoot(subjectId);
+        final String merkleRoot = resolveSubjectMerkleRoot(subjectId, tenancyId);
         return new ComplianceReport(null, subjectId, from, to, decisions.size(), decisions, merkleRoot);
     }
 
@@ -112,7 +114,7 @@ public class LedgerComplianceReportService {
      * For an actor report, builds a semicolon-separated list of {@code subjectId=merkleRoot}
      * pairs for all distinct subjects referenced in the report entries.
      */
-    private String buildActorMerkleRoot(final List<LedgerEntry> entries) {
+    private String buildActorMerkleRoot(final List<LedgerEntry> entries, final String tenancyId) {
         final List<UUID> subjectIds = entries.stream()
                 .map(e -> e.subjectId)
                 .filter(id -> id != null)
@@ -125,7 +127,7 @@ public class LedgerComplianceReportService {
 
         final StringJoiner joiner = new StringJoiner(";");
         for (final UUID subjectId : subjectIds) {
-            final String root = resolveSubjectMerkleRoot(subjectId);
+            final String root = resolveSubjectMerkleRoot(subjectId, tenancyId);
             if (root != null) {
                 joiner.add(subjectId + "=" + root);
             }
@@ -133,9 +135,9 @@ public class LedgerComplianceReportService {
         return joiner.length() > 0 ? joiner.toString() : null;
     }
 
-    private String resolveSubjectMerkleRoot(final UUID subjectId) {
+    private String resolveSubjectMerkleRoot(final UUID subjectId, final String tenancyId) {
         try {
-            return verificationService.treeRoot(subjectId);
+            return verificationService.treeRoot(subjectId, tenancyId);
         } catch (final Exception e) {
             return null;
         }

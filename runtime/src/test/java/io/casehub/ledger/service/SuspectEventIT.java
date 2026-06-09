@@ -33,6 +33,7 @@ import io.casehub.ledger.runtime.service.model.VerificationResult;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 /**
  * End-to-end integration tests for {@link AgentSignatureSuspectEvent} firing.
@@ -76,7 +77,7 @@ class SuspectEventIT {
         e.actorId = "claude:reviewer@v1";
         e.actorType = ActorType.AGENT;
         e.actorRole = "Reviewer";
-        return (TestEntry) repo.save(e);
+        return (TestEntry) repo.save(e, DEFAULT_TENANT_ID);
     }
 
     @Test
@@ -86,9 +87,9 @@ class SuspectEventIT {
         final TestEntry e = seedSigned(sub, 1);
 
         rotationService.recordRotation("claude:reviewer@v1", testKeyRef, null,
-                KeyRotationReason.COMPROMISED, e.occurredAt.minusSeconds(60));
+                KeyRotationReason.COMPROMISED, e.occurredAt.minusSeconds(60), DEFAULT_TENANT_ID);
 
-        final VerificationResult result = verificationService.verifyAgentSignature(e.id);
+        final VerificationResult result = verificationService.verifyAgentSignature(e.id, DEFAULT_TENANT_ID);
 
         assertThat(result).isEqualTo(VerificationResult.SUSPECT);
         assertThat(eventCapture.syncEvents()).hasSize(1);
@@ -108,10 +109,10 @@ class SuspectEventIT {
         e.actorId = "system:noop";
         e.actorType = ActorType.SYSTEM;
         e.actorRole = "System";
-        final TestEntry saved = (TestEntry) repo.save(e);
+        final TestEntry saved = (TestEntry) repo.save(e, DEFAULT_TENANT_ID);
 
         final VerificationResult result =
-                reactiveVerificationService.verifyAgentSignatureAsync(saved.id).await().indefinitely();
+                reactiveVerificationService.verifyAgentSignatureAsync(saved.id, DEFAULT_TENANT_ID).await().indefinitely();
 
         assertThat(result).isEqualTo(VerificationResult.UNSIGNED);
         assertThat(eventCapture.syncEvents()).isEmpty();
@@ -124,7 +125,7 @@ class SuspectEventIT {
         final TestEntry e = seedSigned(sub, 1);
 
         final VerificationResult result =
-                reactiveVerificationService.verifyAgentSignatureAsync(e.id).await().indefinitely();
+                reactiveVerificationService.verifyAgentSignatureAsync(e.id, DEFAULT_TENANT_ID).await().indefinitely();
 
         assertThat(result).isEqualTo(VerificationResult.VALID);
         assertThat(eventCapture.syncEvents()).isEmpty();
@@ -137,10 +138,10 @@ class SuspectEventIT {
         final TestEntry e = seedSigned(sub, 1);
 
         rotationService.recordRotation("claude:reviewer@v1", testKeyRef, null,
-                KeyRotationReason.COMPROMISED, e.occurredAt.minusSeconds(60));
+                KeyRotationReason.COMPROMISED, e.occurredAt.minusSeconds(60), DEFAULT_TENANT_ID);
 
         final VerificationResult result =
-                reactiveVerificationService.verifyAgentSignatureAsync(e.id).await().indefinitely();
+                reactiveVerificationService.verifyAgentSignatureAsync(e.id, DEFAULT_TENANT_ID).await().indefinitely();
 
         assertThat(result).isEqualTo(VerificationResult.SUSPECT);
 
@@ -168,17 +169,17 @@ class SuspectEventIT {
         e.actorId = "claude:reviewer@v1";
         e.actorType = ActorType.AGENT;
         e.actorRole = "Reviewer";
-        final TestEntry saved = (TestEntry) repo.save(e);
+        final TestEntry saved = (TestEntry) repo.save(e, DEFAULT_TENANT_ID);
 
         final byte[] tamperedSignature = new byte[64];
         tamperedSignature[0] = (byte) 0xFF;
         saved.agentSignature = tamperedSignature;
         saved.agentPublicKey = testKeyPair.getPublic().getEncoded();
         saved.agentKeyRef = testKeyRef;
-        repo.save(saved);
+        repo.save(saved, DEFAULT_TENANT_ID);
 
         final VerificationResult result =
-                reactiveVerificationService.verifyAgentSignatureAsync(saved.id).await().indefinitely();
+                reactiveVerificationService.verifyAgentSignatureAsync(saved.id, DEFAULT_TENANT_ID).await().indefinitely();
 
         assertThat(result).isEqualTo(VerificationResult.INVALID);
         assertThat(eventCapture.syncEvents()).isEmpty();

@@ -21,7 +21,8 @@ import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.model.LedgerEntry;
-import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
+import io.casehub.ledger.runtime.qualifier.CrossTenant;
+import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
 import io.casehub.ledger.runtime.service.routing.TrustScoreActorUpdatedEvent;
 
 /**
@@ -53,7 +54,8 @@ public class IncrementalTrustUpdateObserver {
     LedgerConfig config;
 
     @Inject
-    LedgerEntryRepository ledgerRepo;
+    @CrossTenant
+    CrossTenantLedgerEntryRepository ledgerRepo;
 
     @Inject
     PerActorTrustComputer perActorComputer;

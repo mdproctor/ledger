@@ -21,6 +21,7 @@ import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.service.LedgerProvExportService;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.junit.QuarkusTest;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 @QuarkusTest
 class LedgerProvExportServiceIT {
@@ -40,7 +41,7 @@ class LedgerProvExportServiceIT {
         e.actorId = actorId;
         e.actorType = ActorType.SYSTEM;
         e.actorRole = "Tester";
-        return (TestEntry) repo.save(e);
+        return (TestEntry) repo.save(e, DEFAULT_TENANT_ID);
     }
 
     // ── happy path ────────────────────────────────────────────────────────────
@@ -53,7 +54,7 @@ class LedgerProvExportServiceIT {
         seed(sub, 2, "actor-a");
         seed(sub, 3, "actor-b");
 
-        String json = exportService.exportSubject(sub);
+        String json = exportService.exportSubject(sub, DEFAULT_TENANT_ID);
 
         assertThat(json).isNotBlank();
         Map<String, Object> doc = MAPPER.readValue(json, new TypeReference<>() {
@@ -76,9 +77,9 @@ class LedgerProvExportServiceIT {
         cs.algorithmRef = "gpt-4o";
         cs.confidenceScore = 0.88;
         e.attach(cs);
-        repo.save(e);
+        repo.save(e, DEFAULT_TENANT_ID);
 
-        String json = exportService.exportSubject(sub);
+        String json = exportService.exportSubject(sub, DEFAULT_TENANT_ID);
 
         Map<String, Object> doc = MAPPER.readValue(json, new TypeReference<>() {
         });
@@ -98,9 +99,9 @@ class LedgerProvExportServiceIT {
         ps.sourceEntityType = "WorkItem";
         ps.sourceEntitySystem = "tarkus";
         e.attach(ps);
-        repo.save(e);
+        repo.save(e, DEFAULT_TENANT_ID);
 
-        String json = exportService.exportSubject(sub);
+        String json = exportService.exportSubject(sub, DEFAULT_TENANT_ID);
 
         Map<String, Object> doc = MAPPER.readValue(json, new TypeReference<>() {
         });
@@ -117,7 +118,7 @@ class LedgerProvExportServiceIT {
         seed(sub, 2, "actor-b");
         seed(sub, 3, "actor-a");
 
-        String json = exportService.exportSubject(sub);
+        String json = exportService.exportSubject(sub, DEFAULT_TENANT_ID);
 
         Map<String, Object> doc = MAPPER.readValue(json, new TypeReference<>() {
         });

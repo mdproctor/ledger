@@ -2,9 +2,7 @@ package io.casehub.ledger.service;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
@@ -38,100 +36,74 @@ class BlockingReactiveLedgerEntryRepository implements ReactiveLedgerEntryReposi
     LedgerEntryRepository blocking;
 
     @Override
-    public Uni<LedgerEntry> save(final LedgerEntry entry) {
-        return Uni.createFrom().item(() -> blocking.save(entry));
+    public Uni<LedgerEntry> save(final LedgerEntry entry, final String tenancyId) {
+        return Uni.createFrom().item(() -> blocking.save(entry, tenancyId));
     }
 
     @Override
-    public Uni<List<LedgerEntry>> listAll() {
-        return Uni.createFrom().item(blocking::listAll);
-    }
-
-    @Override
-    public Uni<List<LedgerEntry>> findBySubjectId(final UUID subjectId) {
-        return Uni.createFrom().item(() -> blocking.findBySubjectId(subjectId));
+    public Uni<List<LedgerEntry>> findBySubjectId(final UUID subjectId, final String tenancyId) {
+        return Uni.createFrom().item(() -> blocking.findBySubjectId(subjectId, tenancyId));
     }
 
     @Override
     public Uni<List<LedgerEntry>> findBySubjectIdAndTimeRange(final UUID subjectId,
-            final Instant from, final Instant to) {
-        return Uni.createFrom().item(() -> blocking.findBySubjectIdAndTimeRange(subjectId, from, to));
+            final Instant from, final Instant to, final String tenancyId) {
+        return Uni.createFrom().item(() -> blocking.findBySubjectIdAndTimeRange(subjectId, from, to, tenancyId));
     }
 
     @Override
-    public Uni<Optional<LedgerEntry>> findLatestBySubjectId(final UUID subjectId) {
-        return Uni.createFrom().item(() -> blocking.findLatestBySubjectId(subjectId));
+    public Uni<Optional<LedgerEntry>> findLatestBySubjectId(final UUID subjectId, final String tenancyId) {
+        return Uni.createFrom().item(() -> blocking.findLatestBySubjectId(subjectId, tenancyId));
     }
 
     @Override
-    public Uni<Optional<LedgerEntry>> findEntryById(final UUID id) {
-        return Uni.createFrom().item(() -> blocking.findEntryById(id));
-    }
-
-    @Override
-    public Uni<List<LedgerEntry>> findAllEvents() {
-        return Uni.createFrom().item(blocking::findAllEvents);
-    }
-
-    @Override
-    public Uni<List<LedgerEntry>> findEventsByActorId(final String actorId) {
-        return Uni.createFrom().item(() -> blocking.findEventsByActorId(actorId));
+    public Uni<Optional<LedgerEntry>> findEntryById(final UUID id, final String tenancyId) {
+        return Uni.createFrom().item(() -> blocking.findEntryById(id, tenancyId));
     }
 
     @Override
     public Uni<List<LedgerEntry>> findByActorId(final String actorId, final Instant from,
-            final Instant to) {
-        return Uni.createFrom().item(() -> blocking.findByActorId(actorId, from, to));
+            final Instant to, final String tenancyId) {
+        return Uni.createFrom().item(() -> blocking.findByActorId(actorId, from, to, tenancyId));
     }
 
     @Override
     public Uni<List<LedgerEntry>> findByActorRole(final String actorRole, final Instant from,
-            final Instant to) {
-        return Uni.createFrom().item(() -> blocking.findByActorRole(actorRole, from, to));
+            final Instant to, final String tenancyId) {
+        return Uni.createFrom().item(() -> blocking.findByActorRole(actorRole, from, to, tenancyId));
     }
 
     @Override
-    public Uni<List<LedgerEntry>> findByTimeRange(final Instant from, final Instant to) {
-        return Uni.createFrom().item(() -> blocking.findByTimeRange(from, to));
+    public Uni<List<LedgerEntry>> findCausedBy(final UUID entryId, final String tenancyId) {
+        return Uni.createFrom().item(() -> blocking.findCausedBy(entryId, tenancyId));
     }
 
     @Override
-    public Uni<List<LedgerEntry>> findCausedBy(final UUID entryId) {
-        return Uni.createFrom().item(() -> blocking.findCausedBy(entryId));
+    public Uni<LedgerAttestation> saveAttestation(final LedgerAttestation attestation, final String tenancyId) {
+        return Uni.createFrom().item(() -> blocking.saveAttestation(attestation, tenancyId));
     }
 
     @Override
-    public Uni<LedgerAttestation> saveAttestation(final LedgerAttestation attestation) {
-        return Uni.createFrom().item(() -> blocking.saveAttestation(attestation));
-    }
-
-    @Override
-    public Uni<List<LedgerAttestation>> findAttestationsByEntryId(final UUID ledgerEntryId) {
-        return Uni.createFrom().item(() -> blocking.findAttestationsByEntryId(ledgerEntryId));
-    }
-
-    @Override
-    public Uni<Map<UUID, List<LedgerAttestation>>> findAttestationsForEntries(
-            final Set<UUID> entryIds) {
-        return Uni.createFrom().item(() -> blocking.findAttestationsForEntries(entryIds));
+    public Uni<List<LedgerAttestation>> findAttestationsByEntryId(final UUID ledgerEntryId, final String tenancyId) {
+        return Uni.createFrom().item(() -> blocking.findAttestationsByEntryId(ledgerEntryId, tenancyId));
     }
 
     @Override
     public Uni<List<LedgerAttestation>> findAttestationsByEntryIdAndCapabilityTag(
-            final UUID entryId, final String capabilityTag) {
+            final UUID entryId, final String capabilityTag, final String tenancyId) {
         return Uni.createFrom().item(
-                () -> blocking.findAttestationsByEntryIdAndCapabilityTag(entryId, capabilityTag));
+                () -> blocking.findAttestationsByEntryIdAndCapabilityTag(entryId, capabilityTag, tenancyId));
     }
 
     @Override
-    public Uni<List<LedgerAttestation>> findAttestationsByEntryIdGlobal(final UUID entryId) {
-        return Uni.createFrom().item(() -> blocking.findAttestationsByEntryIdGlobal(entryId));
+    public Uni<List<LedgerAttestation>> findAttestationsByEntryIdGlobal(final UUID entryId, final String tenancyId) {
+        return Uni.createFrom().item(() -> blocking.findAttestationsByEntryIdGlobal(entryId, tenancyId));
     }
 
     @Override
     public Uni<List<LedgerAttestation>> findAttestationsByAttestorIdAndCapabilityTag(
-            final String attestorId, final String capabilityTag) {
+            final String attestorId, final String capabilityTag, final String tenancyId) {
         return Uni.createFrom().item(
-                () -> blocking.findAttestationsByAttestorIdAndCapabilityTag(attestorId, capabilityTag));
+                () -> blocking.findAttestationsByAttestorIdAndCapabilityTag(attestorId, capabilityTag, tenancyId));
     }
 }

@@ -36,12 +36,12 @@ import io.quarkus.arc.DefaultBean;
 public class NoOpLedgerMerkleFrontierRepository implements LedgerMerkleFrontierRepository {
 
     @Override
-    public List<LedgerMerkleFrontier> findBySubjectId(final UUID subjectId) {
+    public List<LedgerMerkleFrontier> findBySubjectId(final UUID subjectId, final String tenancyId) {
         return List.of();
     }
 
     @Override
-    public void replace(final UUID subjectId, final List<LedgerMerkleFrontier> newFrontier) {
+    public void replace(final UUID subjectId, final List<LedgerMerkleFrontier> newFrontier, final String tenancyId) {
         // no-op — Merkle frontier is not persisted in this deployment
     }
 }

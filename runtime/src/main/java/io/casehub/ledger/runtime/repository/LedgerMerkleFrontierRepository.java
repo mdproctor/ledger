@@ -25,9 +25,10 @@ public interface LedgerMerkleFrontierRepository {
      * Return all frontier nodes for the given subject, ordered by level ascending.
      *
      * @param subjectId the aggregate identifier
+     * @param tenancyId the tenant scope
      * @return current frontier; empty if no entries have been saved for this subject
      */
-    List<LedgerMerkleFrontier> findBySubjectId(UUID subjectId);
+    List<LedgerMerkleFrontier> findBySubjectId(UUID subjectId, String tenancyId);
 
     /**
      * Atomically replace the frontier for the given subject with {@code newFrontier}.
@@ -41,6 +42,7 @@ public interface LedgerMerkleFrontierRepository {
      * @param subjectId   the aggregate identifier
      * @param newFrontier the complete new frontier; computed by
      *                    {@link io.casehub.ledger.runtime.service.LedgerMerkleTree#append}
+     * @param tenancyId the tenant scope
      */
-    void replace(UUID subjectId, List<LedgerMerkleFrontier> newFrontier);
+    void replace(UUID subjectId, List<LedgerMerkleFrontier> newFrontier, String tenancyId);
 }

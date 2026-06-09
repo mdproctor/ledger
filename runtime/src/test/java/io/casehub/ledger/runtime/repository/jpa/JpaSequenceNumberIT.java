@@ -25,6 +25,7 @@ import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 @QuarkusTest
 @TestProfile(JpaSequenceNumberIT.Profile.class)
@@ -58,9 +59,9 @@ class JpaSequenceNumberIT {
     void assignsContiguousSequenceNumbers() {
         UUID subjectId = UUID.randomUUID();
 
-        LedgerEntry e1 = repo.save(newEntry(subjectId));
-        LedgerEntry e2 = repo.save(newEntry(subjectId));
-        LedgerEntry e3 = repo.save(newEntry(subjectId));
+        LedgerEntry e1 = repo.save(newEntry(subjectId), DEFAULT_TENANT_ID);
+        LedgerEntry e2 = repo.save(newEntry(subjectId), DEFAULT_TENANT_ID);
+        LedgerEntry e3 = repo.save(newEntry(subjectId), DEFAULT_TENANT_ID);
 
         assertThat(e1.sequenceNumber).isEqualTo(1);
         assertThat(e2.sequenceNumber).isEqualTo(2);
@@ -72,11 +73,11 @@ class JpaSequenceNumberIT {
     void findBySubjectIdReturnsInSequenceOrder() {
         UUID subjectId = UUID.randomUUID();
 
-        repo.save(newEntry(subjectId));
-        repo.save(newEntry(subjectId));
-        repo.save(newEntry(subjectId));
+        repo.save(newEntry(subjectId), DEFAULT_TENANT_ID);
+        repo.save(newEntry(subjectId), DEFAULT_TENANT_ID);
+        repo.save(newEntry(subjectId), DEFAULT_TENANT_ID);
 
-        List<LedgerEntry> entries = repo.findBySubjectId(subjectId);
+        List<LedgerEntry> entries = repo.findBySubjectId(subjectId, DEFAULT_TENANT_ID);
         assertThat(entries).extracting(e -> e.sequenceNumber)
                 .containsExactly(1, 2, 3);
     }
@@ -87,10 +88,10 @@ class JpaSequenceNumberIT {
         UUID subject1 = UUID.randomUUID();
         UUID subject2 = UUID.randomUUID();
 
-        LedgerEntry s1e1 = repo.save(newEntry(subject1));
-        LedgerEntry s2e1 = repo.save(newEntry(subject2));
-        LedgerEntry s1e2 = repo.save(newEntry(subject1));
-        LedgerEntry s2e2 = repo.save(newEntry(subject2));
+        LedgerEntry s1e1 = repo.save(newEntry(subject1), DEFAULT_TENANT_ID);
+        LedgerEntry s2e1 = repo.save(newEntry(subject2), DEFAULT_TENANT_ID);
+        LedgerEntry s1e2 = repo.save(newEntry(subject1), DEFAULT_TENANT_ID);
+        LedgerEntry s2e2 = repo.save(newEntry(subject2), DEFAULT_TENANT_ID);
 
         assertThat(s1e1.sequenceNumber).isEqualTo(1);
         assertThat(s1e2.sequenceNumber).isEqualTo(2);
@@ -105,7 +106,7 @@ class JpaSequenceNumberIT {
         TestEntry entry = newEntry(subjectId);
         entry.sequenceNumber = 999;
 
-        LedgerEntry saved = repo.save(entry);
+        LedgerEntry saved = repo.save(entry, DEFAULT_TENANT_ID);
 
         assertThat(saved.sequenceNumber).isEqualTo(1);
     }
@@ -115,7 +116,7 @@ class JpaSequenceNumberIT {
         TestEntry entry = newEntry(null);
         entry.subjectId = null;
 
-        assertThatThrownBy(() -> repo.save(entry))
+        assertThatThrownBy(() -> repo.save(entry, DEFAULT_TENANT_ID))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("subjectId");
     }
@@ -124,7 +125,7 @@ class JpaSequenceNumberIT {
     @Transactional
     void uniqueConstraintPreventsDuplicateSequenceNumber() {
         UUID subjectId = UUID.randomUUID();
-        repo.save(newEntry(subjectId));
+        repo.save(newEntry(subjectId), DEFAULT_TENANT_ID);
 
         assertThatThrownBy(() -> {
             em.createNativeQuery(
@@ -142,7 +143,7 @@ class JpaSequenceNumberIT {
     void healthJobDetectsNoGapsInJpaAssignedSequences() {
         UUID subjectId = UUID.randomUUID();
         for (int i = 0; i < 5; i++) {
-            repo.save(newEntry(subjectId));
+            repo.save(newEntry(subjectId), DEFAULT_TENANT_ID);
         }
 
         List<?> gapResults = em.createQuery(
@@ -160,7 +161,7 @@ class JpaSequenceNumberIT {
     @Transactional
     void leafHashCoversCorrectSequenceNumber() {
         UUID subjectId = UUID.randomUUID();
-        LedgerEntry saved = repo.save(newEntry(subjectId));
+        LedgerEntry saved = repo.save(newEntry(subjectId), DEFAULT_TENANT_ID);
 
         String recomputed = LedgerMerkleTree.leafHash(saved);
 
@@ -185,7 +186,7 @@ class JpaSequenceNumberIT {
         rotation.reason = KeyRotationReason.SCHEDULED;
         rotation.effectiveSince = Instant.now();
 
-        LedgerEntry saved = repo.save(rotation);
+        LedgerEntry saved = repo.save(rotation, DEFAULT_TENANT_ID);
 
         assertThat(saved.sequenceNumber).isEqualTo(1);
         assertThat(saved).isInstanceOf(KeyRotationEntry.class);

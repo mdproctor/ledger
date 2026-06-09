@@ -13,6 +13,7 @@ import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.service.supplement.TestEntry;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 /**
  * Shared fixture helpers for integration tests that need ledger entries and attestations.
@@ -51,7 +52,7 @@ public final class LedgerTestFixtures {
         entry.actorType = ActorType.AGENT;
         entry.actorRole = "Classifier";
         entry.occurredAt = decisionTime.truncatedTo(ChronoUnit.MILLIS);
-        repo.save(entry);
+        repo.save(entry, DEFAULT_TENANT_ID);
 
         if (verdictOrNull != null) {
             final LedgerAttestation att = new LedgerAttestation();
@@ -91,7 +92,7 @@ public final class LedgerTestFixtures {
         entry.actorType = ActorType.AGENT;
         entry.actorRole = "Classifier";
         entry.occurredAt = decisionTime.truncatedTo(ChronoUnit.MILLIS);
-        repo.save(entry);
+        repo.save(entry, DEFAULT_TENANT_ID);
 
         if (verdictOrNull != null) {
             final LedgerAttestation att = new LedgerAttestation();
@@ -139,7 +140,7 @@ public final class LedgerTestFixtures {
         entry.actorType = ActorType.AGENT;
         entry.actorRole = "Reviewer";
         entry.occurredAt = decisionTime.truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
-        repo.save(entry);
+        repo.save(entry, DEFAULT_TENANT_ID);
 
         final LedgerAttestation att = new LedgerAttestation();
         att.id = UUID.randomUUID();

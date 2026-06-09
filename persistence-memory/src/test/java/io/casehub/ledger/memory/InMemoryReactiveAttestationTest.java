@@ -18,6 +18,7 @@ import io.casehub.ledger.runtime.model.PlainLedgerEntry;
 import io.casehub.ledger.runtime.repository.ReactiveLedgerEntryRepository;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 /**
  * Verifies that the reactive delegation path for attestation persistence works end-to-end
@@ -45,11 +46,11 @@ class InMemoryReactiveAttestationTest {
         final LedgerAttestation attestation = attestation(entry.id, "claude:reviewer@v1",
                 AttestationVerdict.SOUND, CapabilityTag.GLOBAL);
 
-        final LedgerAttestation saved = reactiveRepo.saveAttestation(attestation)
+        final LedgerAttestation saved = reactiveRepo.saveAttestation(attestation, DEFAULT_TENANT_ID)
                 .await().indefinitely();
 
         assertThat(saved.id).isNotNull();
-        assertThat(reactiveRepo.findAttestationsByEntryId(entry.id).await().indefinitely())
+        assertThat(reactiveRepo.findAttestationsByEntryId(entry.id, DEFAULT_TENANT_ID).await().indefinitely())
                 .hasSize(1)
                 .first()
                 .satisfies(a -> {
@@ -63,13 +64,13 @@ class InMemoryReactiveAttestationTest {
         final PlainLedgerEntry entry = savedEntry();
 
         reactiveRepo.saveAttestation(
-                attestation(entry.id, "actor-a", AttestationVerdict.SOUND, "code-review"))
+                attestation(entry.id, "actor-a", AttestationVerdict.SOUND, "code-review"), DEFAULT_TENANT_ID)
                 .await().indefinitely();
         reactiveRepo.saveAttestation(
-                attestation(entry.id, "actor-b", AttestationVerdict.FLAGGED, "code-review"))
+                attestation(entry.id, "actor-b", AttestationVerdict.FLAGGED, "code-review"), DEFAULT_TENANT_ID)
                 .await().indefinitely();
 
-        assertThat(reactiveRepo.findAttestationsByEntryId(entry.id).await().indefinitely())
+        assertThat(reactiveRepo.findAttestationsByEntryId(entry.id, DEFAULT_TENANT_ID).await().indefinitely())
                 .hasSize(2);
     }
 
@@ -80,7 +81,7 @@ class InMemoryReactiveAttestationTest {
         entry.actorRole = "reviewer";
         entry.entryType = LedgerEntryType.EVENT;
         entry.occurredAt = Instant.now();
-        return (PlainLedgerEntry) blockingRepo.save(entry);
+        return (PlainLedgerEntry) blockingRepo.save(entry, DEFAULT_TENANT_ID);
     }
 
     private LedgerAttestation attestation(final UUID entryId, final String attestorId,

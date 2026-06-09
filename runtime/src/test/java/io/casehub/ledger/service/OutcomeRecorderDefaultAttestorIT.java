@@ -15,6 +15,7 @@ import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.platform.api.identity.ActorType;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 @QuarkusTest
 @TestProfile(OutcomeRecorderIT.Profile.class)
@@ -28,8 +29,8 @@ class OutcomeRecorderDefaultAttestorIT {
         final UUID gameId = UUID.randomUUID();
         recorder.record(OutcomeRecord.of("quarkmind:strategy@v1", gameId, "strategy", SOUND, 0.7));
 
-        final var entry = ledgerRepo.findBySubjectId(gameId).get(0);
-        final var attestations = ledgerRepo.findAttestationsByEntryId(entry.id);
+        final var entry = ledgerRepo.findBySubjectId(gameId, DEFAULT_TENANT_ID).get(0);
+        final var attestations = ledgerRepo.findAttestationsByEntryId(entry.id, DEFAULT_TENANT_ID);
         assertThat(attestations).hasSize(1);
         assertThat(attestations.get(0).attestorId).isEqualTo("quarkmind:game-engine@v1");
     }
@@ -41,8 +42,8 @@ class OutcomeRecorderDefaultAttestorIT {
                 OutcomeRecord.of("quarkmind:strategy@v1", gameId, "strategy", SOUND, 0.7)
                         .withAttestor("custom-attestor@v1", ActorType.SYSTEM));
 
-        final var entry = ledgerRepo.findBySubjectId(gameId).get(0);
-        final var attestations = ledgerRepo.findAttestationsByEntryId(entry.id);
+        final var entry = ledgerRepo.findBySubjectId(gameId, DEFAULT_TENANT_ID).get(0);
+        final var attestations = ledgerRepo.findAttestationsByEntryId(entry.id, DEFAULT_TENANT_ID);
         assertThat(attestations).hasSize(1);
         assertThat(attestations.get(0).attestorId).isEqualTo("custom-attestor@v1");
     }

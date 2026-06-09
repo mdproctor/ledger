@@ -14,12 +14,14 @@ import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.LedgerEntry;
+import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.casehub.platform.api.identity.ActorType;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 /**
  * Integration tests for {@link LedgerEntryRepository#findEventsByActorId(String)}.
@@ -47,6 +49,9 @@ class FindEventsByActorIdIT {
     @Inject
     LedgerEntryRepository repo;
 
+    @Inject
+    CrossTenantLedgerEntryRepository crossTenantRepo;
+
     // ── Returns only EVENT entries for the given actor ────────────────────────
 
     @Test
@@ -64,7 +69,7 @@ class FindEventsByActorIdIT {
         event1.actorType = ActorType.AGENT;
         event1.actorRole = "Classifier";
         event1.occurredAt = now.minus(2, ChronoUnit.HOURS).truncatedTo(ChronoUnit.MILLIS);
-        repo.save(event1);
+        repo.save(event1, DEFAULT_TENANT_ID);
 
         final TestEntry event2 = new TestEntry();
         event2.subjectId = subjectId;
@@ -73,7 +78,7 @@ class FindEventsByActorIdIT {
         event2.actorType = ActorType.AGENT;
         event2.actorRole = "Classifier";
         event2.occurredAt = now.minus(1, ChronoUnit.HOURS).truncatedTo(ChronoUnit.MILLIS);
-        repo.save(event2);
+        repo.save(event2, DEFAULT_TENANT_ID);
 
         // Create 1 COMMAND entry for the same actor (should be excluded)
         final TestEntry command = new TestEntry();
@@ -83,10 +88,10 @@ class FindEventsByActorIdIT {
         command.actorType = ActorType.AGENT;
         command.actorRole = "Classifier";
         command.occurredAt = now.truncatedTo(ChronoUnit.MILLIS);
-        repo.save(command);
+        repo.save(command, DEFAULT_TENANT_ID);
 
         // Query
-        final List<LedgerEntry> events = repo.findEventsByActorId(actorId);
+        final List<LedgerEntry> events = crossTenantRepo.findEventsByActorId(actorId);
 
         // Assert only EVENT entries returned
         assertThat(events).hasSize(2);
@@ -112,7 +117,7 @@ class FindEventsByActorIdIT {
         targetEvent.actorType = ActorType.AGENT;
         targetEvent.actorRole = "Classifier";
         targetEvent.occurredAt = now.minus(1, ChronoUnit.HOURS).truncatedTo(ChronoUnit.MILLIS);
-        repo.save(targetEvent);
+        repo.save(targetEvent, DEFAULT_TENANT_ID);
 
         // Create 1 EVENT for other actor (should be excluded)
         final TestEntry otherEvent = new TestEntry();
@@ -122,10 +127,10 @@ class FindEventsByActorIdIT {
         otherEvent.actorType = ActorType.AGENT;
         otherEvent.actorRole = "Classifier";
         otherEvent.occurredAt = now.truncatedTo(ChronoUnit.MILLIS);
-        repo.save(otherEvent);
+        repo.save(otherEvent, DEFAULT_TENANT_ID);
 
         // Query
-        final List<LedgerEntry> events = repo.findEventsByActorId(actorId);
+        final List<LedgerEntry> events = crossTenantRepo.findEventsByActorId(actorId);
 
         // Assert only target actor's event returned
         assertThat(events).hasSize(1);
@@ -140,7 +145,7 @@ class FindEventsByActorIdIT {
         final String unknownActorId = "agent-unknown-" + UUID.randomUUID();
 
         // Query without seeding any entries
-        final List<LedgerEntry> events = repo.findEventsByActorId(unknownActorId);
+        final List<LedgerEntry> events = crossTenantRepo.findEventsByActorId(unknownActorId);
 
         // Assert empty result
         assertThat(events).isEmpty();
@@ -168,10 +173,10 @@ class FindEventsByActorIdIT {
         event.actorType = ActorType.AGENT;
         event.actorRole = "Classifier";
         event.occurredAt = now.truncatedTo(ChronoUnit.MILLIS);
-        repo.save(event);
+        repo.save(event, DEFAULT_TENANT_ID);
 
         // Query using the original actorId (not the token)
-        final List<LedgerEntry> events = repo.findEventsByActorId(actorId);
+        final List<LedgerEntry> events = crossTenantRepo.findEventsByActorId(actorId);
 
         // Assert the entry is found (repo correctly tokenised the query actorId)
         assertThat(events).hasSize(1);

@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import io.casehub.ledger.api.model.KeyRotationReason;
 import io.casehub.ledger.runtime.model.KeyRotationEntry;
 import io.quarkus.test.junit.QuarkusTest;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 /**
  * Integration tests for {@link InMemoryKeyRotationRepository}.
@@ -47,9 +48,9 @@ class InMemoryKeyRotationRepositoryTest {
 
         // save t2 first, then t1 — result must be ordered ascending by occurredAt
         entryRepo.save(KeyRotationEntryBuilder.build(actorId, "keyRef-A", "keyRef-B",
-                KeyRotationReason.SCHEDULED, t2, t2));
+                KeyRotationReason.SCHEDULED, t2, t2), DEFAULT_TENANT_ID);
         entryRepo.save(KeyRotationEntryBuilder.build(actorId, "keyRef-B", "keyRef-C",
-                KeyRotationReason.SCHEDULED, t1, t1));
+                KeyRotationReason.SCHEDULED, t1, t1), DEFAULT_TENANT_ID);
 
         List<KeyRotationEntry> results = rotationRepo.findByActorId(actorId);
         assertThat(results).hasSize(2);
@@ -61,9 +62,9 @@ class InMemoryKeyRotationRepositoryTest {
     @Test
     void findByActorId_doesNotReturnOtherActors() {
         entryRepo.save(KeyRotationEntryBuilder.build("actor-A", "k1", "k2",
-                KeyRotationReason.SCHEDULED, Instant.now(), Instant.now()));
+                KeyRotationReason.SCHEDULED, Instant.now(), Instant.now()), DEFAULT_TENANT_ID);
         entryRepo.save(KeyRotationEntryBuilder.build("actor-B", "k1", "k2",
-                KeyRotationReason.SCHEDULED, Instant.now(), Instant.now()));
+                KeyRotationReason.SCHEDULED, Instant.now(), Instant.now()), DEFAULT_TENANT_ID);
 
         assertThat(rotationRepo.findByActorId("actor-A")).hasSize(1);
     }
@@ -75,13 +76,13 @@ class InMemoryKeyRotationRepositoryTest {
 
         // COMPROMISED for bad-key — should be returned
         entryRepo.save(KeyRotationEntryBuilder.build(actorId, "bad-key", "new-key",
-                KeyRotationReason.COMPROMISED, Instant.now(), effectiveSince));
+                KeyRotationReason.COMPROMISED, Instant.now(), effectiveSince), DEFAULT_TENANT_ID);
         // COMPROMISED for different key — should NOT be returned
         entryRepo.save(KeyRotationEntryBuilder.build(actorId, "other-key", "another",
-                KeyRotationReason.COMPROMISED, Instant.now(), effectiveSince));
+                KeyRotationReason.COMPROMISED, Instant.now(), effectiveSince), DEFAULT_TENANT_ID);
         // SCHEDULED for bad-key — should NOT be returned
         entryRepo.save(KeyRotationEntryBuilder.build(actorId, "bad-key", "new-key2",
-                KeyRotationReason.SCHEDULED, Instant.now(), effectiveSince));
+                KeyRotationReason.SCHEDULED, Instant.now(), effectiveSince), DEFAULT_TENANT_ID);
 
         List<KeyRotationEntry> results =
                 rotationRepo.findCompromisedByActorIdAndKeyRef(actorId, "bad-key");
@@ -109,9 +110,9 @@ class InMemoryKeyRotationRepositoryTest {
 
         // save later first, then earlier — result must be ordered ascending by effectiveSince
         entryRepo.save(KeyRotationEntryBuilder.build(actorId, keyRef, "new-key-B",
-                KeyRotationReason.COMPROMISED, Instant.now(), later));
+                KeyRotationReason.COMPROMISED, Instant.now(), later), DEFAULT_TENANT_ID);
         entryRepo.save(KeyRotationEntryBuilder.build(actorId, keyRef, "new-key-A",
-                KeyRotationReason.COMPROMISED, Instant.now(), earlier));
+                KeyRotationReason.COMPROMISED, Instant.now(), earlier), DEFAULT_TENANT_ID);
 
         List<KeyRotationEntry> results =
                 rotationRepo.findCompromisedByActorIdAndKeyRef(actorId, keyRef);

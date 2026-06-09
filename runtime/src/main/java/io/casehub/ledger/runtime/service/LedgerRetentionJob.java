@@ -20,7 +20,8 @@ import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.model.LedgerEntryArchiveRecord;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
-import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
+import io.casehub.ledger.runtime.qualifier.CrossTenant;
+import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
 import io.quarkus.scheduler.Scheduled;
 
 /**
@@ -46,7 +47,8 @@ public class LedgerRetentionJob {
     private static final Logger LOG = Logger.getLogger(LedgerRetentionJob.class);
 
     @Inject
-    LedgerEntryRepository ledgerRepo;
+    @CrossTenant
+    CrossTenantLedgerEntryRepository ledgerRepo;
 
     @Inject
     @LedgerPersistenceUnit
@@ -114,8 +116,11 @@ public class LedgerRetentionJob {
                 .sorted(Comparator.comparingInt(e -> e.sequenceNumber))
                 .toList();
 
+        // Resolve tenancyId from entries — all entries for a subject share the same tenant
+        final String tenancyId = sorted.get(0).tenancyId;
+
         // 1. Verify chain integrity — skip subject if broken
-        if (!verificationService.verify(subjectId)) {
+        if (!verificationService.verify(subjectId, tenancyId)) {
             throw new IllegalStateException(
                     "Hash chain integrity check failed for subject " + subjectId);
         }

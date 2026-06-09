@@ -20,6 +20,7 @@ import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.platform.api.identity.ActorType;
 import io.quarkus.test.junit.QuarkusTest;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 /**
  * Integration tests for {@link InMemoryLedgerEntryRepository}.
@@ -41,6 +42,9 @@ class InMemoryLedgerEntryRepositoryTest {
     @Inject
     InMemoryLedgerEntryRepository repo;
 
+    @Inject
+    InMemoryCrossTenantLedgerEntryRepository crossTenantRepo;
+
     @BeforeEach
     void setUp() {
         repo.clear();
@@ -51,14 +55,14 @@ class InMemoryLedgerEntryRepositoryTest {
     @Test
     void save_assignsId() {
         MemoryTestEntry e = entry(UUID.randomUUID(), LedgerEntryType.EVENT).withNullId();
-        repo.save(e);
+        repo.save(e, DEFAULT_TENANT_ID);
         assertThat(e.getId()).isNotNull();
     }
 
     @Test
     void save_assignsOccurredAt() {
         MemoryTestEntry e = entry(UUID.randomUUID(), LedgerEntryType.EVENT).withNullOccurredAt();
-        repo.save(e);
+        repo.save(e, DEFAULT_TENANT_ID);
         assertThat(e.getOccurredAt()).isNotNull();
     }
 
@@ -67,8 +71,8 @@ class InMemoryLedgerEntryRepositoryTest {
         UUID subjectId = UUID.randomUUID();
         MemoryTestEntry e1 = entry(subjectId, LedgerEntryType.EVENT);
         MemoryTestEntry e2 = entry(subjectId, LedgerEntryType.EVENT);
-        repo.save(e1);
-        repo.save(e2);
+        repo.save(e1, DEFAULT_TENANT_ID);
+        repo.save(e2, DEFAULT_TENANT_ID);
         assertThat(e1.getSequenceNumber()).isEqualTo(1);
         assertThat(e2.getSequenceNumber()).isEqualTo(2);
     }
@@ -80,9 +84,9 @@ class InMemoryLedgerEntryRepositoryTest {
         MemoryTestEntry a = entry(s1, LedgerEntryType.EVENT);
         MemoryTestEntry b = entry(s2, LedgerEntryType.EVENT);
         MemoryTestEntry c = entry(s1, LedgerEntryType.EVENT);
-        repo.save(a);
-        repo.save(b);
-        repo.save(c);
+        repo.save(a, DEFAULT_TENANT_ID);
+        repo.save(b, DEFAULT_TENANT_ID);
+        repo.save(c, DEFAULT_TENANT_ID);
         assertThat(a.getSequenceNumber()).isEqualTo(1);
         assertThat(b.getSequenceNumber()).isEqualTo(1);
         assertThat(c.getSequenceNumber()).isEqualTo(2);
@@ -93,11 +97,11 @@ class InMemoryLedgerEntryRepositoryTest {
     @Test
     void findBySubjectId_returnsOrderedBySequenceNumber() {
         UUID subjectId = UUID.randomUUID();
-        repo.save(entry(subjectId, LedgerEntryType.EVENT));
-        repo.save(entry(subjectId, LedgerEntryType.COMMAND));
-        repo.save(entry(subjectId, LedgerEntryType.EVENT));
+        repo.save(entry(subjectId, LedgerEntryType.EVENT), DEFAULT_TENANT_ID);
+        repo.save(entry(subjectId, LedgerEntryType.COMMAND), DEFAULT_TENANT_ID);
+        repo.save(entry(subjectId, LedgerEntryType.EVENT), DEFAULT_TENANT_ID);
 
-        List<LedgerEntry> results = repo.findBySubjectId(subjectId);
+        List<LedgerEntry> results = repo.findBySubjectId(subjectId, DEFAULT_TENANT_ID);
         assertThat(results).hasSize(3);
         assertThat(seqNum(results.get(0))).isEqualTo(1);
         assertThat(seqNum(results.get(1))).isEqualTo(2);
@@ -106,7 +110,7 @@ class InMemoryLedgerEntryRepositoryTest {
 
     @Test
     void findBySubjectId_returnsEmptyForUnknownSubject() {
-        assertThat(repo.findBySubjectId(UUID.randomUUID())).isEmpty();
+        assertThat(repo.findBySubjectId(UUID.randomUUID(), DEFAULT_TENANT_ID)).isEmpty();
     }
 
     // ── findEntryById ─────────────────────────────────────────────────────────
@@ -114,15 +118,15 @@ class InMemoryLedgerEntryRepositoryTest {
     @Test
     void findEntryById_returnsEntry() {
         MemoryTestEntry e = entry(UUID.randomUUID(), LedgerEntryType.EVENT);
-        repo.save(e);
-        Optional<LedgerEntry> result = repo.findEntryById(e.getId());
+        repo.save(e, DEFAULT_TENANT_ID);
+        Optional<LedgerEntry> result = repo.findEntryById(e.getId(), DEFAULT_TENANT_ID);
         assertThat(result).isPresent();
         assertThat(id(result.get())).isEqualTo(e.getId());
     }
 
     @Test
     void findEntryById_returnsEmptyForUnknown() {
-        assertThat(repo.findEntryById(UUID.randomUUID())).isEmpty();
+        assertThat(repo.findEntryById(UUID.randomUUID(), DEFAULT_TENANT_ID)).isEmpty();
     }
 
     // ── findLatestBySubjectId ─────────────────────────────────────────────────
@@ -130,11 +134,11 @@ class InMemoryLedgerEntryRepositoryTest {
     @Test
     void findLatestBySubjectId_returnsHighestSequenceNumber() {
         UUID subjectId = UUID.randomUUID();
-        repo.save(entry(subjectId, LedgerEntryType.EVENT));
+        repo.save(entry(subjectId, LedgerEntryType.EVENT), DEFAULT_TENANT_ID);
         MemoryTestEntry last = entry(subjectId, LedgerEntryType.COMMAND);
-        repo.save(last);
+        repo.save(last, DEFAULT_TENANT_ID);
 
-        Optional<LedgerEntry> result = repo.findLatestBySubjectId(subjectId);
+        Optional<LedgerEntry> result = repo.findLatestBySubjectId(subjectId, DEFAULT_TENANT_ID);
         assertThat(result).isPresent();
         assertThat(id(result.get())).isEqualTo(last.getId());
     }
@@ -148,11 +152,11 @@ class InMemoryLedgerEntryRepositoryTest {
         Instant t2 = Instant.parse("2026-06-01T00:00:00Z");
         Instant t3 = Instant.parse("2026-12-01T00:00:00Z");
 
-        repo.save(entry(subjectId, LedgerEntryType.EVENT).withOccurredAt(t1));
-        repo.save(entry(subjectId, LedgerEntryType.EVENT).withOccurredAt(t2));
-        repo.save(entry(subjectId, LedgerEntryType.EVENT).withOccurredAt(t3));
+        repo.save(entry(subjectId, LedgerEntryType.EVENT).withOccurredAt(t1), DEFAULT_TENANT_ID);
+        repo.save(entry(subjectId, LedgerEntryType.EVENT).withOccurredAt(t2), DEFAULT_TENANT_ID);
+        repo.save(entry(subjectId, LedgerEntryType.EVENT).withOccurredAt(t3), DEFAULT_TENANT_ID);
 
-        List<LedgerEntry> results = repo.findBySubjectIdAndTimeRange(subjectId, t1, t2);
+        List<LedgerEntry> results = repo.findBySubjectIdAndTimeRange(subjectId, t1, t2, DEFAULT_TENANT_ID);
         assertThat(results).hasSize(2);
     }
 
@@ -161,12 +165,12 @@ class InMemoryLedgerEntryRepositoryTest {
         Instant t1 = Instant.parse("2026-01-01T00:00:00Z");
         Instant t2 = Instant.parse("2026-06-01T00:00:00Z");
 
-        repo.save(entry(UUID.randomUUID(), LedgerEntryType.EVENT).withOccurredAt(t1));
-        repo.save(entry(UUID.randomUUID(), LedgerEntryType.EVENT).withOccurredAt(t2));
+        repo.save(entry(UUID.randomUUID(), LedgerEntryType.EVENT).withOccurredAt(t1), DEFAULT_TENANT_ID);
+        repo.save(entry(UUID.randomUUID(), LedgerEntryType.EVENT).withOccurredAt(t2), DEFAULT_TENANT_ID);
         repo.save(entry(UUID.randomUUID(), LedgerEntryType.EVENT)
-                .withOccurredAt(Instant.parse("2026-12-01T00:00:00Z")));
+                .withOccurredAt(Instant.parse("2026-12-01T00:00:00Z")), DEFAULT_TENANT_ID);
 
-        List<LedgerEntry> results = repo.findByTimeRange(t1, t2);
+        List<LedgerEntry> results = crossTenantRepo.findByTimeRange(t1, t2);
         assertThat(results).hasSize(2);
     }
 
@@ -179,13 +183,13 @@ class InMemoryLedgerEntryRepositoryTest {
         Instant t2 = Instant.parse("2026-06-01T00:00:00Z");
 
         repo.save(entry(UUID.randomUUID(), LedgerEntryType.EVENT)
-                .withActorId(actor).withOccurredAt(t2));
+                .withActorId(actor).withOccurredAt(t2), DEFAULT_TENANT_ID);
         repo.save(entry(UUID.randomUUID(), LedgerEntryType.EVENT)
-                .withActorId(actor).withOccurredAt(t1));
-        repo.save(entry(UUID.randomUUID(), LedgerEntryType.EVENT).withActorId("other"));
+                .withActorId(actor).withOccurredAt(t1), DEFAULT_TENANT_ID);
+        repo.save(entry(UUID.randomUUID(), LedgerEntryType.EVENT).withActorId("other"), DEFAULT_TENANT_ID);
 
         List<LedgerEntry> results = repo.findByActorId(
-                actor, Instant.parse("2025-01-01T00:00:00Z"), Instant.parse("2027-01-01T00:00:00Z"));
+                actor, Instant.parse("2025-01-01T00:00:00Z"), Instant.parse("2027-01-01T00:00:00Z"), DEFAULT_TENANT_ID);
         assertThat(results).hasSize(2);
         assertThat(occurredAt(results.get(0))).isEqualTo(t1);
     }
@@ -193,10 +197,10 @@ class InMemoryLedgerEntryRepositoryTest {
     @Test
     void findByActorRole_filters() {
         String role = "Classifier-" + UUID.randomUUID();
-        repo.save(entry(UUID.randomUUID(), LedgerEntryType.EVENT).withActorRole(role));
+        repo.save(entry(UUID.randomUUID(), LedgerEntryType.EVENT).withActorRole(role), DEFAULT_TENANT_ID);
 
         List<LedgerEntry> results = repo.findByActorRole(
-                role, Instant.EPOCH, Instant.parse("2099-01-01T00:00:00Z"));
+                role, Instant.EPOCH, Instant.parse("2099-01-01T00:00:00Z"), DEFAULT_TENANT_ID);
         assertThat(results).hasSize(1);
     }
 
@@ -205,32 +209,32 @@ class InMemoryLedgerEntryRepositoryTest {
     @Test
     void findCausedBy_returnsDownstreamEntries() {
         MemoryTestEntry cause = entry(UUID.randomUUID(), LedgerEntryType.COMMAND);
-        repo.save(cause);
+        repo.save(cause, DEFAULT_TENANT_ID);
         MemoryTestEntry effect = entry(UUID.randomUUID(), LedgerEntryType.EVENT)
                 .withCausedBy(cause.getId());
-        repo.save(effect);
+        repo.save(effect, DEFAULT_TENANT_ID);
 
-        List<LedgerEntry> results = repo.findCausedBy(cause.getId());
+        List<LedgerEntry> results = repo.findCausedBy(cause.getId(), DEFAULT_TENANT_ID);
         assertThat(results).hasSize(1);
         assertThat(id(results.get(0))).isEqualTo(effect.getId());
     }
 
     @Test
     void findAllEvents_returnsOnlyEvents() {
-        repo.save(entry(UUID.randomUUID(), LedgerEntryType.EVENT));
-        repo.save(entry(UUID.randomUUID(), LedgerEntryType.COMMAND));
-        repo.save(entry(UUID.randomUUID(), LedgerEntryType.EVENT));
+        repo.save(entry(UUID.randomUUID(), LedgerEntryType.EVENT), DEFAULT_TENANT_ID);
+        repo.save(entry(UUID.randomUUID(), LedgerEntryType.COMMAND), DEFAULT_TENANT_ID);
+        repo.save(entry(UUID.randomUUID(), LedgerEntryType.EVENT), DEFAULT_TENANT_ID);
 
-        List<LedgerEntry> results = repo.findAllEvents();
+        List<LedgerEntry> results = crossTenantRepo.findAllEvents();
         assertThat(results).hasSize(2);
         assertThat(results).allMatch(e -> entryType(e) == LedgerEntryType.EVENT);
     }
 
     @Test
     void listAll_returnsAllEntries() {
-        repo.save(entry(UUID.randomUUID(), LedgerEntryType.EVENT));
-        repo.save(entry(UUID.randomUUID(), LedgerEntryType.COMMAND));
-        assertThat(repo.listAll()).hasSize(2);
+        repo.save(entry(UUID.randomUUID(), LedgerEntryType.EVENT), DEFAULT_TENANT_ID);
+        repo.save(entry(UUID.randomUUID(), LedgerEntryType.COMMAND), DEFAULT_TENANT_ID);
+        assertThat(crossTenantRepo.listAll()).hasSize(2);
     }
 
     // ── attestations ──────────────────────────────────────────────────────────
@@ -238,12 +242,12 @@ class InMemoryLedgerEntryRepositoryTest {
     @Test
     void saveAttestation_andFindByEntryId() {
         MemoryTestEntry e = entry(UUID.randomUUID(), LedgerEntryType.EVENT);
-        repo.save(e);
+        repo.save(e, DEFAULT_TENANT_ID);
 
         LedgerAttestation a = attestation(e.getId(), e.getSubjectId(), "attesting-actor", "*");
-        repo.saveAttestation(a);
+        repo.saveAttestation(a, DEFAULT_TENANT_ID);
 
-        List<LedgerAttestation> results = repo.findAttestationsByEntryId(e.getId());
+        List<LedgerAttestation> results = repo.findAttestationsByEntryId(e.getId(), DEFAULT_TENANT_ID);
         assertThat(results).hasSize(1);
         assertThat(LedgerAttestationAccessor.attestorId(results.get(0))).isEqualTo("attesting-actor");
     }
@@ -252,13 +256,13 @@ class InMemoryLedgerEntryRepositoryTest {
     void findAttestationsForEntries_groupsByEntryId() {
         MemoryTestEntry e1 = entry(UUID.randomUUID(), LedgerEntryType.EVENT);
         MemoryTestEntry e2 = entry(UUID.randomUUID(), LedgerEntryType.EVENT);
-        repo.save(e1); repo.save(e2);
-        repo.saveAttestation(attestation(e1.getId(), e1.getSubjectId(), "a1", "*"));
-        repo.saveAttestation(attestation(e1.getId(), e1.getSubjectId(), "a2", "*"));
-        repo.saveAttestation(attestation(e2.getId(), e2.getSubjectId(), "a3", "*"));
+        repo.save(e1, DEFAULT_TENANT_ID); repo.save(e2, DEFAULT_TENANT_ID);
+        repo.saveAttestation(attestation(e1.getId(), e1.getSubjectId(), "a1", "*"), DEFAULT_TENANT_ID);
+        repo.saveAttestation(attestation(e1.getId(), e1.getSubjectId(), "a2", "*"), DEFAULT_TENANT_ID);
+        repo.saveAttestation(attestation(e2.getId(), e2.getSubjectId(), "a3", "*"), DEFAULT_TENANT_ID);
 
         Map<UUID, List<LedgerAttestation>> grouped =
-                repo.findAttestationsForEntries(Set.of(e1.getId(), e2.getId()));
+                crossTenantRepo.findAttestationsForEntries(Set.of(e1.getId(), e2.getId()));
         assertThat(grouped.get(e1.getId())).hasSize(2);
         assertThat(grouped.get(e2.getId())).hasSize(1);
     }
@@ -266,12 +270,12 @@ class InMemoryLedgerEntryRepositoryTest {
     @Test
     void findAttestationsByEntryIdAndCapabilityTag_filters() {
         MemoryTestEntry e = entry(UUID.randomUUID(), LedgerEntryType.EVENT);
-        repo.save(e);
-        repo.saveAttestation(attestation(e.getId(), e.getSubjectId(), "a1", "review"));
-        repo.saveAttestation(attestation(e.getId(), e.getSubjectId(), "a2", "*"));
+        repo.save(e, DEFAULT_TENANT_ID);
+        repo.saveAttestation(attestation(e.getId(), e.getSubjectId(), "a1", "review"), DEFAULT_TENANT_ID);
+        repo.saveAttestation(attestation(e.getId(), e.getSubjectId(), "a2", "*"), DEFAULT_TENANT_ID);
 
         List<LedgerAttestation> results =
-                repo.findAttestationsByEntryIdAndCapabilityTag(e.getId(), "review");
+                repo.findAttestationsByEntryIdAndCapabilityTag(e.getId(), "review", DEFAULT_TENANT_ID);
         assertThat(results).hasSize(1);
         assertThat(LedgerAttestationAccessor.attestorId(results.get(0))).isEqualTo("a1");
     }
@@ -279,11 +283,11 @@ class InMemoryLedgerEntryRepositoryTest {
     @Test
     void findAttestationsByEntryIdGlobal_returnsOnlyStar() {
         MemoryTestEntry e = entry(UUID.randomUUID(), LedgerEntryType.EVENT);
-        repo.save(e);
-        repo.saveAttestation(attestation(e.getId(), e.getSubjectId(), "a1", "*"));
-        repo.saveAttestation(attestation(e.getId(), e.getSubjectId(), "a2", "review"));
+        repo.save(e, DEFAULT_TENANT_ID);
+        repo.saveAttestation(attestation(e.getId(), e.getSubjectId(), "a1", "*"), DEFAULT_TENANT_ID);
+        repo.saveAttestation(attestation(e.getId(), e.getSubjectId(), "a2", "review"), DEFAULT_TENANT_ID);
 
-        List<LedgerAttestation> results = repo.findAttestationsByEntryIdGlobal(e.getId());
+        List<LedgerAttestation> results = repo.findAttestationsByEntryIdGlobal(e.getId(), DEFAULT_TENANT_ID);
         assertThat(results).hasSize(1);
         assertThat(LedgerAttestationAccessor.capabilityTag(results.get(0))).isEqualTo("*");
     }
@@ -291,13 +295,13 @@ class InMemoryLedgerEntryRepositoryTest {
     @Test
     void findAttestationsByAttestorIdAndCapabilityTag_filters() {
         MemoryTestEntry e = entry(UUID.randomUUID(), LedgerEntryType.EVENT);
-        repo.save(e);
-        repo.saveAttestation(attestation(e.getId(), e.getSubjectId(), "claude:v1", "review"));
-        repo.saveAttestation(attestation(e.getId(), e.getSubjectId(), "claude:v1", "*"));
-        repo.saveAttestation(attestation(e.getId(), e.getSubjectId(), "other", "review"));
+        repo.save(e, DEFAULT_TENANT_ID);
+        repo.saveAttestation(attestation(e.getId(), e.getSubjectId(), "claude:v1", "review"), DEFAULT_TENANT_ID);
+        repo.saveAttestation(attestation(e.getId(), e.getSubjectId(), "claude:v1", "*"), DEFAULT_TENANT_ID);
+        repo.saveAttestation(attestation(e.getId(), e.getSubjectId(), "other", "review"), DEFAULT_TENANT_ID);
 
         List<LedgerAttestation> results =
-                repo.findAttestationsByAttestorIdAndCapabilityTag("claude:v1", "review");
+                repo.findAttestationsByAttestorIdAndCapabilityTag("claude:v1", "review", DEFAULT_TENANT_ID);
         assertThat(results).hasSize(1);
     }
 
@@ -307,26 +311,26 @@ class InMemoryLedgerEntryRepositoryTest {
     void clear_removesAllEntriesAndAttestations() {
         UUID subjectId = UUID.randomUUID();
         MemoryTestEntry e = entry(subjectId, LedgerEntryType.EVENT);
-        repo.save(e);
-        repo.saveAttestation(attestation(e.getId(), subjectId, "actor", "*"));
+        repo.save(e, DEFAULT_TENANT_ID);
+        repo.saveAttestation(attestation(e.getId(), subjectId, "actor", "*"), DEFAULT_TENANT_ID);
 
         repo.clear();
 
-        assertThat(repo.listAll()).isEmpty();
-        assertThat(repo.findAttestationsByEntryId(e.getId())).isEmpty();
+        assertThat(crossTenantRepo.listAll()).isEmpty();
+        assertThat(repo.findAttestationsByEntryId(e.getId(), DEFAULT_TENANT_ID)).isEmpty();
     }
 
     @Test
     void clear_resetsSequenceCountersSoNextSessionStartsAt1() {
         UUID subjectId = UUID.randomUUID();
         MemoryTestEntry session1Entry = entry(subjectId, LedgerEntryType.EVENT);
-        repo.save(session1Entry);
+        repo.save(session1Entry, DEFAULT_TENANT_ID);
         assertThat(session1Entry.getSequenceNumber()).isEqualTo(1);
 
         repo.clear();
 
         MemoryTestEntry session2Entry = entry(subjectId, LedgerEntryType.EVENT);
-        repo.save(session2Entry);
+        repo.save(session2Entry, DEFAULT_TENANT_ID);
         assertThat(session2Entry.getSequenceNumber())
                 .as("sequence counter resets to 1 after clear — new session starts fresh")
                 .isEqualTo(1);

@@ -26,6 +26,7 @@ import io.casehub.ledger.runtime.service.LedgerMerkleTree;
 import io.casehub.ledger.runtime.service.model.VerificationResult;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.junit.QuarkusTest;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 @QuarkusTest
 class AgentSignatureVerificationServiceIT {
@@ -48,7 +49,7 @@ class AgentSignatureVerificationServiceIT {
         e.actorId = actorId;
         e.actorType = ActorType.SYSTEM;
         e.actorRole = "Tester";
-        return (TestEntry) repo.save(e);
+        return (TestEntry) repo.save(e, DEFAULT_TENANT_ID);
     }
 
     private static AgentSignature signEntry(final TestEntry e, final KeyPair kp) {
@@ -65,7 +66,7 @@ class AgentSignatureVerificationServiceIT {
         final UUID sub = UUID.randomUUID();
         final TestEntry e = seedEntry(sub, "unsigned-actor");
 
-        assertThat(signatureService.verifyAgentSignature(e.id))
+        assertThat(signatureService.verifyAgentSignature(e.id, DEFAULT_TENANT_ID))
                 .isEqualTo(VerificationResult.UNSIGNED);
     }
 
@@ -78,7 +79,7 @@ class AgentSignatureVerificationServiceIT {
         signEntry(e, kp);
         em.flush();
 
-        assertThat(signatureService.verifyAgentSignature(e.id))
+        assertThat(signatureService.verifyAgentSignature(e.id, DEFAULT_TENANT_ID))
                 .isEqualTo(VerificationResult.VALID);
     }
 
@@ -92,7 +93,7 @@ class AgentSignatureVerificationServiceIT {
         e.agentSignature[0] ^= 0xFF;
         em.flush();
 
-        assertThat(signatureService.verifyAgentSignature(e.id))
+        assertThat(signatureService.verifyAgentSignature(e.id, DEFAULT_TENANT_ID))
                 .isEqualTo(VerificationResult.INVALID);
     }
 
@@ -100,7 +101,7 @@ class AgentSignatureVerificationServiceIT {
     @Transactional
     void verifyAgentSignature_unknownEntry_throwsIllegalArgument() {
         final UUID nonexistent = UUID.randomUUID();
-        assertThatThrownBy(() -> signatureService.verifyAgentSignature(nonexistent))
+        assertThatThrownBy(() -> signatureService.verifyAgentSignature(nonexistent, DEFAULT_TENANT_ID))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -114,7 +115,7 @@ class AgentSignatureVerificationServiceIT {
         e.actorId = "impersonator-actor";
         em.flush();
 
-        assertThat(signatureService.verifyAgentSignature(e.id))
+        assertThat(signatureService.verifyAgentSignature(e.id, DEFAULT_TENANT_ID))
                 .isEqualTo(VerificationResult.INVALID);
     }
 
@@ -129,9 +130,9 @@ class AgentSignatureVerificationServiceIT {
 
         final Instant compromisedSince = e.occurredAt.minusSeconds(60);
         rotationService.recordRotation("claude:reviewer@v1", sig.keyRef(), null,
-                KeyRotationReason.COMPROMISED, compromisedSince);
+                KeyRotationReason.COMPROMISED, compromisedSince, DEFAULT_TENANT_ID);
 
-        assertThat(signatureService.verifyAgentSignature(e.id))
+        assertThat(signatureService.verifyAgentSignature(e.id, DEFAULT_TENANT_ID))
                 .isEqualTo(VerificationResult.SUSPECT);
     }
 
@@ -146,9 +147,9 @@ class AgentSignatureVerificationServiceIT {
 
         final Instant compromisedSince = e.occurredAt.plusSeconds(3600);
         rotationService.recordRotation("claude:reviewer@v1", sig.keyRef(), null,
-                KeyRotationReason.COMPROMISED, compromisedSince);
+                KeyRotationReason.COMPROMISED, compromisedSince, DEFAULT_TENANT_ID);
 
-        assertThat(signatureService.verifyAgentSignature(e.id))
+        assertThat(signatureService.verifyAgentSignature(e.id, DEFAULT_TENANT_ID))
                 .isEqualTo(VerificationResult.VALID);
     }
 
@@ -165,9 +166,9 @@ class AgentSignatureVerificationServiceIT {
         final String newKeyRef = AgentSignature.signWith(gen.generateKeyPair(), new byte[0]).keyRef();
         rotationService.recordRotation("claude:reviewer@v1", sig.keyRef(),
                 newKeyRef,
-                KeyRotationReason.SCHEDULED, e.occurredAt.minusSeconds(60));
+                KeyRotationReason.SCHEDULED, e.occurredAt.minusSeconds(60), DEFAULT_TENANT_ID);
 
-        assertThat(signatureService.verifyAgentSignature(e.id))
+        assertThat(signatureService.verifyAgentSignature(e.id, DEFAULT_TENANT_ID))
                 .isEqualTo(VerificationResult.VALID);
     }
 
@@ -186,9 +187,9 @@ class AgentSignatureVerificationServiceIT {
 
         final Instant compromisedSince = e.occurredAt.minusSeconds(60);
         rotationService.recordRotation("claude:reviewer@v1", sig.keyRef(), null,
-                KeyRotationReason.COMPROMISED, compromisedSince);
+                KeyRotationReason.COMPROMISED, compromisedSince, DEFAULT_TENANT_ID);
 
-        signatureService.verifyAgentSignature(e.id);
+        signatureService.verifyAgentSignature(e.id, DEFAULT_TENANT_ID);
 
         assertThat(eventCapture.syncEvents()).hasSize(1);
         final AgentSignatureSuspectEvent event = eventCapture.syncEvents().get(0);
@@ -209,7 +210,7 @@ class AgentSignatureVerificationServiceIT {
         signEntry(e, kp);
         em.flush();
 
-        signatureService.verifyAgentSignature(e.id);
+        signatureService.verifyAgentSignature(e.id, DEFAULT_TENANT_ID);
 
         assertThat(eventCapture.syncEvents()).isEmpty();
     }
@@ -225,7 +226,7 @@ class AgentSignatureVerificationServiceIT {
         e.agentSignature[0] ^= 0xFF;
         em.flush();
 
-        signatureService.verifyAgentSignature(e.id);
+        signatureService.verifyAgentSignature(e.id, DEFAULT_TENANT_ID);
 
         assertThat(eventCapture.syncEvents()).isEmpty();
     }

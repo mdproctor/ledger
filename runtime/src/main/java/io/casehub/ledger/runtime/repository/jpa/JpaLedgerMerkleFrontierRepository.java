@@ -24,7 +24,7 @@ public class JpaLedgerMerkleFrontierRepository implements LedgerMerkleFrontierRe
     EntityManager em;
 
     @Override
-    public List<LedgerMerkleFrontier> findBySubjectId(final UUID subjectId) {
+    public List<LedgerMerkleFrontier> findBySubjectId(final UUID subjectId, final String tenancyId) {
         return em.createNamedQuery("LedgerMerkleFrontier.findBySubjectId", LedgerMerkleFrontier.class)
                 .setParameter("subjectId", subjectId)
                 .getResultList();
@@ -32,7 +32,7 @@ public class JpaLedgerMerkleFrontierRepository implements LedgerMerkleFrontierRe
 
     @Override
     @Transactional
-    public void replace(final UUID subjectId, final List<LedgerMerkleFrontier> newFrontier) {
+    public void replace(final UUID subjectId, final List<LedgerMerkleFrontier> newFrontier, final String tenancyId) {
         final Set<Integer> newLevels = newFrontier.stream()
                 .map(n -> n.level)
                 .collect(Collectors.toSet());

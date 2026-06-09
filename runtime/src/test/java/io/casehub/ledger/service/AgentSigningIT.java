@@ -31,6 +31,7 @@ import io.casehub.ledger.runtime.service.model.VerificationResult;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 @QuarkusTest
 class AgentSigningIT {
@@ -71,7 +72,7 @@ class AgentSigningIT {
         e.actorId = "claude:reviewer@v1";
         e.actorType = ActorType.AGENT;
         e.actorRole = "Reviewer";
-        return (TestEntry) repo.save(e);
+        return (TestEntry) repo.save(e, DEFAULT_TENANT_ID);
     }
 
     @Test
@@ -82,7 +83,7 @@ class AgentSigningIT {
 
         assertThat(e.agentSignature).as("enricher should have populated agentSignature").isNotNull();
         assertThat(e.agentPublicKey).as("enricher should have populated agentPublicKey").isNotNull();
-        assertThat(signatureService.verifyAgentSignature(e.id)).isEqualTo(VerificationResult.VALID);
+        assertThat(signatureService.verifyAgentSignature(e.id, DEFAULT_TENANT_ID)).isEqualTo(VerificationResult.VALID);
     }
 
     @Test
@@ -95,10 +96,10 @@ class AgentSigningIT {
         e.actorId = "system:noop";
         e.actorType = ActorType.SYSTEM;
         e.actorRole = "System";
-        final TestEntry saved = (TestEntry) repo.save(e);
+        final TestEntry saved = (TestEntry) repo.save(e, DEFAULT_TENANT_ID);
 
         assertThat(saved.agentSignature).isNull();
-        assertThat(signatureService.verifyAgentSignature(saved.id))
+        assertThat(signatureService.verifyAgentSignature(saved.id, DEFAULT_TENANT_ID))
                 .isEqualTo(VerificationResult.UNSIGNED);
     }
 
@@ -108,11 +109,11 @@ class AgentSigningIT {
         final UUID sub = UUID.randomUUID();
         final TestEntry e = seedSigned(sub, 1);
 
-        final LedgerEntry stored = repo.findEntryById(e.id).orElseThrow();
+        final LedgerEntry stored = repo.findEntryById(e.id, DEFAULT_TENANT_ID).orElseThrow();
         stored.agentSignature[0] ^= 0xFF;
         em.flush();
 
-        assertThat(signatureService.verifyAgentSignature(e.id)).isEqualTo(VerificationResult.INVALID);
+        assertThat(signatureService.verifyAgentSignature(e.id, DEFAULT_TENANT_ID)).isEqualTo(VerificationResult.INVALID);
     }
 
     @Test
@@ -122,6 +123,6 @@ class AgentSigningIT {
         seedSigned(sub, 1);
         seedSigned(sub, 2);
 
-        assertThat(verificationService.verify(sub)).isTrue();
+        assertThat(verificationService.verify(sub, DEFAULT_TENANT_ID)).isTrue();
     }
 }

@@ -22,12 +22,16 @@ public class InMemoryLedgerMerkleFrontierRepository implements LedgerMerkleFront
             new ConcurrentHashMap<>();
 
     @Override
-    public List<LedgerMerkleFrontier> findBySubjectId(final UUID subjectId) {
+    public List<LedgerMerkleFrontier> findBySubjectId(final UUID subjectId, final String tenancyId) {
+        // Frontier is keyed by subjectId — tenancyId is accepted for interface compliance but
+        // not used as an additional filter (subjects are already tenant-scoped upstream).
         return new ArrayList<>(frontierBySubject.getOrDefault(subjectId, Collections.emptyList()));
     }
 
     @Override
-    public void replace(final UUID subjectId, final List<LedgerMerkleFrontier> newFrontier) {
+    public void replace(final UUID subjectId, final List<LedgerMerkleFrontier> newFrontier,
+            final String tenancyId) {
+        // tenancyId accepted for interface compliance — frontier keyed by subjectId only.
         frontierBySubject.put(subjectId, List.copyOf(newFrontier));
     }
 

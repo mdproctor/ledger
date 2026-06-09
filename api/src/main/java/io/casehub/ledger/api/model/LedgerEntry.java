@@ -59,6 +59,13 @@ public abstract class LedgerEntry {
      */
     public UUID subjectId;
 
+    /**
+     * Tenant that owns this entry. Non-null, defaults to
+     * {@link io.casehub.platform.api.identity.TenancyConstants#DEFAULT_TENANT_ID}.
+     * Set at persist time by the repository — callers do not set this directly.
+     */
+    public String tenancyId;
+
     /** Position of this entry in the per-subject ledger sequence (1-based). */
     public int sequenceNumber;
 

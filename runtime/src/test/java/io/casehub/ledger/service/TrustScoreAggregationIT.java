@@ -24,6 +24,7 @@ import io.casehub.ledger.runtime.service.TrustScoreJob;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 /**
  * Integration tests for AttestationAggregator wired into TrustScoreJob.
@@ -125,7 +126,7 @@ class TrustScoreAggregationIT {
         e.actorType = ActorType.AGENT;
         e.actorRole = "Reviewer";
         e.occurredAt = Instant.now();
-        return (TestEntry) repo.save(e);
+        return (TestEntry) repo.save(e, DEFAULT_TENANT_ID);
     }
 
     private void attest(final UUID entryId, final UUID subjectId,

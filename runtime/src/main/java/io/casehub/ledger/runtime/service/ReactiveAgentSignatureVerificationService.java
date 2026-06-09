@@ -40,7 +40,7 @@ public class ReactiveAgentSignatureVerificationService {
     Event<AgentSignatureSuspectEvent> suspectEvent;
 
     /**
-     * Reactive variant of {@link AgentSignatureVerificationService#verifyAgentSignature(UUID)}.
+     * Reactive variant of {@link AgentSignatureVerificationService#verifyAgentSignature(UUID, String)}.
      *
      * <p>
      * Uses {@link ReactiveLedgerEntryRepository} for the entry lookup and
@@ -48,12 +48,13 @@ public class ReactiveAgentSignatureVerificationService {
      * window check. Fires {@link AgentSignatureSuspectEvent} asynchronously via
      * {@code event.fireAsync()} when the result is {@link VerificationResult#SUSPECT}.
      *
-     * @param entryId the entry to verify
+     * @param entryId   the entry to verify
+     * @param tenancyId the tenant scope
      * @return a {@link Uni} completing with UNSIGNED, VALID, INVALID, or SUSPECT
      * @throws IllegalArgumentException if the entry does not exist
      */
-    public Uni<VerificationResult> verifyAgentSignatureAsync(final UUID entryId) {
-        return reactiveLedgerRepo.findEntryById(entryId)
+    public Uni<VerificationResult> verifyAgentSignatureAsync(final UUID entryId, final String tenancyId) {
+        return reactiveLedgerRepo.findEntryById(entryId, tenancyId)
                 .map(opt -> opt.orElseThrow(
                         () -> new IllegalArgumentException("Entry not found: " + entryId)))
                 .chain(entry -> {

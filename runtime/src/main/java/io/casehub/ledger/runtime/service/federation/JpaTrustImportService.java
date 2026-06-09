@@ -3,6 +3,7 @@ package io.casehub.ledger.runtime.service.federation;
 import java.time.Instant;
 
 import io.casehub.ledger.api.model.ActorTrustScore.ScoreType;
+import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
@@ -47,6 +48,7 @@ import jakarta.transaction.Transactional;
 public class JpaTrustImportService implements TrustImportService {
 
     @Inject
+    @CrossTenant
     ActorTrustScoreRepository trustRepo;
 
     @Override

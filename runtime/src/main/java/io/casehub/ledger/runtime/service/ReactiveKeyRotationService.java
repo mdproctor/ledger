@@ -70,6 +70,7 @@ public class ReactiveKeyRotationService {
      * @param newKeyRef      keyRef of the replacement key; null for pure revocation
      * @param reason         SCHEDULED or COMPROMISED
      * @param effectiveSince for COMPROMISED: entries signed on or after this time are SUSPECT
+     * @param tenancyId      the tenant scope
      * @return a {@link Uni} completing with the persisted {@link KeyRotationEntry}
      */
     public Uni<KeyRotationEntry> recordRotationAsync(
@@ -77,7 +78,8 @@ public class ReactiveKeyRotationService {
             final String previousKeyRef,
             final String newKeyRef,
             final KeyRotationReason reason,
-            final Instant effectiveSince) {
+            final Instant effectiveSince,
+            final String tenancyId) {
 
         Objects.requireNonNull(actorId, "actorId");
         final KeyRotationEntry entry = new KeyRotationEntry();
@@ -90,7 +92,7 @@ public class ReactiveKeyRotationService {
         entry.newKeyRef = newKeyRef;
         entry.reason = reason;
         entry.effectiveSince = effectiveSince;
-        return reactiveLedgerRepo.save(entry)
+        return reactiveLedgerRepo.save(entry, tenancyId)
                 .map(e -> (KeyRotationEntry) e)
                 // Fire-and-forget: observer failure is invisible; benign for cache eviction
                 .invoke(e -> keyRotatedEvent.fireAsync(

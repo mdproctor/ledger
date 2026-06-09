@@ -30,12 +30,13 @@ public class LedgerProvExportService {
      * Export the complete provenance graph for the given subject as PROV-JSON-LD.
      *
      * @param subjectId the aggregate identifier
+     * @param tenancyId the tenant scope
      * @return pretty-printed PROV-JSON-LD string
      * @throws IllegalArgumentException if no entries exist for the subject
      */
     @Transactional
-    public String exportSubject(final UUID subjectId) {
-        final List<LedgerEntry> entries = ledgerRepo.findBySubjectId(subjectId);
+    public String exportSubject(final UUID subjectId, final String tenancyId) {
+        final List<LedgerEntry> entries = ledgerRepo.findBySubjectId(subjectId, tenancyId);
         if (entries.isEmpty()) {
             throw new IllegalArgumentException("No entries found for subject: " + subjectId);
         }

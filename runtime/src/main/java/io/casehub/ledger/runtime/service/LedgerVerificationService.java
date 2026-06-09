@@ -32,8 +32,8 @@ public class LedgerVerificationService {
 
     /** Return the current Merkle tree root for a subject. */
     @Transactional
-    public String treeRoot(final UUID subjectId) {
-        final List<LedgerMerkleFrontier> frontier = frontierRepo.findBySubjectId(subjectId);
+    public String treeRoot(final UUID subjectId, final String tenancyId) {
+        final List<LedgerMerkleFrontier> frontier = frontierRepo.findBySubjectId(subjectId, tenancyId);
         if (frontier.isEmpty()) {
             throw new IllegalStateException("No entries for subject " + subjectId);
         }
@@ -46,17 +46,17 @@ public class LedgerVerificationService {
      * The returned proof carries the authoritative root from the stored frontier.
      */
     @Transactional
-    public InclusionProof inclusionProof(final UUID entryId) {
-        final LedgerEntry entry = ledgerRepo.findEntryById(entryId).orElse(null);
+    public InclusionProof inclusionProof(final UUID entryId, final String tenancyId) {
+        final LedgerEntry entry = ledgerRepo.findEntryById(entryId, tenancyId).orElse(null);
         if (entry == null)
             throw new IllegalArgumentException("Entry not found: " + entryId);
 
-        final List<LedgerEntry> allForSubject = ledgerRepo.findBySubjectId(entry.subjectId);
+        final List<LedgerEntry> allForSubject = ledgerRepo.findBySubjectId(entry.subjectId, tenancyId);
         final List<String> leafHashes = allForSubject.stream()
                 .map(e -> e.digest)
                 .toList();
         final int k = entry.sequenceNumber - 1;
-        final String root = treeRoot(entry.subjectId);
+        final String root = treeRoot(entry.subjectId, tenancyId);
         final InclusionProof proof = LedgerMerkleTree.inclusionProof(
                 entryId, k, leafHashes.size(), leafHashes);
         return new InclusionProof(entryId, k, leafHashes.size(),
@@ -68,8 +68,8 @@ public class LedgerVerificationService {
      * Returns false if any entry's stored digest doesn't match its canonical hash.
      */
     @Transactional
-    public boolean verify(final UUID subjectId) {
-        final List<LedgerEntry> entries = ledgerRepo.findBySubjectId(subjectId);
+    public boolean verify(final UUID subjectId, final String tenancyId) {
+        final List<LedgerEntry> entries = ledgerRepo.findBySubjectId(subjectId, tenancyId);
         List<LedgerMerkleFrontier> frontier = new ArrayList<>();
         for (final LedgerEntry entry : entries) {
             final String expected = LedgerMerkleTree.leafHash(entry);
@@ -80,7 +80,7 @@ public class LedgerVerificationService {
         if (frontier.isEmpty())
             return true;
         final String computed = LedgerMerkleTree.treeRoot(frontier);
-        final String stored = treeRoot(subjectId);
+        final String stored = treeRoot(subjectId, tenancyId);
         return computed.equals(stored);
     }
 }

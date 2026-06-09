@@ -19,6 +19,7 @@ import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 /**
  * End-to-end integration tests for {@link LedgerErasureService}.
@@ -73,11 +74,11 @@ class LedgerErasureServiceIT {
 
         saveEntry(actorId);
 
-        assertThat(repo.findByActorId(actorId, from, to)).hasSize(1);
+        assertThat(repo.findByActorId(actorId, from, to, DEFAULT_TENANT_ID)).hasSize(1);
 
         erasureService.erase(actorId);
 
-        assertThat(repo.findByActorId(actorId, from, to)).isEmpty();
+        assertThat(repo.findByActorId(actorId, from, to, DEFAULT_TENANT_ID)).isEmpty();
     }
 
     // ── Correctness: erase twice is idempotent ────────────────────────────────
@@ -106,6 +107,6 @@ class LedgerErasureServiceIT {
         entry.actorType = ActorType.AGENT;
         entry.actorRole = "Classifier";
         entry.occurredAt = Instant.now();
-        repo.save(entry);
+        repo.save(entry, DEFAULT_TENANT_ID);
     }
 }

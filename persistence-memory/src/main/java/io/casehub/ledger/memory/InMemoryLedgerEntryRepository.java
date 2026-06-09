@@ -1,14 +1,10 @@
 package io.casehub.ledger.memory;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -23,7 +19,6 @@ import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
 
 import io.casehub.ledger.api.model.CapabilityTag;
-import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.model.LedgerEntry;
@@ -44,6 +39,11 @@ import io.casehub.ledger.runtime.service.LedgerMerkleTree;
  * short-lived processes (test suites, single game sessions). For long-running processes
  * that span multiple sessions, call {@link #clear()} at each session boundary to prevent
  * unbounded growth (see casehubio/ledger#117).
+ *
+ * <p>All query methods are tenant-scoped — they filter results by {@code tenancyId}.
+ * Cross-tenant queries are handled by {@link InMemoryCrossTenantLedgerEntryRepository},
+ * which delegates to this class's internal {@link #allEntries()} and {@link #allAttestations()}
+ * accessors.
  *
  * <p>Activated via {@code @Alternative @Priority(1)} — consumers add this class to
  * {@code quarkus.arc.selected-alternatives} to displace the JPA default.
@@ -82,7 +82,9 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
     private final ConcurrentHashMap<UUID, AtomicInteger> sequenceCounters = new ConcurrentHashMap<>();
 
     @Override
-    public LedgerEntry save(final LedgerEntry entry) {
+    public LedgerEntry save(final LedgerEntry entry, final String tenancyId) {
+        entry.tenancyId = tenancyId;
+
         if (entry.id == null) {
             entry.id = UUID.randomUUID();
         }
@@ -116,10 +118,10 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
         entries.put(entry.id, entry);
 
         if (ledgerConfig.hashChain().enabled()) {
-            final List<LedgerMerkleFrontier> current = frontierRepo.findBySubjectId(entry.subjectId);
+            final List<LedgerMerkleFrontier> current = frontierRepo.findBySubjectId(entry.subjectId, tenancyId);
             final List<LedgerMerkleFrontier> newFrontier =
                     LedgerMerkleTree.append(entry.digest, current, entry.subjectId);
-            frontierRepo.replace(entry.subjectId, newFrontier);
+            frontierRepo.replace(entry.subjectId, newFrontier, tenancyId);
             final String newRoot = LedgerMerkleTree.treeRoot(newFrontier);
             merklePublisher.publish(entry.subjectId, entry.sequenceNumber, newRoot);
         }
@@ -128,8 +130,9 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
     }
 
     @Override
-    public List<LedgerEntry> findBySubjectId(final UUID subjectId) {
+    public List<LedgerEntry> findBySubjectId(final UUID subjectId, final String tenancyId) {
         return entries.values().stream()
+                .filter(e -> tenancyId.equals(e.tenancyId))
                 .filter(e -> subjectId.equals(e.subjectId))
                 .sorted(Comparator.comparingInt(e -> e.sequenceNumber))
                 .collect(Collectors.toList());
@@ -137,8 +140,9 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
 
     @Override
     public List<LedgerEntry> findBySubjectIdAndTimeRange(final UUID subjectId,
-            final Instant from, final Instant to) {
+            final Instant from, final Instant to, final String tenancyId) {
         return entries.values().stream()
+                .filter(e -> tenancyId.equals(e.tenancyId))
                 .filter(e -> subjectId.equals(e.subjectId))
                 .filter(e -> !e.occurredAt.isBefore(from) && !e.occurredAt.isAfter(to))
                 .sorted(Comparator.comparing(e -> e.occurredAt))
@@ -146,19 +150,26 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
     }
 
     @Override
-    public Optional<LedgerEntry> findLatestBySubjectId(final UUID subjectId) {
+    public Optional<LedgerEntry> findLatestBySubjectId(final UUID subjectId, final String tenancyId) {
         return entries.values().stream()
+                .filter(e -> tenancyId.equals(e.tenancyId))
                 .filter(e -> subjectId.equals(e.subjectId))
                 .max(Comparator.comparingInt(e -> e.sequenceNumber));
     }
 
     @Override
-    public Optional<LedgerEntry> findEntryById(final UUID id) {
-        return Optional.ofNullable(entries.get(id));
+    public Optional<LedgerEntry> findEntryById(final UUID id, final String tenancyId) {
+        return Optional.ofNullable(entries.get(id))
+                .filter(e -> tenancyId.equals(e.tenancyId));
     }
 
     @Override
-    public List<LedgerAttestation> findAttestationsByEntryId(final UUID ledgerEntryId) {
+    public List<LedgerAttestation> findAttestationsByEntryId(final UUID ledgerEntryId, final String tenancyId) {
+        // Validate the entry belongs to this tenant
+        final LedgerEntry entry = entries.get(ledgerEntryId);
+        if (entry == null || !tenancyId.equals(entry.tenancyId)) {
+            return List.of();
+        }
         return attestations.values().stream()
                 .filter(a -> ledgerEntryId.equals(a.ledgerEntryId))
                 .sorted(Comparator.comparing(a -> a.occurredAt))
@@ -166,7 +177,7 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
     }
 
     @Override
-    public LedgerAttestation saveAttestation(final LedgerAttestation attestation) {
+    public LedgerAttestation saveAttestation(final LedgerAttestation attestation, final String tenancyId) {
         if (attestation.id == null) {
             attestation.id = UUID.randomUUID();
         }
@@ -176,9 +187,16 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
         if (attestation.attestorId != null) {
             attestation.attestorId = actorIdentityProvider.tokenise(attestation.attestorId);
         }
+
+        // Validate the entry belongs to the specified tenant
+        final LedgerEntry entry = entries.get(attestation.ledgerEntryId);
+        if (entry != null && !tenancyId.equals(entry.tenancyId)) {
+            throw new IllegalArgumentException(
+                    "LedgerEntry " + attestation.ledgerEntryId + " does not belong to tenant " + tenancyId);
+        }
+
         attestations.put(attestation.id, attestation);
 
-        final LedgerEntry entry = entries.get(attestation.ledgerEntryId);
         if (entry != null && entry.actorId != null) {
             attestationRecordedEvent.fire(
                     new AttestationRecordedEvent(entry.actorId, entry.id, attestation.id));
@@ -191,41 +209,11 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
     }
 
     @Override
-    public List<LedgerEntry> listAll() {
-        return new ArrayList<>(entries.values());
-    }
-
-    @Override
-    public List<LedgerEntry> findAllEvents() {
-        return entries.values().stream()
-                .filter(e -> LedgerEntryType.EVENT.equals(e.entryType))
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public List<LedgerEntry> findEventsByActorId(final String actorId) {
-        final String token = actorIdentityProvider.tokeniseForQuery(actorId);
-        return entries.values().stream()
-                .filter(e -> LedgerEntryType.EVENT.equals(e.entryType))
-                .filter(e -> token.equals(e.actorId))
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public Map<UUID, List<LedgerAttestation>> findAttestationsForEntries(final Set<UUID> entryIds) {
-        if (entryIds.isEmpty()) {
-            return Collections.emptyMap();
-        }
-        return attestations.values().stream()
-                .filter(a -> entryIds.contains(a.ledgerEntryId))
-                .collect(Collectors.groupingBy(a -> a.ledgerEntryId));
-    }
-
-    @Override
     public List<LedgerEntry> findByActorId(final String actorId,
-            final Instant from, final Instant to) {
+            final Instant from, final Instant to, final String tenancyId) {
         final String token = actorIdentityProvider.tokeniseForQuery(actorId);
         return entries.values().stream()
+                .filter(e -> tenancyId.equals(e.tenancyId))
                 .filter(e -> token.equals(e.actorId))
                 .filter(e -> !e.occurredAt.isBefore(from) && !e.occurredAt.isAfter(to))
                 .sorted(Comparator.comparing(e -> e.occurredAt))
@@ -234,8 +222,9 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
 
     @Override
     public List<LedgerEntry> findByActorRole(final String actorRole,
-            final Instant from, final Instant to) {
+            final Instant from, final Instant to, final String tenancyId) {
         return entries.values().stream()
+                .filter(e -> tenancyId.equals(e.tenancyId))
                 .filter(e -> actorRole.equals(e.actorRole))
                 .filter(e -> !e.occurredAt.isBefore(from) && !e.occurredAt.isAfter(to))
                 .sorted(Comparator.comparing(e -> e.occurredAt))
@@ -243,16 +232,9 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
     }
 
     @Override
-    public List<LedgerEntry> findByTimeRange(final Instant from, final Instant to) {
+    public List<LedgerEntry> findCausedBy(final UUID entryId, final String tenancyId) {
         return entries.values().stream()
-                .filter(e -> !e.occurredAt.isBefore(from) && !e.occurredAt.isAfter(to))
-                .sorted(Comparator.comparing(e -> e.occurredAt))
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public List<LedgerEntry> findCausedBy(final UUID entryId) {
-        return entries.values().stream()
+                .filter(e -> tenancyId.equals(e.tenancyId))
                 .filter(e -> entryId.equals(e.causedByEntryId))
                 .sorted(Comparator.comparing(e -> e.occurredAt))
                 .collect(Collectors.toList());
@@ -260,7 +242,12 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
 
     @Override
     public List<LedgerAttestation> findAttestationsByEntryIdAndCapabilityTag(
-            final UUID entryId, final String capabilityTag) {
+            final UUID entryId, final String capabilityTag, final String tenancyId) {
+        // Validate the entry belongs to this tenant
+        final LedgerEntry entry = entries.get(entryId);
+        if (entry == null || !tenancyId.equals(entry.tenancyId)) {
+            return List.of();
+        }
         return attestations.values().stream()
                 .filter(a -> entryId.equals(a.ledgerEntryId))
                 .filter(a -> capabilityTag.equals(a.capabilityTag))
@@ -269,24 +256,34 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
     }
 
     @Override
-    public List<LedgerAttestation> findAttestationsByEntryIdGlobal(final UUID entryId) {
-        return findAttestationsByEntryIdAndCapabilityTag(entryId, CapabilityTag.GLOBAL);
+    public List<LedgerAttestation> findAttestationsByEntryIdGlobal(final UUID entryId, final String tenancyId) {
+        return findAttestationsByEntryIdAndCapabilityTag(entryId, CapabilityTag.GLOBAL, tenancyId);
     }
 
     @Override
     public List<LedgerAttestation> findAttestationsByAttestorIdAndCapabilityTag(
-            final String attestorId, final String capabilityTag) {
+            final String attestorId, final String capabilityTag, final String tenancyId) {
         final String token = actorIdentityProvider.tokeniseForQuery(attestorId);
+        // Filter attestations to those whose linked entry belongs to this tenant
         return attestations.values().stream()
                 .filter(a -> token.equals(a.attestorId))
                 .filter(a -> capabilityTag.equals(a.capabilityTag))
+                .filter(a -> {
+                    final LedgerEntry e = entries.get(a.ledgerEntryId);
+                    return e != null && tenancyId.equals(e.tenancyId);
+                })
                 .sorted(Comparator.comparing(a -> a.occurredAt))
                 .collect(Collectors.toList());
     }
 
-    /** Package-private accessor — called by sibling in-memory repositories via method dispatch. */
+    /** Package-private accessor — called by sibling in-memory repositories and cross-tenant delegates. */
     Collection<LedgerEntry> allEntries() {
         return entries.values();
+    }
+
+    /** Package-private accessor — called by cross-tenant delegate for attestation queries. */
+    Collection<LedgerAttestation> allAttestations() {
+        return attestations.values();
     }
 
     /**

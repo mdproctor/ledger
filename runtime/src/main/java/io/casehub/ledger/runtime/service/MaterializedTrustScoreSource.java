@@ -12,6 +12,7 @@ import io.quarkus.arc.DefaultBean;
 import io.casehub.ledger.api.model.ActorTrustScore.ScoreType;
 import io.casehub.ledger.api.spi.TrustScoreSource;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
 
 /**
@@ -27,7 +28,7 @@ public class MaterializedTrustScoreSource implements TrustScoreSource {
     private final ActorTrustScoreRepository repository;
 
     @Inject
-    public MaterializedTrustScoreSource(final ActorTrustScoreRepository repository) {
+    public MaterializedTrustScoreSource(@CrossTenant final ActorTrustScoreRepository repository) {
         this.repository = repository;
     }
 

@@ -22,6 +22,7 @@ import io.casehub.ledger.runtime.service.KeyRotationService;
 import io.casehub.ledger.runtime.service.ReactiveKeyRotationService;
 import io.casehub.ledger.runtime.service.model.CompromisedWindow;
 import io.quarkus.test.junit.QuarkusTest;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 /**
  * Integration tests for {@link ReactiveKeyRotationService}.
@@ -77,9 +78,9 @@ class ReactiveKeyRotationServiceIT {
         final Instant compromisedSince = Instant.now().minusSeconds(3600);
 
         rotationService.recordRotation(actorId, oldKeyRef, newKeyRef,
-                KeyRotationReason.SCHEDULED, Instant.now());
+                KeyRotationReason.SCHEDULED, Instant.now(), DEFAULT_TENANT_ID);
         rotationService.recordRotation(actorId, oldKeyRef, null,
-                KeyRotationReason.COMPROMISED, compromisedSince);
+                KeyRotationReason.COMPROMISED, compromisedSince, DEFAULT_TENANT_ID);
 
         final List<CompromisedWindow> windows = reactiveRotationService
                 .compromisedWindowsAsync(actorId, oldKeyRef)
@@ -98,9 +99,9 @@ class ReactiveKeyRotationServiceIT {
         final String keyRef2 = newKeyRef();
 
         rotationService.recordRotation(actorId, keyRef1, keyRef2,
-                KeyRotationReason.SCHEDULED, Instant.now().minusSeconds(60));
+                KeyRotationReason.SCHEDULED, Instant.now().minusSeconds(60), DEFAULT_TENANT_ID);
         rotationService.recordRotation(actorId, keyRef2, null,
-                KeyRotationReason.COMPROMISED, Instant.now());
+                KeyRotationReason.COMPROMISED, Instant.now(), DEFAULT_TENANT_ID);
 
         final List<KeyRotationEntry> history = reactiveRotationService
                 .rotationHistoryAsync(actorId)
@@ -120,7 +121,7 @@ class ReactiveKeyRotationServiceIT {
 
         final KeyRotationEntry entry = reactiveRotationService.recordRotationAsync(
                 actorId, oldKeyRef, newKeyRef,
-                KeyRotationReason.SCHEDULED, Instant.now())
+                KeyRotationReason.SCHEDULED, Instant.now(), DEFAULT_TENANT_ID)
                 .await().atMost(Duration.ofSeconds(5));
 
         assertThat(entry.id).isNotNull();
@@ -136,7 +137,7 @@ class ReactiveKeyRotationServiceIT {
 
         final KeyRotationEntry entry = reactiveRotationService.recordRotationAsync(
                 actorId, oldKeyRef, null,
-                KeyRotationReason.COMPROMISED, Instant.now())
+                KeyRotationReason.COMPROMISED, Instant.now(), DEFAULT_TENANT_ID)
                 .await().atMost(Duration.ofSeconds(5));
 
         final UUID expectedSubjectId = UUID.nameUUIDFromBytes(
@@ -154,7 +155,7 @@ class ReactiveKeyRotationServiceIT {
 
         reactiveRotationService.recordRotationAsync(
                 actorId, oldRef, newRef,
-                KeyRotationReason.SCHEDULED, Instant.now())
+                KeyRotationReason.SCHEDULED, Instant.now(), DEFAULT_TENANT_ID)
                 .await().atMost(Duration.ofSeconds(5));
 
         // fireAsync is fire-and-forget; give it a moment to complete

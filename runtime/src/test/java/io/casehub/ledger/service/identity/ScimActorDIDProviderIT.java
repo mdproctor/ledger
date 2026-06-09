@@ -1,6 +1,7 @@
 package io.casehub.ledger.service.identity;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
@@ -129,7 +130,7 @@ class ScimActorDIDProviderIT {
         keyRotationService.recordRotation(ACTOR_ID, keyRef,
                 AgentSignature.signWith(
                         KeyPairGenerator.getInstance("Ed25519").generateKeyPair(), new byte[0]).keyRef(),
-                KeyRotationReason.SCHEDULED, Instant.now());
+                KeyRotationReason.SCHEDULED, Instant.now(), DEFAULT_TENANT_ID);
 
         // Post-rotation explicit call — cache was evicted, so this must call SCIM and return the updated DID
         assertThat(actorDIDProvider.didFor(ACTOR_ID)).contains(updatedDid);

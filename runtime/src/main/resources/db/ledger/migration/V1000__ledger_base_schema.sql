@@ -18,6 +18,7 @@ CREATE TABLE ledger_entry (
     id                   UUID            NOT NULL,
     dtype                VARCHAR(50)     NOT NULL,
     subject_id           UUID            NOT NULL,
+    tenancy_id           VARCHAR(255)    NOT NULL DEFAULT '278776f9-e1b0-46fb-9032-8bddebdcf9ce',
     sequence_number      INT             NOT NULL,
     entry_type           VARCHAR(20)     NOT NULL,
     actor_id             VARCHAR(255),
@@ -40,6 +41,7 @@ CREATE TABLE ledger_entry (
 
 CREATE UNIQUE INDEX idx_ledger_entry_subject_seq ON ledger_entry (subject_id, sequence_number);
 CREATE INDEX idx_ledger_entry_subject_id  ON ledger_entry (subject_id);
+CREATE INDEX idx_ledger_entry_tenancy ON ledger_entry (tenancy_id);
 CREATE INDEX idx_ledger_entry_trace ON ledger_entry (trace_id);
 CREATE INDEX idx_ledger_entry_caused_by   ON ledger_entry (caused_by_entry_id);
 CREATE INDEX idx_ledger_entry_actor       ON ledger_entry (actor_id);

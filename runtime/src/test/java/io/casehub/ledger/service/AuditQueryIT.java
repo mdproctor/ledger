@@ -14,9 +14,11 @@ import org.junit.jupiter.api.Test;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.LedgerEntry;
+import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.junit.QuarkusTest;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 /**
  * Integration tests for the three auditor-facing query methods on {@link LedgerEntryRepository}.
@@ -26,6 +28,9 @@ class AuditQueryIT {
 
     @Inject
     LedgerEntryRepository repo;
+
+    @Inject
+    CrossTenantLedgerEntryRepository crossTenantRepo;
 
     private final Instant t0 = Instant.parse("2026-01-01T00:00:00Z");
     private final Instant t1 = Instant.parse("2026-01-15T12:00:00Z");
@@ -42,7 +47,7 @@ class AuditQueryIT {
         seedEntry(actor, "Classifier", t2);
         seedEntry(actor, "Classifier", t3); // outside range
 
-        final List<LedgerEntry> results = repo.findByActorId(actor, t0, t2);
+        final List<LedgerEntry> results = repo.findByActorId(actor, t0, t2, DEFAULT_TENANT_ID);
 
         assertThat(results).hasSize(2);
         assertThat(results).allMatch(e -> !e.occurredAt.isAfter(t2));
@@ -55,7 +60,7 @@ class AuditQueryIT {
         seedEntry(actor, "Classifier", t1);
         seedEntry(actor, "Classifier", t2);
 
-        final List<LedgerEntry> results = repo.findByActorId(actor, t1, t2);
+        final List<LedgerEntry> results = repo.findByActorId(actor, t1, t2, DEFAULT_TENANT_ID);
 
         assertThat(results).hasSize(2);
     }
@@ -63,7 +68,7 @@ class AuditQueryIT {
     @Test
     @Transactional
     void findByActorId_noEntries_returnsEmpty() {
-        final List<LedgerEntry> results = repo.findByActorId("actor-that-does-not-exist-" + UUID.randomUUID(), t0, t3);
+        final List<LedgerEntry> results = repo.findByActorId("actor-that-does-not-exist-" + UUID.randomUUID(), t0, t3, DEFAULT_TENANT_ID);
 
         assertThat(results).isEmpty();
     }
@@ -75,7 +80,7 @@ class AuditQueryIT {
         seedEntry(actor, "Classifier", t2);
         seedEntry(actor, "Classifier", t1);
 
-        final List<LedgerEntry> results = repo.findByActorId(actor, t0, t3);
+        final List<LedgerEntry> results = repo.findByActorId(actor, t0, t3, DEFAULT_TENANT_ID);
 
         assertThat(results).hasSize(2);
         assertThat(results.get(0).occurredAt).isEqualTo(t1);
@@ -92,7 +97,7 @@ class AuditQueryIT {
         seedEntry("actor-b", role, t2);
         seedEntry("actor-c", role, t3); // outside range
 
-        final List<LedgerEntry> results = repo.findByActorRole(role, t0, t2);
+        final List<LedgerEntry> results = repo.findByActorRole(role, t0, t2, DEFAULT_TENANT_ID);
 
         assertThat(results).hasSize(2);
         assertThat(results).allMatch(e -> e.actorRole.equals(role));
@@ -101,7 +106,7 @@ class AuditQueryIT {
     @Test
     @Transactional
     void findByActorRole_noEntries_returnsEmpty() {
-        final List<LedgerEntry> results = repo.findByActorRole("NonExistentRole-" + UUID.randomUUID(), t0, t3);
+        final List<LedgerEntry> results = repo.findByActorRole("NonExistentRole-" + UUID.randomUUID(), t0, t3, DEFAULT_TENANT_ID);
 
         assertThat(results).isEmpty();
     }
@@ -115,7 +120,7 @@ class AuditQueryIT {
         seedEntry(marker, "Classifier", t2);
         seedEntry(marker, "Classifier", t1);
 
-        final List<LedgerEntry> results = repo.findByTimeRange(t0, t3);
+        final List<LedgerEntry> results = crossTenantRepo.findByTimeRange(t0, t3);
         final List<LedgerEntry> mine = results.stream()
                 .filter(e -> marker.equals(e.actorId))
                 .toList();
@@ -137,6 +142,6 @@ class AuditQueryIT {
         e.actorType = ActorType.AGENT;
         e.actorRole = actorRole;
         e.occurredAt = occurredAt;
-        repo.save(e);
+        repo.save(e, DEFAULT_TENANT_ID);
     }
 }

@@ -14,6 +14,7 @@ import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.KeyRotationReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.KeyRotationEntry;
+import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import io.casehub.ledger.runtime.repository.KeyRotationRepository;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.service.model.CompromisedWindow;
@@ -30,6 +31,7 @@ import io.casehub.ledger.runtime.service.model.CompromisedWindow;
 public class KeyRotationService {
 
     @Inject
+    @CrossTenant
     KeyRotationRepository repository;
 
     @Inject
@@ -46,6 +48,7 @@ public class KeyRotationService {
      * @param newKeyRef      keyRef of the replacement key; null for pure revocation
      * @param reason         SCHEDULED or COMPROMISED
      * @param effectiveSince for COMPROMISED: entries signed on or after this time are SUSPECT
+     * @param tenancyId      the tenant scope
      * @return the persisted {@link KeyRotationEntry}
      */
     @Transactional
@@ -54,7 +57,8 @@ public class KeyRotationService {
             final String previousKeyRef,
             final String newKeyRef,
             final KeyRotationReason reason,
-            final Instant effectiveSince) {
+            final Instant effectiveSince,
+            final String tenancyId) {
 
         final KeyRotationEntry entry = new KeyRotationEntry();
         entry.actorId = actorId;
@@ -67,7 +71,7 @@ public class KeyRotationService {
         entry.newKeyRef = newKeyRef;
         entry.reason = reason;
         entry.effectiveSince = effectiveSince;
-        final KeyRotationEntry persisted = (KeyRotationEntry) ledgerRepo.save(entry);
+        final KeyRotationEntry persisted = (KeyRotationEntry) ledgerRepo.save(entry, tenancyId);
         keyRotatedEvent.fire(new AgentKeyRotatedEvent(actorId, previousKeyRef, newKeyRef));
         return persisted;
     }

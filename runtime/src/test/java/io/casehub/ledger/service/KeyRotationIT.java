@@ -33,6 +33,7 @@ import io.casehub.ledger.runtime.service.model.VerificationResult;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 @QuarkusTest
 class KeyRotationIT {
@@ -71,7 +72,7 @@ class KeyRotationIT {
         e.actorId = "claude:reviewer@v1";
         e.actorType = ActorType.AGENT;
         e.actorRole = "Reviewer";
-        return (TestEntry) repo.save(e);
+        return (TestEntry) repo.save(e, DEFAULT_TENANT_ID);
     }
 
     @Test
@@ -81,13 +82,13 @@ class KeyRotationIT {
         final TestEntry e = seedSigned(sub, 1);
 
         assertThat(e.agentKeyRef).isEqualTo(currentKeyRef);
-        assertThat(verificationService.verifyAgentSignature(e.id)).isEqualTo(VerificationResult.VALID);
+        assertThat(verificationService.verifyAgentSignature(e.id, DEFAULT_TENANT_ID)).isEqualTo(VerificationResult.VALID);
 
         rotationService.recordRotation("claude:reviewer@v1",
                 currentKeyRef, nextKeyRef,
-                KeyRotationReason.SCHEDULED, Instant.now());
+                KeyRotationReason.SCHEDULED, Instant.now(), DEFAULT_TENANT_ID);
 
-        assertThat(verificationService.verifyAgentSignature(e.id)).isEqualTo(VerificationResult.VALID);
+        assertThat(verificationService.verifyAgentSignature(e.id, DEFAULT_TENANT_ID)).isEqualTo(VerificationResult.VALID);
     }
 
     @Test
@@ -96,14 +97,14 @@ class KeyRotationIT {
         final UUID sub = UUID.randomUUID();
         final TestEntry e = seedSigned(sub, 1);
 
-        assertThat(verificationService.verifyAgentSignature(e.id)).isEqualTo(VerificationResult.VALID);
+        assertThat(verificationService.verifyAgentSignature(e.id, DEFAULT_TENANT_ID)).isEqualTo(VerificationResult.VALID);
 
         rotationService.recordRotation("claude:reviewer@v1",
                 currentKeyRef, null,
                 KeyRotationReason.COMPROMISED,
-                e.occurredAt.minusSeconds(60));
+                e.occurredAt.minusSeconds(60), DEFAULT_TENANT_ID);
 
-        assertThat(verificationService.verifyAgentSignature(e.id)).isEqualTo(VerificationResult.SUSPECT);
+        assertThat(verificationService.verifyAgentSignature(e.id, DEFAULT_TENANT_ID)).isEqualTo(VerificationResult.SUSPECT);
     }
 
     @Test
@@ -112,10 +113,10 @@ class KeyRotationIT {
         final String actorId = "claude:reviewer@rotation-history-" + UUID.randomUUID();
         rotationService.recordRotation(actorId,
                 currentKeyRef, nextKeyRef,
-                KeyRotationReason.SCHEDULED, Instant.now());
+                KeyRotationReason.SCHEDULED, Instant.now(), DEFAULT_TENANT_ID);
         rotationService.recordRotation(actorId,
                 nextKeyRef, null,
-                KeyRotationReason.COMPROMISED, Instant.now());
+                KeyRotationReason.COMPROMISED, Instant.now(), DEFAULT_TENANT_ID);
 
         final List<KeyRotationEntry> history = rotationService.rotationHistory(actorId);
         assertThat(history).hasSize(2);
@@ -128,7 +129,7 @@ class KeyRotationIT {
     void keyRotationEntry_subjectId_isDeterministic() {
         final KeyRotationEntry entry = rotationService.recordRotation(
                 "claude:reviewer@v1", currentKeyRef, nextKeyRef,
-                KeyRotationReason.SCHEDULED, Instant.now());
+                KeyRotationReason.SCHEDULED, Instant.now(), DEFAULT_TENANT_ID);
 
         final UUID expected = UUID.nameUUIDFromBytes(
                 "claude:reviewer@v1".getBytes(StandardCharsets.UTF_8));

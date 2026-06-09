@@ -31,17 +31,19 @@ public interface LedgerEntryRepository {
      * start of the sequence without affecting the contiguity invariant.
      *
      * @param entry the entry to persist; {@code subjectId} must not be {@code null}
+     * @param tenancyId the tenant scope
      * @return the persisted entry with {@code sequenceNumber} assigned
      */
-    LedgerEntry save(LedgerEntry entry);
+    LedgerEntry save(LedgerEntry entry, String tenancyId);
 
     /**
      * Return all ledger entries for the given subject in sequence order (ascending).
      *
      * @param subjectId the aggregate identifier
+     * @param tenancyId the tenant scope
      * @return ordered list of entries; empty if none exist
      */
-    List<LedgerEntry> findBySubjectId(UUID subjectId);
+    List<LedgerEntry> findBySubjectId(UUID subjectId, String tenancyId);
 
     /**
      * Return all ledger entries for the given subject whose {@code occurredAt} falls
@@ -50,76 +52,46 @@ public interface LedgerEntryRepository {
      * @param subjectId the aggregate identifier
      * @param from start of the time range (inclusive)
      * @param to end of the time range (inclusive)
+     * @param tenancyId the tenant scope
      * @return ordered list; empty if none match
      */
-    List<LedgerEntry> findBySubjectIdAndTimeRange(UUID subjectId, Instant from, Instant to);
+    List<LedgerEntry> findBySubjectIdAndTimeRange(UUID subjectId, Instant from, Instant to, String tenancyId);
 
     /**
      * Return the most recent ledger entry for the given subject, or empty if none.
      *
      * @param subjectId the aggregate identifier
+     * @param tenancyId the tenant scope
      * @return the latest entry, or empty if no entries exist
      */
-    Optional<LedgerEntry> findLatestBySubjectId(UUID subjectId);
+    Optional<LedgerEntry> findLatestBySubjectId(UUID subjectId, String tenancyId);
 
     /**
      * Return a ledger entry by its primary key.
      *
      * @param id the ledger entry UUID primary key
+     * @param tenancyId the tenant scope
      * @return the entry if found, or empty
      */
-    Optional<LedgerEntry> findEntryById(UUID id);
+    Optional<LedgerEntry> findEntryById(UUID id, String tenancyId);
 
     /**
      * Return all attestations for the given ledger entry, ordered by occurrence time ascending.
      *
      * @param ledgerEntryId the ledger entry UUID
+     * @param tenancyId the tenant scope
      * @return ordered list of attestations; empty if none exist
      */
-    List<LedgerAttestation> findAttestationsByEntryId(UUID ledgerEntryId);
+    List<LedgerAttestation> findAttestationsByEntryId(UUID ledgerEntryId, String tenancyId);
 
     /**
      * Persist a new attestation and return the saved instance.
      *
      * @param attestation the attestation to persist; must not be {@code null}
+     * @param tenancyId the tenant scope
      * @return the persisted attestation
      */
-    LedgerAttestation saveAttestation(LedgerAttestation attestation);
-
-    /**
-     * Return all ledger entries across all subjects (for retention and bulk operations).
-     *
-     * @return list of all entries; empty if none exist
-     */
-    List<LedgerEntry> listAll();
-
-    /**
-     * Return all EVENT-type ledger entries across all subjects (for trust score computation).
-     *
-     * @return list of all EVENT entries; empty if none exist
-     */
-    List<LedgerEntry> findAllEvents();
-
-    /**
-     * Return all EVENT-type ledger entries for the given actor.
-     *
-     * <p>
-     * Used by incremental trust score recomputation to fetch all EVENT entries
-     * for a single actor when their trust score needs to be recomputed. Filters
-     * by {@code entryType = EVENT} and {@code actorId}.
-     *
-     * @param actorId the actor identity to filter by
-     * @return list of EVENT entries for the actor; empty if none exist
-     */
-    List<LedgerEntry> findEventsByActorId(String actorId);
-
-    /**
-     * Return all attestations for the given set of ledger entry IDs, grouped by entry ID.
-     *
-     * @param entryIds the set of ledger entry UUIDs
-     * @return map from entry ID to its attestations; empty map if {@code entryIds} is empty
-     */
-    Map<UUID, List<LedgerAttestation>> findAttestationsForEntries(Set<UUID> entryIds);
+    LedgerAttestation saveAttestation(LedgerAttestation attestation, String tenancyId);
 
     /**
      * Return all ledger entries for the given actor whose {@code occurredAt} falls
@@ -137,9 +109,10 @@ public interface LedgerEntryRepository {
      * @param actorId the actor identity to filter by
      * @param from start of the time range (inclusive)
      * @param to end of the time range (inclusive)
+     * @param tenancyId the tenant scope
      * @return ordered list of entries; empty if none match
      */
-    List<LedgerEntry> findByActorId(String actorId, Instant from, Instant to);
+    List<LedgerEntry> findByActorId(String actorId, Instant from, Instant to, String tenancyId);
 
     /**
      * Return all ledger entries for the given actor role whose {@code occurredAt} falls
@@ -148,22 +121,10 @@ public interface LedgerEntryRepository {
      * @param actorRole the functional role to filter by (e.g. {@code "Classifier"})
      * @param from start of the time range (inclusive)
      * @param to end of the time range (inclusive)
+     * @param tenancyId the tenant scope
      * @return ordered list of entries; empty if none match
      */
-    List<LedgerEntry> findByActorRole(String actorRole, Instant from, Instant to);
-
-    /**
-     * Return all ledger entries whose {@code occurredAt} falls within
-     * [{@code from}, {@code to}] inclusive, ordered by {@code occurredAt} ascending.
-     *
-     * <p>
-     * Use for bulk audit exports and retention window queries.
-     *
-     * @param from start of the time range (inclusive)
-     * @param to end of the time range (inclusive)
-     * @return ordered list of entries; empty if none match
-     */
-    List<LedgerEntry> findByTimeRange(Instant from, Instant to);
+    List<LedgerEntry> findByActorRole(String actorRole, Instant from, Instant to, String tenancyId);
 
     /**
      * Return all ledger entries causally triggered by the given entry,
@@ -171,9 +132,10 @@ public interface LedgerEntryRepository {
      * traversal is the caller's responsibility.
      *
      * @param entryId the entry whose direct effects to retrieve
+     * @param tenancyId the tenant scope
      * @return ordered list; empty if none
      */
-    List<LedgerEntry> findCausedBy(UUID entryId);
+    List<LedgerEntry> findCausedBy(UUID entryId, String tenancyId);
 
     /**
      * Return all attestations for the given ledger entry scoped to the given capability tag,
@@ -182,9 +144,10 @@ public interface LedgerEntryRepository {
      *
      * @param entryId the ledger entry UUID
      * @param capabilityTag the capability tag to filter by; never {@code null}
+     * @param tenancyId the tenant scope
      * @return ordered list; empty if none match
      */
-    List<LedgerAttestation> findAttestationsByEntryIdAndCapabilityTag(UUID entryId, String capabilityTag);
+    List<LedgerAttestation> findAttestationsByEntryIdAndCapabilityTag(UUID entryId, String capabilityTag, String tenancyId);
 
     /**
      * Return all global attestations for the given ledger entry (where
@@ -192,9 +155,10 @@ public interface LedgerEntryRepository {
      * ordered by occurrence time ascending.
      *
      * @param entryId the ledger entry UUID
+     * @param tenancyId the tenant scope
      * @return ordered list; empty if none exist
      */
-    List<LedgerAttestation> findAttestationsByEntryIdGlobal(UUID entryId);
+    List<LedgerAttestation> findAttestationsByEntryIdGlobal(UUID entryId, String tenancyId);
 
     /**
      * Return all attestations written by the given attestor for the given capability tag,
@@ -204,7 +168,8 @@ public interface LedgerEntryRepository {
      *
      * @param attestorId the attestor identity
      * @param capabilityTag the capability tag to filter by; never {@code null}
+     * @param tenancyId the tenant scope
      * @return ordered list; empty if none match
      */
-    List<LedgerAttestation> findAttestationsByAttestorIdAndCapabilityTag(String attestorId, String capabilityTag);
+    List<LedgerAttestation> findAttestationsByAttestorIdAndCapabilityTag(String attestorId, String capabilityTag, String tenancyId);
 }

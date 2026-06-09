@@ -36,6 +36,7 @@ import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 /**
  * Integration tests for the async {@code ActorIdentityBindingEntry} persistence pipeline.
@@ -175,7 +176,7 @@ class ActorIdentityBindingEntryIT {
             e.actorType = ActorType.AGENT;
             e.actorRole = "binding-it";
             e.actorDid = did;
-            ledgerRepo.save(e);
+            ledgerRepo.save(e, DEFAULT_TENANT_ID);
         });
     }
 

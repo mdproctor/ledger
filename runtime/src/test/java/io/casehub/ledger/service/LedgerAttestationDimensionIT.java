@@ -21,6 +21,7 @@ import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.junit.QuarkusTest;
+import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
 /**
  * Integration tests for dimension-tagged attestation persistence (#62).
@@ -48,7 +49,7 @@ class LedgerAttestationDimensionIT {
         em.flush();
         em.clear();
 
-        final List<LedgerAttestation> results = repo.findAttestationsByEntryId(entry.id);
+        final List<LedgerAttestation> results = repo.findAttestationsByEntryId(entry.id, DEFAULT_TENANT_ID);
 
         assertThat(results).hasSize(1);
         assertThat(results.get(0).trustDimension).isEqualTo("review-thoroughness");
@@ -67,7 +68,7 @@ class LedgerAttestationDimensionIT {
         em.flush();
         em.clear();
 
-        final List<LedgerAttestation> results = repo.findAttestationsByEntryId(entry.id);
+        final List<LedgerAttestation> results = repo.findAttestationsByEntryId(entry.id, DEFAULT_TENANT_ID);
 
         assertThat(results.get(0).dimensionScore).isEqualTo(0.0);
     }
@@ -92,7 +93,7 @@ class LedgerAttestationDimensionIT {
         em.flush();
         em.clear();
 
-        final List<LedgerAttestation> results = repo.findAttestationsByEntryId(entry.id);
+        final List<LedgerAttestation> results = repo.findAttestationsByEntryId(entry.id, DEFAULT_TENANT_ID);
 
         assertThat(results).hasSize(1);
         assertThat(results.get(0).trustDimension).isNull();
@@ -122,7 +123,7 @@ class LedgerAttestationDimensionIT {
         em.flush();
         em.clear();
 
-        final List<LedgerAttestation> results = repo.findAttestationsByEntryId(entry.id);
+        final List<LedgerAttestation> results = repo.findAttestationsByEntryId(entry.id, DEFAULT_TENANT_ID);
 
         assertThat(results).hasSize(2);
         final long withDimension = results.stream().filter(a -> a.trustDimension != null).count();
@@ -142,7 +143,7 @@ class LedgerAttestationDimensionIT {
         em.flush();
         em.clear();
 
-        final List<LedgerAttestation> results = repo.findAttestationsByEntryId(entry.id);
+        final List<LedgerAttestation> results = repo.findAttestationsByEntryId(entry.id, DEFAULT_TENANT_ID);
 
         assertThat(results).hasSize(2);
         assertThat(results).extracting(a -> a.trustDimension)
@@ -159,7 +160,7 @@ class LedgerAttestationDimensionIT {
         entry.actorId = "reviewer-" + UUID.randomUUID();
         entry.actorType = ActorType.AGENT;
         entry.occurredAt = Instant.now().minus(1, ChronoUnit.HOURS);
-        repo.save(entry);
+        repo.save(entry, DEFAULT_TENANT_ID);
         return entry;
     }
 
