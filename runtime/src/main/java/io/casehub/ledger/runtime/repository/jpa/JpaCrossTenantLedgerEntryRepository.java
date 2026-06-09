@@ -17,6 +17,7 @@ import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 import io.casehub.ledger.runtime.privacy.ActorIdentityProvider;
+import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
 
 /**
@@ -31,6 +32,7 @@ import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
  * This bean is {@code @ApplicationScoped} (not {@code @Alternative}) because cross-tenant
  * operations are a system-level concern that should always be available when JPA is active.
  */
+@CrossTenant
 @ApplicationScoped
 public class JpaCrossTenantLedgerEntryRepository implements CrossTenantLedgerEntryRepository {
 

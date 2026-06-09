@@ -14,7 +14,6 @@ import jakarta.inject.Inject;
 import io.casehub.ledger.api.model.ActorTrustScore.ScoreType;
 import io.casehub.ledger.api.spi.TrustScoreSource;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
-import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
 import io.casehub.ledger.runtime.service.routing.TrustScoreActorUpdatedEvent;
 import io.casehub.ledger.runtime.service.routing.TrustScoreFullPayload;
@@ -48,7 +47,7 @@ public class CachedTrustScoreSource implements TrustScoreSource {
     private final ActorTrustScoreRepository repository;
 
     @Inject
-    public CachedTrustScoreSource(@CrossTenant final ActorTrustScoreRepository repository) {
+    public CachedTrustScoreSource(final ActorTrustScoreRepository repository) {
         this.repository = repository;
     }
 

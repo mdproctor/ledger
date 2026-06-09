@@ -13,6 +13,7 @@ import jakarta.inject.Inject;
 
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.model.LedgerEntry;
+import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import io.casehub.ledger.runtime.repository.CrossTenantReactiveLedgerEntryRepository;
 import io.quarkus.arc.properties.IfBuildProperty;
 import io.smallrye.mutiny.Uni;
@@ -23,6 +24,7 @@ import io.smallrye.mutiny.Uni;
  * <p>Delegates to the blocking {@link InMemoryCrossTenantLedgerEntryRepository} wrapped
  * in {@link Uni#createFrom()}.
  */
+@CrossTenant
 @Alternative
 @Priority(1)
 @ApplicationScoped

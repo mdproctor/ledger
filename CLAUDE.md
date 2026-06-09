@@ -297,8 +297,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │       ├── JpaCrossTenantLedgerEntryRepository.java
 │       │       └── LedgerSequenceAllocator.java     — CDI bean: atomic per-subject sequence allocation via SQL-standard MERGE on ledger_subject_sequence
 │       ├── qualifier/
-│       │   ├── CrossTenant.java              — CDI qualifier: marks cross-tenant injection points
-│       │   └── LedgerSystem.java             — CDI qualifier: marks system-level CurrentPrincipal
+│       │   └── CrossTenant.java              — CDI qualifier: disambiguates CrossTenantLedgerEntryRepository from LedgerEntryRepository (Category 1 only; build-time scope validation)
 │       ├── service/
 │       │   ├── LedgerEntryEnricher.java         — SPI: pluggable @PrePersist enrichment pipeline
 │       │   ├── TraceIdEnricher.java             — auto-populates traceId from active OTel span
@@ -390,9 +389,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │       ├── ReactiveAgentIdentityVerificationService.java — @DefaultBean @Unremovable: Uni<IdentityVerificationResult> bridge wrapping blocking service on worker pool; no Hibernate Reactive dep, always active
 │       │       ├── IdentityCacheInvalidator.java         — bridges AgentKeyRotatedEvent → platform cache invalidation; @Observes AgentKeyRotatedEvent, calls actorDIDProvider.invalidate(actorId) if provider is AbstractCachingIdentityProvider
 │       │       ├── LedgerIdentityEnforcementListener.java — @EntityListeners @PrePersist: ENFORCE mode gate (JPA-only)
-│       │       ├── LedgerIdentityViolationException.java — thrown by enforcement listener in ENFORCE mode
-│       │       ├── LedgerSystemCurrentPrincipal.java — @ApplicationScoped @LedgerSystem: system actor, always isCrossTenantAdmin()
-│       │       └── CrossTenantProducer.java — @ApplicationScoped: produces @CrossTenant-qualified repository beans
+│       │       └── LedgerIdentityViolationException.java — thrown by enforcement listener in ENFORCE mode
 │       └── privacy/
 │           ├── ActorIdentityProvider.java   — SPI: tokenise/resolve/erase actor identities
 │           ├── DecisionContextSanitiser.java — SPI: sanitise decisionContext JSON before persist

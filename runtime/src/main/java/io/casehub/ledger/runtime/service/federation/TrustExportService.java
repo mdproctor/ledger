@@ -12,7 +12,6 @@ import io.casehub.ledger.api.model.ActorTrustScore.ScoreType;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
-import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -28,7 +27,6 @@ import jakarta.inject.Inject;
 public class TrustExportService {
 
     @Inject
-    @CrossTenant
     ActorTrustScoreRepository trustRepo;
 
     @Inject

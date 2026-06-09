@@ -20,6 +20,7 @@ import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.CapabilityTag;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
 import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
+import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.service.TrustGateService;
@@ -47,6 +48,7 @@ class TrustScoreDimensionIT {
     LedgerEntryRepository repo;
 
     @Inject
+    @CrossTenant
     CrossTenantLedgerEntryRepository crossTenantRepo;
 
     @Inject

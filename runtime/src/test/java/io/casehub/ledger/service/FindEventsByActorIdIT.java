@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.LedgerEntry;
+import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.service.supplement.TestEntry;
@@ -50,6 +51,7 @@ class FindEventsByActorIdIT {
     LedgerEntryRepository repo;
 
     @Inject
+    @CrossTenant
     CrossTenantLedgerEntryRepository crossTenantRepo;
 
     // ── Returns only EVENT entries for the given actor ────────────────────────

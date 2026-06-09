@@ -14,7 +14,6 @@ import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.KeyRotationReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.KeyRotationEntry;
-import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import io.casehub.ledger.runtime.repository.KeyRotationRepository;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.service.model.CompromisedWindow;
@@ -31,7 +30,6 @@ import io.casehub.ledger.runtime.service.model.CompromisedWindow;
 public class KeyRotationService {
 
     @Inject
-    @CrossTenant
     KeyRotationRepository repository;
 
     @Inject

@@ -47,7 +47,6 @@ public class TrustScoreJob {
     CrossTenantLedgerEntryRepository ledgerRepo;
 
     @Inject
-    @CrossTenant
     ActorTrustScoreRepository trustRepo;
 
     @Inject
