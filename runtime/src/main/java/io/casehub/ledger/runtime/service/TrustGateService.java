@@ -85,4 +85,9 @@ public class TrustGateService {
     public Map<String, Double> qualityScores(final String actorId, final String capabilityTag) {
         return source.qualityScores(actorId, capabilityTag);
     }
+
+    /** Returns the number of recorded decisions for the actor on the given capability. */
+    public int decisionCount(final String actorId, final String capabilityTag) {
+        return source.decisionCount(actorId, capabilityTag);
+    }
 }
