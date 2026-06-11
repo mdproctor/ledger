@@ -183,7 +183,7 @@ class ScimActorDIDProviderTest {
     @Test
     void httpsValidation_throwsForHttpEndpoint() {
         final ScimActorDIDProvider httpProvider = new ScimActorDIDProvider(
-                "http://localhost:9090", "token", 5000, Duration.ofMinutes(5));
+                "http://localhost:9090", "token", 5000, Duration.ofMinutes(5), true);
         assertThatThrownBy(httpProvider::validateEndpoint)
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("must use HTTPS");
@@ -192,7 +192,7 @@ class ScimActorDIDProviderTest {
     @Test
     void httpsValidation_passesForHttpsEndpoint() {
         final ScimActorDIDProvider httpsProvider = new ScimActorDIDProvider(
-                "https://idp.example.com", "token", 5000, Duration.ofMinutes(5));
+                "https://idp.example.com", "token", 5000, Duration.ofMinutes(5), true);
         assertThatCode(httpsProvider::validateEndpoint).doesNotThrowAnyException();
     }
 }
