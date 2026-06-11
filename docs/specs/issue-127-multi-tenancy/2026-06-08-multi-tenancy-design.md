@@ -2,7 +2,7 @@
 
 **Issue:** casehubio/ledger#127
 **Date:** 2026-06-08
-**Status:** Design — pending cross-repo coherence review with work and qhorus specs
+**Status:** Implemented (closed 2026-06-09). CDI infrastructure revised by #131/#132.
 
 ---
 
@@ -91,36 +91,35 @@ Add `String tenancyId` to both methods (`findBySubjectId`, `replace`) for defenc
 
 ## 3. CDI Infrastructure
 
-**`@CrossTenant`** — CDI qualifier in `io.casehub.ledger.runtime.qualifier`. Convention-based marker, same pattern as engine's `io.casehub.engine.common.qualifier.CrossTenant`.
+> **Revised by #131/#132.** The original design used `@LedgerSystem`, `LedgerSystemCurrentPrincipal`, and `CrossTenantProducer`. All three were deleted — see the [field-shadowing spec](../issue-131-tenancy-field-shadowing/2026-06-09-tenancy-field-shadowing-design.md) for rationale.
 
-**`@LedgerSystem`** — CDI qualifier for the system-level `CurrentPrincipal`. Analogous to engine's `@EngineSystem`.
+**`@CrossTenant`** — CDI qualifier in `io.casehub.ledger.runtime.qualifier`. Applied only to Category 1 (dual-variant) repos where a tenant-scoped counterpart exists. Category 2 repos (inherently cross-tenant: `ActorTrustScoreRepository`, `KeyRotationRepository`, `ActorIdentityBindingRepository`) stay unqualified — the type itself enforces the boundary.
 
-**`LedgerSystemCurrentPrincipal`** — `@ApplicationScoped @LedgerSystem`, implements `CurrentPrincipal`. Returns `actorId() = "system"`, `tenancyId() = DEFAULT_TENANT_ID`, `isCrossTenantAdmin() = true`. Not `@DefaultBean`. Interim — delete when platform ships a platform-level system principal.
+**Category 1 — `@CrossTenant` on implementations directly (no producer):**
 
-**`CrossTenantProducer`** — `@ApplicationScoped`. Injects `@LedgerSystem LedgerSystemCurrentPrincipal`. Produces `@CrossTenant`-qualified beans:
-
-| Produced bean | Always/conditional |
+| Implementation | Interface |
 |---|---|
-| `CrossTenantLedgerEntryRepository` | Always |
-| `CrossTenantReactiveLedgerEntryRepository` | When `casehub.ledger.reactive.enabled=true` |
-| `ActorTrustScoreRepository` | Always |
-| `KeyRotationRepository` | Always |
-| `ReactiveKeyRotationRepository` | When reactive enabled |
-| `ActorIdentityBindingRepository` | Always |
+| `JpaCrossTenantLedgerEntryRepository` | `CrossTenantLedgerEntryRepository` |
+| `InMemoryCrossTenantLedgerEntryRepository` | `CrossTenantLedgerEntryRepository` |
+| `InMemoryCrossTenantReactiveLedgerEntryRepository` | `CrossTenantReactiveLedgerEntryRepository` |
 
-Each `@Produces` method asserts `systemPrincipal.isCrossTenantAdmin()`.
+**Category 2 — unqualified (implicit `@Default`):**
 
-**Injection sites that switch to `@CrossTenant`:**
+`ActorTrustScoreRepository`, `KeyRotationRepository`, `ReactiveKeyRotationRepository`, `ActorIdentityBindingRepository` — no tenant-scoped variant exists. Injected without qualifier.
+
+**Build-time guards (LedgerProcessor):**
+- Field-shadowing detection: Jandex ancestor chain walk rejects subclasses that redeclare `LedgerEntry` fields
+- `@CrossTenant` scope validation: `@RequestScoped` beans injecting `@CrossTenant` produce a deployment error
+
+**Injection sites using `@CrossTenant`:**
 
 | Class | What it injects |
 |---|---|
-| `TrustScoreJob` | `@CrossTenant CrossTenantLedgerEntryRepository`, `@CrossTenant ActorTrustScoreRepository` |
-| `PerActorTrustComputer` | Same as TrustScoreJob |
-| `IncrementalTrustUpdateObserver` | `@CrossTenant CrossTenantLedgerEntryRepository`, `@CrossTenant ActorTrustScoreRepository` |
+| `TrustScoreJob` | `@CrossTenant CrossTenantLedgerEntryRepository` |
+| `PerActorTrustComputer` | `@CrossTenant CrossTenantLedgerEntryRepository` |
+| `IncrementalTrustUpdateObserver` | `@CrossTenant CrossTenantLedgerEntryRepository` |
 | `LedgerRetentionJob` | `@CrossTenant CrossTenantLedgerEntryRepository` |
-| `TrustExportService` | `@CrossTenant ActorTrustScoreRepository` |
-| `TrustBootstrapService` | `@CrossTenant ActorTrustScoreRepository` |
-| `LedgerHealthJob` | Uses raw JPQL via EntityManager — no repo injection change, but cross-tenant by nature |
+| `ComputedTrustScoreSource` | `@CrossTenant CrossTenantLedgerEntryRepository` |
 
 ## 4. Write Path
 
@@ -195,7 +194,6 @@ No other migration files change. Consumer JOINED subclass tables inherit `tenanc
 
 **New tests:**
 - `InMemoryCrossTenantLedgerEntryRepositoryTest`
-- `CrossTenantProducerTest` — verify `isCrossTenantAdmin()` guard
 
 ## 9. Downstream Propagation
 
@@ -207,7 +205,7 @@ Breaking SPI change — tracked as separate issues per PP-20260511-ledger-spi:
 | casehub-qhorus | qhorus#263 | Update `MessageLedgerEntryRepository` + reactive variant + produce own tenancy spec |
 | casehub-engine | engine#459 | Update 4 NoOp test classes + `WorkerDecisionEventCapture` |
 
-Implementation blocked on cross-repo coherence review: ledger, work, and qhorus specs must be reviewed together before any implementation begins.
+Cross-repo coherence review completed 2026-06-10. Qhorus#263 `LedgerWriteService` already passes tenancyId. Work#260 and engine#459 still open.
 
 ## 10. Out of Scope
 
