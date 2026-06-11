@@ -32,6 +32,7 @@ import io.smallrye.mutiny.Uni;
 public class InMemoryCrossTenantReactiveLedgerEntryRepository implements CrossTenantReactiveLedgerEntryRepository {
 
     @Inject
+    @CrossTenant
     InMemoryCrossTenantLedgerEntryRepository blocking;
 
     @Override

@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -43,6 +44,7 @@ class InMemoryLedgerEntryRepositoryTest {
     InMemoryLedgerEntryRepository repo;
 
     @Inject
+    @CrossTenant
     InMemoryCrossTenantLedgerEntryRepository crossTenantRepo;
 
     @BeforeEach
