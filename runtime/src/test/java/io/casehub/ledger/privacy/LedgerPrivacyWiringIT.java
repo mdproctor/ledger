@@ -39,6 +39,9 @@ class LedgerPrivacyWiringIT {
     @Inject
     EntityManager em;
 
+    @Inject
+    io.casehub.ledger.api.spi.OutcomeRecorder outcomeRecorder;
+
     // ── Happy path: actorId stored as token, not raw ──────────────────────────
 
     @Test
@@ -84,7 +87,7 @@ class LedgerPrivacyWiringIT {
         att.ledgerEntryId = entry.id;
         att.subjectId = entry.subjectId;
         att.attestorId = rawAttestorId;
-        att.attestorType = ActorType.AGENT;
+        att.attestorType = ActorType.HUMAN;
         att.verdict = AttestationVerdict.SOUND;
         att.confidence = 0.9;
         att.occurredAt = Instant.now();
@@ -156,7 +159,7 @@ class LedgerPrivacyWiringIT {
         att.ledgerEntryId = entry.id;
         att.subjectId = entry.subjectId;
         att.attestorId = rawAttestorId;
-        att.attestorType = ActorType.AGENT;
+        att.attestorType = ActorType.HUMAN;
         att.verdict = AttestationVerdict.SOUND;
         att.confidence = 1.0;
         att.capabilityTag = "security-review";
@@ -173,14 +176,85 @@ class LedgerPrivacyWiringIT {
     // ── Fixture ───────────────────────────────────────────────────────────────
 
     private TestEntry entry(final String actorId) {
+        return entry(actorId, ActorType.HUMAN);
+    }
+
+    private TestEntry entry(final String actorId, final ActorType actorType) {
         final TestEntry e = new TestEntry();
         e.subjectId = UUID.randomUUID();
         e.sequenceNumber = 1;
         e.entryType = LedgerEntryType.EVENT;
         e.actorId = actorId;
-        e.actorType = ActorType.AGENT;
+        e.actorType = actorType;
         e.actorRole = "Classifier";
         e.occurredAt = Instant.now();
         return e;
+    }
+
+    // ── SYSTEM actor exemption tests ──────────────────────────────────────────
+
+    @Test
+    @Transactional
+    void save_systemActorId_storedRaw_notTokenised() {
+        final String rawActorId = "system:health-check";
+        final TestEntry entry = entry(rawActorId, ActorType.SYSTEM);
+        repo.save(entry, DEFAULT_TENANT_ID);
+
+        final LedgerEntry stored = em.find(LedgerEntry.class, entry.id);
+        assertThat(stored.actorId).isEqualTo(rawActorId);
+    }
+
+    @Test
+    @Transactional
+    void saveAttestation_systemAttestor_storedRaw_notTokenised() {
+        final String rawAttestorId = "system:compliance-engine";
+        final TestEntry entry = entry("human-actor-" + UUID.randomUUID());
+        repo.save(entry, DEFAULT_TENANT_ID);
+
+        final LedgerAttestation att = new LedgerAttestation();
+        att.id = UUID.randomUUID();
+        att.ledgerEntryId = entry.id;
+        att.subjectId = entry.subjectId;
+        att.attestorId = rawAttestorId;
+        att.attestorType = ActorType.SYSTEM;
+        att.verdict = AttestationVerdict.SOUND;
+        att.confidence = 1.0;
+        att.occurredAt = Instant.now();
+        repo.saveAttestation(att, DEFAULT_TENANT_ID);
+
+        final LedgerAttestation stored = em.find(LedgerAttestation.class, att.id);
+        assertThat(stored.attestorId).isEqualTo(rawAttestorId);
+    }
+
+    @Test
+    @Transactional
+    void findByActorId_systemActor_roundTrip_worksWithoutTokenisation() {
+        final String rawActorId = "system:scheduler";
+        final Instant from = Instant.now().minus(1, ChronoUnit.HOURS);
+        final Instant to = Instant.now().plus(1, ChronoUnit.HOURS);
+
+        repo.save(entry(rawActorId, ActorType.SYSTEM), DEFAULT_TENANT_ID);
+
+        final List<LedgerEntry> results = repo.findByActorId(rawActorId, from, to, DEFAULT_TENANT_ID);
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).actorId).isEqualTo(rawActorId);
+    }
+
+    @Test
+    @Transactional
+    void outcomeRecorder_systemAttestor_storedRaw_underTokenisation() {
+        final UUID subjectId = UUID.randomUUID();
+        final var record = io.casehub.ledger.api.model.OutcomeRecord.of(
+                "human-actor-" + UUID.randomUUID(), subjectId, "code-review",
+                AttestationVerdict.SOUND, 0.9)
+                .withAttestor("system:compliance-engine", ActorType.SYSTEM);
+
+        outcomeRecorder.record(record);
+
+        final var entries = repo.findBySubjectId(subjectId, DEFAULT_TENANT_ID);
+        assertThat(entries).hasSize(1);
+        final var attestations = repo.findAttestationsByEntryId(entries.get(0).id, DEFAULT_TENANT_ID);
+        assertThat(attestations).hasSize(1);
+        assertThat(attestations.get(0).attestorId).isEqualTo("system:compliance-engine");
     }
 }

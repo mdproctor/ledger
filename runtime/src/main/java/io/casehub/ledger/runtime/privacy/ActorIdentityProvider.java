@@ -2,6 +2,8 @@ package io.casehub.ledger.runtime.privacy;
 
 import java.util.Optional;
 
+import io.casehub.platform.api.identity.ActorType;
+
 /**
  * SPI for pseudonymising actor identities written to the ledger.
  *
@@ -18,6 +20,10 @@ public interface ActorIdentityProvider {
      * Creates a new mapping if one does not yet exist.
      * Called on every {@code save()} and {@code saveAttestation()}.
      *
+     * <p>Only {@link ActorType#HUMAN} actors (and null actorType as a safe default)
+     * are tokenised. Non-human actors (SYSTEM, AGENT) are returned unchanged —
+     * they are not natural persons and have no GDPR pseudonymisation obligation.
+     *
      * <p>
      * <strong>Reactive constraint:</strong> implementations must be non-blocking. In reactive
      * persistence paths this method is called synchronously on the Vert.x event loop without
@@ -25,9 +31,10 @@ public interface ActorIdentityProvider {
      * stall the event loop. The built-in implementations are non-blocking. Refs #106.
      *
      * @param rawActorId the real actor identity; may be {@code null}
+     * @param actorType the type of actor; {@code null} is treated as potentially human (tokenised)
      * @return token to store, or {@code null} if input is {@code null}
      */
-    String tokenise(String rawActorId);
+    String tokenise(String rawActorId, ActorType actorType);
 
     /**
      * Returns the existing token for {@code rawActorId} without creating one.

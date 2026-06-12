@@ -392,7 +392,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │       ├── LedgerIdentityEnforcementListener.java — @EntityListeners @PrePersist: ENFORCE mode gate (JPA-only)
 │       │       └── LedgerIdentityViolationException.java — thrown by enforcement listener in ENFORCE mode
 │       └── privacy/
-│           ├── ActorIdentityProvider.java   — SPI: tokenise/resolve/erase actor identities
+│           ├── ActorIdentityProvider.java   — SPI: tokenise/resolve/erase actor identities; tokenise takes ActorType — only HUMAN actors are pseudonymised
 │           ├── DecisionContextSanitiser.java — SPI: sanitise decisionContext JSON before persist
 │           ├── InternalActorIdentityProvider.java — built-in UUID token impl (config-gated)
 │           ├── LedgerErasureService.java    — GDPR Art.17 erasure (CDI bean)

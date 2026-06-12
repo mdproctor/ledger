@@ -96,15 +96,32 @@ class LedgerErasureServiceIT {
         assertThat(second.affectedEntryCount()).isZero();
     }
 
+    // ── SYSTEM actor exemption: never tokenised, erase is a no-op ─────────────
+
+    @Test
+    @Transactional
+    void erase_systemActor_neverTokenised_mappingNotFound() {
+        saveEntry("system:health-check", ActorType.SYSTEM);
+
+        final ErasureResult result = erasureService.erase("system:health-check");
+
+        assertThat(result.mappingFound()).isFalse();
+        assertThat(result.affectedEntryCount()).isZero();
+    }
+
     // ── Fixture ───────────────────────────────────────────────────────────────
 
     private void saveEntry(final String actorId) {
+        saveEntry(actorId, ActorType.HUMAN);
+    }
+
+    private void saveEntry(final String actorId, final ActorType actorType) {
         final TestEntry entry = new TestEntry();
         entry.subjectId = UUID.randomUUID();
         entry.sequenceNumber = 1;
         entry.entryType = LedgerEntryType.EVENT;
         entry.actorId = actorId;
-        entry.actorType = ActorType.AGENT;
+        entry.actorType = actorType;
         entry.actorRole = "Classifier";
         entry.occurredAt = Instant.now();
         repo.save(entry, DEFAULT_TENANT_ID);

@@ -114,9 +114,7 @@ public class JpaLedgerEntryRepository implements LedgerEntryRepository {
             entry.occurredAt = Instant.now();
         }
 
-        if (entry.actorId != null) {
-            entry.actorId = actorIdentityProvider.tokenise(entry.actorId);
-        }
+        entry.actorId = actorIdentityProvider.tokenise(entry.actorId, entry.actorType);
 
         entry.compliance().ifPresent(cs -> {
             if (cs.decisionContext != null) {
@@ -233,9 +231,8 @@ public class JpaLedgerEntryRepository implements LedgerEntryRepository {
                     "LedgerEntry " + attestation.ledgerEntryId + " not found in tenant " + tenancyId);
         }
 
-        if (attestation.attestorId != null) {
-            attestation.attestorId = actorIdentityProvider.tokenise(attestation.attestorId);
-        }
+        attestation.attestorId = actorIdentityProvider.tokenise(
+                attestation.attestorId, attestation.attestorType);
         em.persist(attestation);
 
         if (entry.actorId != null) {

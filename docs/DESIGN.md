@@ -415,7 +415,7 @@ The dimension pass always uses raw attestations — continuous `dimensionScore` 
 - *Sequence gap detection*: for each subject, verifies that sequence numbers are contiguous (`COUNT(e) == MAX(seqNum) - MIN(seqNum) + 1`). A gap indicates entries were deleted after write.
 - *Reconciliation*: consumers register `LedgerReconciliationSource` SPI implementations to compare domain entity counts against ledger entry counts. Gated by `source.isActive()` — inactive sources are skipped. Fired events carry the subject type, expected count, actual count, and `GapType` (`SEQUENCE_GAP` or `RECONCILIATION_MISMATCH`). No data is modified; alerting is delegated to observers.
 
-**Privacy / pseudonymisation** — ✅ Done. `ActorIdentityProvider` + `DecisionContextSanitiser` SPIs, built-in UUID tokenisation, `LedgerErasureService` for GDPR Art.17 requests. See `docs/PRIVACY.md`.
+**Privacy / pseudonymisation** — ✅ Done. `ActorIdentityProvider` + `DecisionContextSanitiser` SPIs, built-in UUID tokenisation, `LedgerErasureService` for GDPR Art.17 requests. `tokenise()` accepts `ActorType` — only HUMAN actors are pseudonymised; SYSTEM and AGENT actors are stored with raw identity (not natural persons, no GDPR obligation). Null `actorType` defaults to tokenisation as a safe fallback. See `docs/PRIVACY.md`.
 
 **Platform ownership vs development order** — Identity infrastructure accumulated in ledger because ledger was the first consumer, not because it owns the capability. A module owns infrastructure only if it is the definitive provider of that capability — development order does not determine ownership. This drove the extraction of all identity SPIs, model types, events, and implementations to `casehub-platform-identity`. Formalised as protocol PP-20260531-dd7062.
 

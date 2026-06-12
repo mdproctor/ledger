@@ -95,9 +95,7 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
         if (entry.occurredAt == null) {
             entry.occurredAt = Instant.now();
         }
-        if (entry.actorId != null) {
-            entry.actorId = actorIdentityProvider.tokenise(entry.actorId);
-        }
+        entry.actorId = actorIdentityProvider.tokenise(entry.actorId, entry.actorType);
         entry.compliance().ifPresent(cs -> {
             if (cs.decisionContext != null) {
                 cs.decisionContext = decisionContextSanitiser.sanitise(cs.decisionContext);
@@ -188,9 +186,8 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
         if (attestation.occurredAt == null) {
             attestation.occurredAt = Instant.now();
         }
-        if (attestation.attestorId != null) {
-            attestation.attestorId = actorIdentityProvider.tokenise(attestation.attestorId);
-        }
+        attestation.attestorId = actorIdentityProvider.tokenise(
+                attestation.attestorId, attestation.attestorType);
 
         // Validate the entry belongs to the specified tenant
         final LedgerEntry entry = entries.get(attestation.ledgerEntryId);

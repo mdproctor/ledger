@@ -45,6 +45,12 @@ public class MemoryTestEntry extends LedgerEntry {
         return this;
     }
 
+    /** Override actorType. */
+    public MemoryTestEntry withActorType(final ActorType newType) {
+        this.actorType = newType;
+        return this;
+    }
+
     /** Override occurredAt. */
     public MemoryTestEntry withOccurredAt(final Instant time) {
         this.occurredAt = time;

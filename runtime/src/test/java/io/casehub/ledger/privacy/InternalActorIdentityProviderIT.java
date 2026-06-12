@@ -10,6 +10,7 @@ import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.runtime.privacy.ActorIdentityProvider;
+import io.casehub.platform.api.identity.ActorType;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
@@ -40,7 +41,7 @@ class InternalActorIdentityProviderIT {
     @Test
     @Transactional
     void tokenise_createsToken_differentFromRawActorId() {
-        final String token = provider.tokenise("alice@example.com");
+        final String token = provider.tokenise("alice@example.com", ActorType.HUMAN);
         assertThat(token).isNotNull().isNotEqualTo("alice@example.com");
     }
 
@@ -49,8 +50,8 @@ class InternalActorIdentityProviderIT {
     @Test
     @Transactional
     void tokenise_sameActorId_returnsSameToken() {
-        final String token1 = provider.tokenise("bob@example.com");
-        final String token2 = provider.tokenise("bob@example.com");
+        final String token1 = provider.tokenise("bob@example.com", ActorType.HUMAN);
+        final String token2 = provider.tokenise("bob@example.com", ActorType.HUMAN);
         assertThat(token1).isEqualTo(token2);
     }
 
@@ -59,8 +60,8 @@ class InternalActorIdentityProviderIT {
     @Test
     @Transactional
     void tokenise_differentActorIds_returnsDifferentTokens() {
-        final String tokenAlice = provider.tokenise("alice-" + java.util.UUID.randomUUID());
-        final String tokenBob = provider.tokenise("bob-" + java.util.UUID.randomUUID());
+        final String tokenAlice = provider.tokenise("alice-" + java.util.UUID.randomUUID(), ActorType.HUMAN);
+        final String tokenBob = provider.tokenise("bob-" + java.util.UUID.randomUUID(), ActorType.HUMAN);
         assertThat(tokenAlice).isNotEqualTo(tokenBob);
     }
 
@@ -69,7 +70,7 @@ class InternalActorIdentityProviderIT {
     @Test
     @Transactional
     void tokenise_null_returnsNull() {
-        assertThat(provider.tokenise(null)).isNull();
+        assertThat(provider.tokenise(null, ActorType.HUMAN)).isNull();
     }
 
     // ── Happy path: tokeniseForQuery returns existing token ───────────────────
@@ -78,7 +79,7 @@ class InternalActorIdentityProviderIT {
     @Transactional
     void tokeniseForQuery_existingActor_returnsToken() {
         final String actorId = "carol-" + java.util.UUID.randomUUID();
-        final String token = provider.tokenise(actorId);
+        final String token = provider.tokenise(actorId, ActorType.HUMAN);
         assertThat(provider.tokeniseForQuery(actorId)).isEqualTo(token);
     }
 
@@ -97,7 +98,7 @@ class InternalActorIdentityProviderIT {
     @Transactional
     void resolve_existingToken_returnsRealIdentity() {
         final String actorId = "dave-" + java.util.UUID.randomUUID();
-        final String token = provider.tokenise(actorId);
+        final String token = provider.tokenise(actorId, ActorType.HUMAN);
         assertThat(provider.resolve(token)).isEqualTo(Optional.of(actorId));
     }
 
@@ -123,7 +124,7 @@ class InternalActorIdentityProviderIT {
     @Transactional
     void erase_severed_resolveReturnsEmpty() {
         final String actorId = "eve-" + java.util.UUID.randomUUID();
-        final String token = provider.tokenise(actorId);
+        final String token = provider.tokenise(actorId, ActorType.HUMAN);
 
         provider.erase(actorId);
 
@@ -144,9 +145,39 @@ class InternalActorIdentityProviderIT {
     @Transactional
     void tokeniseForQuery_afterErase_returnsRawActorId() {
         final String actorId = "frank-" + java.util.UUID.randomUUID();
-        provider.tokenise(actorId);
+        provider.tokenise(actorId, ActorType.HUMAN);
         provider.erase(actorId);
 
         assertThat(provider.tokeniseForQuery(actorId)).isEqualTo(actorId);
+    }
+
+    // ── Happy path: system actors are not tokenised ───────────────────────────
+
+    @Test
+    @Transactional
+    void tokenise_systemActor_returnsRawActorId() {
+        final String rawActorId = "system:health-check";
+        final String result = provider.tokenise(rawActorId, ActorType.SYSTEM);
+        assertThat(result).isEqualTo(rawActorId);
+    }
+
+    // ── Happy path: agent actors are not tokenised ────────────────────────────
+
+    @Test
+    @Transactional
+    void tokenise_agentActor_returnsRawActorId() {
+        final String rawActorId = "claude:tarkus-reviewer@v1";
+        final String result = provider.tokenise(rawActorId, ActorType.AGENT);
+        assertThat(result).isEqualTo(rawActorId);
+    }
+
+    // ── Correctness: null ActorType defaults to tokenisation ──────────────────
+
+    @Test
+    @Transactional
+    void tokenise_nullActorType_tokenises() {
+        final String rawActorId = "unknown-" + java.util.UUID.randomUUID();
+        final String result = provider.tokenise(rawActorId, null);
+        assertThat(result).isNotNull().isNotEqualTo(rawActorId);
     }
 }

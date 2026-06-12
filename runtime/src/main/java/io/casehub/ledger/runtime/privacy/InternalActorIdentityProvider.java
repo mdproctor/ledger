@@ -7,6 +7,7 @@ import jakarta.persistence.EntityManager;
 
 import io.casehub.ledger.runtime.model.ActorIdentity;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
+import io.casehub.platform.api.identity.ActorType;
 
 /**
  * Built-in token-based actor identity provider backed by the {@code actor_identity} table.
@@ -31,9 +32,12 @@ public class InternalActorIdentityProvider implements ActorIdentityProvider {
      * {@code null} input returns {@code null}.
      */
     @Override
-    public String tokenise(final String rawActorId) {
+    public String tokenise(final String rawActorId, final ActorType actorType) {
         if (rawActorId == null) {
             return null;
+        }
+        if (actorType != null && actorType != ActorType.HUMAN) {
+            return rawActorId;
         }
         return em.createNamedQuery("ActorIdentity.findByActorId", ActorIdentity.class)
                 .setParameter("actorId", rawActorId)

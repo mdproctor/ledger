@@ -2,11 +2,13 @@ package io.casehub.ledger.runtime.privacy;
 
 import java.util.Optional;
 
+import io.casehub.platform.api.identity.ActorType;
+
 /** Pass-through implementation — stores raw actor identities unchanged. */
 public class PassThroughActorIdentityProvider implements ActorIdentityProvider {
 
     @Override
-    public String tokenise(final String rawActorId) {
+    public String tokenise(final String rawActorId, final ActorType actorType) {
         return rawActorId;
     }
 

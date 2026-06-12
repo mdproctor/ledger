@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.runtime.privacy.PassThroughActorIdentityProvider;
 import io.casehub.ledger.runtime.privacy.PassThroughDecisionContextSanitiser;
+import io.casehub.platform.api.identity.ActorType;
 
 class PassThroughPrivacyTest {
 
@@ -16,12 +17,27 @@ class PassThroughPrivacyTest {
 
     @Test
     void tokenise_returnsRawActorId_unchanged() {
-        assertThat(provider.tokenise("alice@example.com")).isEqualTo("alice@example.com");
+        assertThat(provider.tokenise("alice@example.com", ActorType.HUMAN)).isEqualTo("alice@example.com");
     }
 
     @Test
     void tokenise_nullSafe_returnsNull() {
-        assertThat(provider.tokenise(null)).isNull();
+        assertThat(provider.tokenise(null, ActorType.HUMAN)).isNull();
+    }
+
+    @Test
+    void tokenise_withHumanType_returnsRawActorId_unchanged() {
+        assertThat(provider.tokenise("alice@example.com", ActorType.HUMAN)).isEqualTo("alice@example.com");
+    }
+
+    @Test
+    void tokenise_withSystemType_returnsRawActorId_unchanged() {
+        assertThat(provider.tokenise("system:health-check", ActorType.SYSTEM)).isEqualTo("system:health-check");
+    }
+
+    @Test
+    void tokenise_withNullType_returnsRawActorId_unchanged() {
+        assertThat(provider.tokenise("alice@example.com", null)).isEqualTo("alice@example.com");
     }
 
     @Test
