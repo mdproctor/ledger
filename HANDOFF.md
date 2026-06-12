@@ -1,39 +1,43 @@
 # HANDOFF.md — casehub-ledger
 
-**Session:** 2026-06-07
-**Branch closed:** issue-118-on-read-trust-computation → main
+**Session:** 2026-06-12
+**Branch:** main (hygiene session, no feature branch)
 
 ## What happened
 
-Implemented `TrustScoreSource` SPI (#118) — three pluggable trust score read-path implementations (materialized, cached, computed). Extracted `TrustScoreCalculator` from `PerActorTrustComputer` for shared computation. Refactored `TrustGateService` to inject `TrustScoreSource` with `OptionalDouble` return types. Fixed `CachedTrustScoreSource` to observe `TrustScoreActorUpdatedEvent` from the incremental observer.
+Branch hygiene audit across all 39 non-main branches (26 issue, 12 backup, 1 snapshot).
+
+**Audit scope per branch:** code merged to main, specs promoted to `docs/specs/`, ADRs promoted to `docs/adr/`, blog entries published to mdproctor.github.io.
+
+**Findings — all clean:**
+- All code across all branches is incorporated into main (renames, migrations to platform libs, and intentional design simplifications all accounted for)
+- All 20 blog entries ever written are published to mdproctor.github.io
+- All ADRs promoted to `docs/adr/`
+- All specs promoted to `docs/specs/`
+- `origin/issue-92-optional-reactive-repo` confirmed fully merged — stale remote ref, safe to prune
+
+**Actions taken:**
+- Deleted published blog copies from main (`blog/` directory) — `5d56b83`
+- Promoted issue-118 spec to `docs/specs/` — `fb2a624`
+- Stamped all 39 non-main branches with `chore: branch closed`
+- Added Step 8 (source cleanup after publish) to `publish-blog` skill in cc-praxis — `d4b37cf`; synced to installed skills
 
 ## Immediate next step
 
-Run `/work` to pick up one of the open issues. Working tree is clean, on main, upstream and fork in sync.
-
-## Cross-Module
-
-**We're blocking:**
-- `casehub-engine` — needs `TrustScoreSource` SPI migration (#123): delete `TrustScoreCache`, update `TrustCandidateClassifier` + `TrustWeightedAgentStrategy` to inject `TrustScoreSource`, fix `LedgerActorStateContributor` `findScore()` → `currentScore()` · M · Low
-
-## What's Left
-
-- #123 — engine-side `TrustScoreSource` migration · M · Low (mechanical, blocked on this session's work being published — now done)
-- casehubio/parent#190 — deep-dive doc sync for ledger · S · Low
+- Optionally prune `origin/issue-92-optional-reactive-repo`
+- Run `/work` to pick up next issue
 
 ## What's Next
 
 | # | Description | Scale | Complexity | Notes |
 |---|-------------|-------|------------|-------|
-| #122 | PostgreSQL DevServices for integration tests | M | Med | |
 | #100 | Fix race-safe sequence numbering under concurrent writers | M | Med | |
 | #110 | ScimDIDResolver — synthetic DIDDocument from SCIM | S | Med | |
 | #108 | JwtVCValidator — W3C VC JWT credential validation | M | High | |
-| #124 | Targeted per-capability queries for ComputedTrustScoreSource | S | Low | Optimization, when real-world data warrants |
-| #125 | Disable batch/incremental machinery for computed-only deployments | S | Med | |
 | #102 | Cloud KMS AgentSigner adapters | L | Med | |
+| #123 | Engine-side TrustScoreSource migration | M | Low | Cross-repo |
 
-## References
+## Cross-Module
 
-- `specs/issue-118-on-read-trust-computation/SPEC.md` — full design spec
-- `blog/2026-06-07-mdp01-trust-scores-always-stale.md` — session diary entry
+**We're blocking:**
+- `casehub-engine` — needs `TrustScoreSource` SPI migration (#123)
