@@ -1,5 +1,6 @@
 package io.casehub.ledger.runtime.service.intercept;
 
+import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -12,8 +13,7 @@ import io.casehub.ledger.runtime.service.LedgerEntryEnricher;
  * {@link ProvenanceCapture}-annotated method is active on the current thread.
  *
  * <p>
- * Runs via the existing {@link io.casehub.ledger.runtime.service.LedgerTraceListener} pipeline
- * at {@code @PrePersist} time — no changes to {@link LedgerEntry} or the listener are needed.
+ * Runs in the content enrichment phase of the save pipeline, before hashing and signing.
  * When no {@link ProvenanceCapture} is active, this enricher is a no-op (zero overhead).
  *
  * <p>
@@ -22,6 +22,7 @@ import io.casehub.ledger.runtime.service.LedgerEntryEnricher;
  * all entries persisted within the annotated scope.
  */
 @ApplicationScoped
+@Priority(30)
 public class ProvenanceCaptureEnricher implements LedgerEntryEnricher {
 
     @Inject

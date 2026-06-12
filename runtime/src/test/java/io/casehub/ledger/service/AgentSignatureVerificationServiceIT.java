@@ -53,7 +53,7 @@ class AgentSignatureVerificationServiceIT {
     }
 
     private static AgentSignature signEntry(final TestEntry e, final KeyPair kp) {
-        final AgentSignature sig = AgentSignature.signWith(kp, LedgerMerkleTree.canonicalBytes(e));
+        final AgentSignature sig = AgentSignature.signWith(kp, e.canonicalBytes());
         e.agentSignature = sig.signature();
         e.agentPublicKey = sig.publicKey();
         e.agentKeyRef = sig.keyRef();

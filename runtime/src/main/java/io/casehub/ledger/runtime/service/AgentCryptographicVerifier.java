@@ -38,7 +38,7 @@ final class AgentCryptographicVerifier {
     /**
      * Verifies the agent signature stored on {@code entry} against its stored
      * public key bytes, using the canonical form defined by
-     * {@link LedgerMerkleTree#canonicalBytes(LedgerEntry)}.
+     * {@link LedgerEntry#canonicalBytes()}.
      *
      * <p>The signing algorithm is detected from the stored public key bytes — no
      * algorithm is assumed. Does NOT check key compromise windows. Returns:
@@ -58,7 +58,7 @@ final class AgentCryptographicVerifier {
             final PublicKey pub = loadPublicKey(entry.agentPublicKey);
             final Signature sig = Signature.getInstance(pub.getAlgorithm());
             sig.initVerify(pub);
-            sig.update(LedgerMerkleTree.canonicalBytes(entry));
+            sig.update(entry.canonicalBytes());
             return sig.verify(entry.agentSignature) ? VerificationResult.VALID : VerificationResult.INVALID;
         } catch (final Exception e) {
             LOG.debugf("Signature verify failed for entry %s (%s) — corrupt key data or unsupported algorithm",

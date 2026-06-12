@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
 import io.casehub.ledger.runtime.service.LedgerMerkleTree;
@@ -21,10 +22,12 @@ class LedgerMerkleTreeTest {
 
     private TestEntry entry(UUID subjectId, int seq) {
         TestEntry e = new TestEntry();
+        e.tenancyId = "default-tenant";
         e.subjectId = subjectId;
         e.sequenceNumber = seq;
         e.entryType = LedgerEntryType.EVENT;
         e.actorId = "actor-" + seq;
+        e.actorType = ActorType.AGENT;
         e.actorRole = "Tester";
         e.occurredAt = FIXED_TIME;
         return e;

@@ -27,6 +27,7 @@ import io.casehub.ledger.runtime.privacy.ActorIdentityProvider;
 import io.casehub.ledger.runtime.privacy.DecisionContextSanitiser;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.repository.LedgerMerkleFrontierRepository;
+import io.casehub.ledger.runtime.service.AgentEntrySigner;
 import io.casehub.ledger.runtime.service.AttestationRecordedEvent;
 import io.casehub.ledger.runtime.service.LedgerEnricherPipeline;
 import io.casehub.ledger.runtime.service.LedgerMerklePublisher;
@@ -60,6 +61,9 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
 
     @Inject
     LedgerEnricherPipeline enricherPipeline;
+
+    @Inject
+    AgentEntrySigner agentEntrySigner;
 
     @Inject
     ActorIdentityProvider actorIdentityProvider;
@@ -105,15 +109,15 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
                 .computeIfAbsent(entry.subjectId, k -> new AtomicInteger(0))
                 .incrementAndGet();
 
-        // Enrich AFTER sequenceNumber assignment — enrichers (e.g. AgentSignatureEnricher)
-        // call canonicalBytes() which includes sequenceNumber. This ordering differs from the
-        // JPA path (where @PrePersist fires after leafHash), but is safe because enrichers
-        // must not modify canonical fields (subjectId, seqNum, entryType, actorId, actorRole, occurredAt).
+        // Pipeline: prepareKey → enrich → hash → sign → store
+        agentEntrySigner.prepareKey(entry);
         enricherPipeline.enrich(entry);
 
         if (ledgerConfig.hashChain().enabled()) {
             entry.digest = LedgerMerkleTree.leafHash(entry);
         }
+
+        agentEntrySigner.sign(entry);
 
         entries.put(entry.id, entry);
 

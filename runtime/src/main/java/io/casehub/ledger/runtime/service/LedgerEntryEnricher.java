@@ -5,41 +5,49 @@ import io.casehub.ledger.runtime.model.LedgerEntry;
 /**
  * SPI for auto-populating fields on {@link LedgerEntry} at persist time.
  *
- * <p>
- * <strong>Ordering:</strong> Enrichers are invoked in ascending {@code @Priority} order
- * by {@link LedgerEnricherPipeline}. All implementations MUST carry a
- * {@code @jakarta.annotation.Priority} annotation. An enricher without {@code @Priority}
- * sorts last ({@code Integer.MAX_VALUE}). Assigned priorities in casehub-ledger:
+ * <p><strong>Pipeline position:</strong> Content enrichers run BEFORE hashing
+ * and signing. The full save pipeline is:
+ * enrichment, digest (leafHash), agent signature, persist.
+ *
+ * <p><strong>Ordering:</strong> Enrichers are invoked in ascending
+ * {@code @Priority} order. All implementations MUST carry a
+ * {@code @jakarta.annotation.Priority} annotation:
  * <ul>
  *   <li>10 — TraceIdEnricher</li>
- *   <li>20 — AgentSignatureEnricher</li>
  *   <li>30 — ProvenanceCaptureEnricher</li>
- *   <li>40 — ActorDIDEnricher (added in #81)</li>
- *   <li>50 — ActorIdentityValidationEnricher (added in #81)</li>
+ *   <li>40 — ActorDIDEnricher</li>
+ *   <li>50 — ActorIdentityValidationEnricher</li>
  * </ul>
  *
- * <p>
- * Implementations are CDI beans discovered via {@code @Inject @Any Instance<LedgerEntryEnricher>}
- * and invoked in the {@code @PrePersist} pipeline. Implementations must be idempotent and
- * non-fatal — a thrown exception is logged and swallowed; the persist is never blocked.
+ * <p><strong>Contract:</strong>
+ * <ul>
+ *   <li>Do NOT overwrite fields stamped by the save pipeline:
+ *       {@code subjectId}, {@code sequenceNumber}, {@code tenancyId},
+ *       {@code occurredAt}.</li>
+ *   <li>Enrichers MAY attach supplements — that is the point of
+ *       {@link io.casehub.ledger.runtime.service.intercept.ProvenanceCaptureEnricher}.</li>
+ *   <li>Enrichers that modify supplement fields in-place MUST call
+ *       {@link LedgerEntry#refreshSupplementJson()} or
+ *       {@link LedgerEntry#attach(io.casehub.ledger.runtime.model.supplement.LedgerSupplement)}
+ *       — direct field mutation leaves {@code supplementJson} stale, and the hash
+ *       will cover the stale value.</li>
+ * </ul>
  *
- * <p>
- * Register an implementation by creating an {@code @ApplicationScoped} CDI bean that
- * implements this interface. No registration step is required.
+ * <p>Implementations are CDI beans discovered via
+ * {@code @Inject @Any Instance<LedgerEntryEnricher>} and invoked by
+ * {@link LedgerEnricherPipeline}. Must be idempotent and non-fatal — a thrown
+ * exception is logged and swallowed; the persist is never blocked.
  */
 public interface LedgerEntryEnricher {
 
     /**
-     * Enrich the given entry before it is persisted.
-     * Called once per {@code @PrePersist} event. Must not throw. Implementations must be
-     * idempotent — this method may be called more than once on the same entry under retried transactions.
+     * Enrich the given entry before it is hashed and signed.
+     * Called once per save. Must not throw. Must be idempotent.
      *
-     * <p>
-     * <strong>Contract:</strong> Enrichers must not modify the canonical fields used in
-     * the Merkle leaf hash: {@code subjectId}, {@code sequenceNumber}, {@code entryType},
-     * {@code actorId}, {@code actorRole}, {@code occurredAt}. These fields are hashed
-     * before enrichment in some execution paths. Modifying them in an enricher produces
-     * a mismatch between the leaf hash and the stored entry state.
+     * <p><strong>Contract:</strong> Do not overwrite fields stamped by the save
+     * pipeline ({@code subjectId}, {@code sequenceNumber}, {@code tenancyId},
+     * {@code occurredAt}). Enrichers that modify supplements must use
+     * {@link LedgerEntry#attach} or {@link LedgerEntry#refreshSupplementJson()}.
      */
     void enrich(LedgerEntry entry);
 }

@@ -1,5 +1,6 @@
 package io.casehub.ledger.runtime.service;
 
+import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -11,6 +12,7 @@ import io.casehub.ledger.runtime.model.LedgerEntry;
  * Extracted from {@code LedgerTraceListener} — same behaviour, now as a pipeline participant.
  */
 @ApplicationScoped
+@Priority(10)
 public class TraceIdEnricher implements LedgerEntryEnricher {
 
     private final LedgerTraceIdProvider traceIdProvider;

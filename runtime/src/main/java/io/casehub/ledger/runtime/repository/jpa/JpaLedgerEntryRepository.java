@@ -23,7 +23,9 @@ import io.casehub.ledger.runtime.privacy.ActorIdentityProvider;
 import io.casehub.ledger.runtime.privacy.DecisionContextSanitiser;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.repository.LedgerMerkleFrontierRepository;
+import io.casehub.ledger.runtime.service.AgentEntrySigner;
 import io.casehub.ledger.runtime.service.AttestationRecordedEvent;
+import io.casehub.ledger.runtime.service.LedgerEnricherPipeline;
 import io.casehub.ledger.runtime.service.LedgerMerklePublisher;
 import io.casehub.ledger.runtime.service.LedgerMerkleTree;
 
@@ -91,6 +93,12 @@ public class JpaLedgerEntryRepository implements LedgerEntryRepository {
     LedgerSequenceAllocator sequenceAllocator;
 
     @Inject
+    LedgerEnricherPipeline enricherPipeline;
+
+    @Inject
+    AgentEntrySigner agentEntrySigner;
+
+    @Inject
     Event<AttestationRecordedEvent> attestationRecordedEvent;
 
     /** {@inheritDoc} */
@@ -119,9 +127,16 @@ public class JpaLedgerEntryRepository implements LedgerEntryRepository {
 
         entry.sequenceNumber = sequenceAllocator.nextSequenceNumber(entry.subjectId);
 
+        // Pipeline: prepareKey → enrich → hash → sign → persist
+        agentEntrySigner.prepareKey(entry);
+        enricherPipeline.enrich(entry);
+
         if (ledgerConfig.hashChain().enabled()) {
             entry.digest = LedgerMerkleTree.leafHash(entry);
         }
+
+        agentEntrySigner.sign(entry);
+
         em.persist(entry);
 
         if (ledgerConfig.hashChain().enabled()) {

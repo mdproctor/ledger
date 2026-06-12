@@ -212,16 +212,20 @@ configured-path migrations and sorts by version number.
 
 ### Hash chain canonical form
 
-`subjectId|seqNum|entryType|actorId|actorRole|occurredAt`
+The leaf hash covers all tamper-critical fields: structural metadata (`subjectId`,
+`seqNum`, `entryType`, `actorId`, `actorRole`, `occurredAt`, `tenancyId`, `actorType`,
+`causedByEntryId`), base-table supplements (`supplementJson`), and subclass domain
+content via `domainContentBytes()`.
 
-`planRef` was removed from the canonical form — it now lives in `ComplianceSupplement`.
-Supplement fields are deliberately excluded from the chain: the chain covers the immutable
-core audit record; compliance metadata is enrichment, not a tamper-evidence target.
+`canonicalBytes()` is a `public final` instance method on `LedgerEntry` — the canonical
+form is a property of the entry, not of the Merkle tree utility. `final` seals the
+structural encoding; subclasses extend content through `domainContentBytes()` only.
+A build-time guard in `LedgerProcessor` enforces this for `@Entity` subclasses with
+persistent fields.
 
-Deliberately excludes subclass-specific fields (`commandType`, `eventType`, `toolName`,
-etc.). The chain covers provenance and timing; domain labels do not participate in
-tamper detection. This keeps the chain domain-agnostic — the same `LedgerMerkleTree`
-utility works for any subclass.
+The save pipeline runs in five phases: key preparation → content enrichment → hashing →
+agent signing → persist. `AgentEntrySigner` is a direct call in the save pipeline, not
+an enricher — signing seals the entry, it does not add content.
 
 ### `AgentSignatureSuspectEvent` and sync/async verification parity
 
@@ -470,7 +474,7 @@ decision — see `IDEAS.md` (2026-04-23 entry).
 | **Ledger health checks** | ✅ Done | `LedgerHealthJob` (scheduled gap detection + reconciliation); `LedgerReconciliationSource` SPI; `LedgerGapDetected` CDI event; `GapType` enum; `health.enabled` + `health.check-interval` config. 7 IT tests. Closes #56. |
 | **Compliance report query API** | ✅ Done | `LedgerComplianceReportService` CDI bean (`reportForActor`, `reportForSubject`); `ComplianceReport` record with `format(ReportFormat)` (PLAIN_JSON, JSON_LD, CSV); `DecisionRecord`; `findBySubjectIdAndTimeRange` added to repository SPI + reactive SPI. Merkle-root tamper-evidence anchor included. No REST endpoint — consumer responsibility. 7 IT tests. Closes #58. |
 | **@ProvenanceCapture interceptor** | ✅ Done | `@ProvenanceCapture` interceptor binding + `ProvenanceCaptureInterceptor`; `ProvenanceCaptureEnricher` auto-attaches `ProvenanceSupplement` via existing enricher pipeline; `ProvenanceContext` ThreadLocal stack (nesting, exception-safe, `agentConfigHash` preserved); `@SourceEntityId` parameter annotation. 7 IT tests. Closes #59. |
-| **Bilateral entry signing** | ✅ Done | `AgentKeyProvider` SPI (returns `Optional<SigningKey>`); `SigningKey` record (self-derived `keyRef = Base64URL(SHA-256(pubKey))`); `ConfiguredAgentKeyProvider` (@DefaultBean); `AgentSignatureEnricher` (stores `agentSignature` + `agentPublicKey` + `agentKeyRef`); `LedgerEntry` fields (V1005/V1006); `AgentSignatureVerificationService.verifyAgentSignature()` (UNSIGNED/VALID/INVALID/SUSPECT); `VerificationResult` enum; ADR 0011. Closes #79. |
+| **Bilateral entry signing** | ✅ Done | `AgentKeyProvider` SPI (returns `Optional<SigningKey>`); `SigningKey` record (self-derived `keyRef = Base64URL(SHA-256(pubKey))`); `ConfiguredAgentKeyProvider` (@DefaultBean); `AgentEntrySigner` CDI bean (direct call in save pipeline after hash, before persist; stores `agentSignature` + `agentPublicKey` + `agentKeyRef`); `LedgerEntry` fields (V1005/V1006); `AgentSignatureVerificationService.verifyAgentSignature()` (UNSIGNED/VALID/INVALID/SUSPECT); `VerificationResult` enum; ADR 0011. Closes #79. |
 | **Signing key rotation** | ✅ Done | `KeyRotationReason` enum (SCHEDULED\|COMPROMISED, NIST SP 800-57); `KeyRotationEntry` LedgerEntry subclass (deterministic `subjectId` from actorId, V1007); `KeyRotationRepository` SPI (query-only); `KeyRotationService` (recordRotation, rotationHistory, compromisedWindows); `CompromisedWindow` record; `VerificationResult.SUSPECT`; `verifyAgentSignature` queries compromise windows post-VALID; ADR 0012. 424 tests. Closes #80. |
 | **SUSPECT CDI event** | ✅ Done | `AgentSignatureSuspectEvent` record (entryId, actorId, keyRef, occurredAt, effectiveSince); `verifyCryptographic()` helper extracted; `verifyAgentSignature()` fires `event.fire()` on SUSPECT; `verifyAgentSignatureAsync(UUID)` (reactive twin, `Uni<VerificationResult>`, fires `event.fireAsync()`); blocking bridge for `compromisedWindows` pending #86. 432 tests. Closes #83. |
 | **Reactive KeyRotationService** | ✅ Done | `ReactiveKeyRotationRepository` SPI (query-only, `Uni<List<>>` returns; no bundled JPA impl — consumers provide per their reactive stack); `BlockingReactiveKeyRotationRepository` test shim (H2/JDBC suite); `KeyRotationService` reactive variants (compromisedWindowsAsync, rotationHistoryAsync, recordRotationAsync); blocking bridge removed from `verifyAgentSignatureAsync`; `compromisedEffectiveSinceAsync` private helper. 446 tests. Closes #86. |

@@ -165,7 +165,7 @@ class ActorIdentityBindingEntryIT {
 
     /**
      * Saves a TestEntry with actorDid set, in a committed transaction.
-     * agentSignature and agentPublicKey are populated by AgentSignatureEnricher from the mocked signer.
+     * agentSignature and agentPublicKey are populated by AgentEntrySigner in the save pipeline.
      */
     private void saveEntryWithDid(final String actorId, final String did) {
         QuarkusTransaction.requiringNew().run(() -> {

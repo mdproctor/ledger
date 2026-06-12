@@ -36,7 +36,7 @@ class AgentCryptographicVerifierTest {
 
     @Test
     void validSignature_returnsValid() throws Exception {
-        final byte[] canonical = LedgerMerkleTree.canonicalBytes(entry);
+        final byte[] canonical = entry.canonicalBytes();
         final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
         sig.initSign(keyPair.getPrivate());
         sig.update(canonical);
@@ -49,7 +49,7 @@ class AgentCryptographicVerifierTest {
 
     @Test
     void tamperedSignature_returnsInvalid() throws Exception {
-        final byte[] canonical = LedgerMerkleTree.canonicalBytes(entry);
+        final byte[] canonical = entry.canonicalBytes();
         final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
         sig.initSign(keyPair.getPrivate());
         sig.update(canonical);
@@ -82,7 +82,7 @@ class AgentCryptographicVerifierTest {
 
     @Test
     void mutatedCanonicalField_returnsInvalid() throws Exception {
-        final byte[] canonical = LedgerMerkleTree.canonicalBytes(entry);
+        final byte[] canonical = entry.canonicalBytes();
         final java.security.Signature sig = java.security.Signature.getInstance("Ed25519");
         sig.initSign(keyPair.getPrivate());
         sig.update(canonical);

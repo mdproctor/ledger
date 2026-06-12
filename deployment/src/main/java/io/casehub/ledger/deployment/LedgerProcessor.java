@@ -2,6 +2,7 @@ package io.casehub.ledger.deployment;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.DotName;
@@ -47,6 +48,8 @@ class LedgerProcessor {
             "io.casehub.ledger.runtime.qualifier.CrossTenant");
     static final DotName REQUEST_SCOPED = DotName.createSimple(
             "jakarta.enterprise.context.RequestScoped");
+    static final DotName ENTITY = DotName.createSimple("jakarta.persistence.Entity");
+    static final DotName TRANSIENT = DotName.createSimple("jakarta.persistence.Transient");
 
     @BuildStep
     FeatureBuildItem feature() {
@@ -200,6 +203,57 @@ class LedgerProcessor {
                                         + "tenant isolation and must not be injected into "
                                         + "request-scoped beans. Use @ApplicationScoped or "
                                         + "@Singleton instead.")));
+            }
+        }
+    }
+
+    /**
+     * Validates that all {@link io.casehub.ledger.runtime.model.LedgerEntry} subclasses
+     * with persistent fields override {@code domainContentBytes()}. Persistent fields
+     * on subclasses must be included in the Merkle leaf hash and agent signature —
+     * {@code domainContentBytes()} is where subclasses declare their canonical content.
+     *
+     * <p>
+     * Subclasses without persistent fields (e.g. {@code PlainLedgerEntry}, test helpers)
+     * are exempt. Non-{@code @Entity} subclasses are also skipped.
+     */
+    @BuildStep
+    void validateDomainContentBytes(
+            final CombinedIndexBuildItem combinedIndex,
+            final ValidationPhaseBuildItem validation,
+            final BuildProducer<ValidationPhaseBuildItem.ValidationErrorBuildItem> errors) {
+        validateDomainContentBytes(combinedIndex.getIndex(), errors);
+    }
+
+    // package-private for testing
+    static void validateDomainContentBytes(final IndexView index,
+            final BuildProducer<ValidationPhaseBuildItem.ValidationErrorBuildItem> errors) {
+        for (final ClassInfo subclass : index.getAllKnownSubclasses(LEDGER_ENTRY)) {
+            if (!subclass.hasAnnotation(ENTITY)) {
+                continue;
+            }
+
+            final boolean hasPersistentFields = subclass.fields().stream()
+                    .anyMatch(f -> !f.hasAnnotation(TRANSIENT));
+
+            if (!hasPersistentFields) {
+                continue;
+            }
+
+            final boolean overrides = subclass.method("domainContentBytes") != null;
+
+            if (!overrides) {
+                final String fieldNames = subclass.fields().stream()
+                        .filter(f -> !f.hasAnnotation(TRANSIENT))
+                        .map(FieldInfo::name)
+                        .collect(Collectors.joining(", "));
+                errors.produce(new ValidationPhaseBuildItem.ValidationErrorBuildItem(
+                        new jakarta.enterprise.inject.spi.DeploymentException(
+                                subclass.name().withoutPackagePrefix()
+                                        + " declares persistent fields (" + fieldNames
+                                        + ") but does not override domainContentBytes(). "
+                                        + "These fields are not hash-protected. Override domainContentBytes() "
+                                        + "to include them in the Merkle leaf hash and agent signature.")));
             }
         }
     }

@@ -3,7 +3,6 @@ package io.casehub.ledger.runtime.service;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -35,7 +34,7 @@ public final class LedgerMerkleTree {
 
     /** Compute the RFC 9162 leaf hash for the given entry. */
     public static String leafHash(final LedgerEntry entry) {
-        final byte[] canonical = canonicalBytes(entry);
+        final byte[] canonical = entry.canonicalBytes();
         final byte[] input = new byte[1 + canonical.length];
         input[0] = 0x00;
         System.arraycopy(canonical, 0, input, 1, canonical.length);
@@ -164,19 +163,6 @@ public final class LedgerMerkleTree {
             return leaves.get(from);
         final int mid = from + Integer.highestOneBit(to - from - 1);
         return internalHash(subtreeRoot(leaves, from, mid), subtreeRoot(leaves, mid, to));
-    }
-
-    public static byte[] canonicalBytes(final LedgerEntry entry) {
-        final String canonical = String.join("|",
-                entry.subjectId != null ? entry.subjectId.toString() : "",
-                String.valueOf(entry.sequenceNumber),
-                entry.entryType != null ? entry.entryType.name() : "",
-                entry.actorId != null ? entry.actorId : "",
-                entry.actorRole != null ? entry.actorRole : "",
-                entry.occurredAt != null
-                        ? entry.occurredAt.truncatedTo(ChronoUnit.MILLIS).toString()
-                        : "");
-        return canonical.getBytes(StandardCharsets.UTF_8);
     }
 
     private static byte[] hexToBytes(final String hex) {

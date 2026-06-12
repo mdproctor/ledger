@@ -26,7 +26,7 @@ public interface AgentSigner {
 
     /**
      * @param actorId the actor identity (e.g. {@code "claude:reviewer@v1"})
-     * @param data    canonical bytes to sign ({@link LedgerMerkleTree#canonicalBytes})
+     * @param data    canonical bytes to sign ({@link io.casehub.ledger.runtime.model.LedgerEntry#canonicalBytes()})
      * @return signed result, or empty if this actor does not sign entries
      */
     Optional<AgentSignature> sign(String actorId, byte[] data);

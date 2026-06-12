@@ -16,14 +16,13 @@ import org.junit.jupiter.api.Test;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.service.AgentSignature;
-import io.casehub.ledger.runtime.service.AgentSignatureEnricher;
-import io.casehub.ledger.runtime.service.LedgerMerkleTree;
+import io.casehub.ledger.runtime.service.AgentEntrySigner;
 import io.casehub.ledger.service.supplement.TestEntry;
 
-class AgentSignatureEnricherTest {
+class AgentEntrySignerTest {
 
     private KeyPair testKeyPair;
-    private AgentSignatureEnricher enricher;
+    private AgentEntrySigner signer;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -46,11 +45,11 @@ class AgentSignatureEnricherTest {
     @Test
     void populatesSignatureAndPublicKey_whenActorHasKey() {
         final KeyPair kp = testKeyPair;
-        enricher = new AgentSignatureEnricher(
+        signer = new AgentEntrySigner(
                 (actorId, data) -> Optional.of(AgentSignature.signWith(kp, data)));
 
         final TestEntry e = entry("claude:reviewer@v1");
-        enricher.enrich(e);
+        signer.sign(e);
 
         assertThat(e.agentSignature).isNotNull().hasSizeGreaterThan(0);
         assertThat(e.agentPublicKey).isNotNull().isEqualTo(kp.getPublic().getEncoded());
@@ -58,24 +57,24 @@ class AgentSignatureEnricherTest {
 
     @Test
     void signatureVerifiesAgainstStoredPublicKey() throws Exception {
-        enricher = new AgentSignatureEnricher(
+        signer = new AgentEntrySigner(
                 (actorId, data) -> Optional.of(AgentSignature.signWith(testKeyPair, data)));
 
         final TestEntry e = entry("claude:reviewer@v1");
-        enricher.enrich(e);
+        signer.sign(e);
 
         final Signature sig = Signature.getInstance("Ed25519");
         sig.initVerify(testKeyPair.getPublic());
-        sig.update(LedgerMerkleTree.canonicalBytes(e));
+        sig.update(e.canonicalBytes());
         assertThat(sig.verify(e.agentSignature)).isTrue();
     }
 
     @Test
     void leavesFieldsNull_whenActorHasNoKey() {
-        enricher = new AgentSignatureEnricher((actorId, data) -> Optional.empty());
+        signer = new AgentEntrySigner((actorId, data) -> Optional.empty());
 
         final TestEntry e = entry("unknown-actor");
-        enricher.enrich(e);
+        signer.sign(e);
 
         assertThat(e.agentSignature).isNull();
         assertThat(e.agentPublicKey).isNull();
@@ -83,11 +82,11 @@ class AgentSignatureEnricherTest {
 
     @Test
     void leavesFieldsNull_whenActorIdIsNull() {
-        enricher = new AgentSignatureEnricher(
+        signer = new AgentEntrySigner(
                 (actorId, data) -> Optional.of(AgentSignature.signWith(testKeyPair, data)));
 
         final TestEntry e = entry(null);
-        enricher.enrich(e);
+        signer.sign(e);
 
         assertThat(e.agentSignature).isNull();
         assertThat(e.agentPublicKey).isNull();
@@ -95,18 +94,18 @@ class AgentSignatureEnricherTest {
 
     @Test
     void isIdempotent_secondCallIsNoOp() throws Exception {
-        enricher = new AgentSignatureEnricher(
+        signer = new AgentEntrySigner(
                 (actorId, data) -> Optional.of(AgentSignature.signWith(testKeyPair, data)));
 
         final TestEntry e = entry("claude:reviewer@v1");
-        enricher.enrich(e);
+        signer.sign(e);
         final byte[] firstSig = e.agentSignature.clone();
         final byte[] firstKey = e.agentPublicKey.clone();
 
         final KeyPair otherPair = KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
-        enricher = new AgentSignatureEnricher(
+        signer = new AgentEntrySigner(
                 (actorId, data) -> Optional.of(AgentSignature.signWith(otherPair, data)));
-        enricher.enrich(e);
+        signer.sign(e);
 
         assertThat(e.agentSignature).isEqualTo(firstSig);
         assertThat(e.agentPublicKey).isEqualTo(firstKey);
@@ -114,22 +113,22 @@ class AgentSignatureEnricherTest {
 
     @Test
     void doesNotThrow_whenSignerThrows() {
-        enricher = new AgentSignatureEnricher((actorId, data) -> {
+        signer = new AgentEntrySigner((actorId, data) -> {
             throw new RuntimeException("key store unavailable");
         });
 
         final TestEntry e = entry("claude:reviewer@v1");
-        assertThatCode(() -> enricher.enrich(e)).doesNotThrowAnyException();
+        assertThatCode(() -> signer.sign(e)).doesNotThrowAnyException();
         assertThat(e.agentSignature).isNull();
     }
 
     @Test
     void populatesAgentKeyRef_fromSignerResult() {
-        enricher = new AgentSignatureEnricher(
+        signer = new AgentEntrySigner(
                 (actorId, data) -> Optional.of(AgentSignature.signWith(testKeyPair, data)));
 
         final TestEntry e = entry("claude:reviewer@v1");
-        enricher.enrich(e);
+        signer.sign(e);
 
         assertThat(e.agentKeyRef).isNotNull().hasSize(43);
         assertThat(e.agentKeyRef).matches("[A-Za-z0-9_-]+");
@@ -137,11 +136,63 @@ class AgentSignatureEnricherTest {
 
     @Test
     void agentKeyRef_isNullWhenUnsigned() {
-        enricher = new AgentSignatureEnricher((actorId, data) -> Optional.empty());
+        signer = new AgentEntrySigner((actorId, data) -> Optional.empty());
 
         final TestEntry e = entry("unknown-actor");
-        enricher.enrich(e);
+        signer.sign(e);
 
+        assertThat(e.agentKeyRef).isNull();
+    }
+
+    @Test
+    void prepareKey_populatesPublicKeyAndKeyRef_butNotSignature() {
+        signer = new AgentEntrySigner(
+                (actorId, data) -> Optional.of(AgentSignature.signWith(testKeyPair, data)));
+
+        final TestEntry e = entry("claude:reviewer@v1");
+        signer.prepareKey(e);
+
+        assertThat(e.agentPublicKey).isNotNull().isEqualTo(testKeyPair.getPublic().getEncoded());
+        assertThat(e.agentKeyRef).isNotNull();
+        assertThat(e.agentSignature).isNull();
+    }
+
+    @Test
+    void prepareKey_thenSign_producesValidSignature() throws Exception {
+        signer = new AgentEntrySigner(
+                (actorId, data) -> Optional.of(AgentSignature.signWith(testKeyPair, data)));
+
+        final TestEntry e = entry("claude:reviewer@v1");
+        signer.prepareKey(e);
+        signer.sign(e);
+
+        assertThat(e.agentSignature).isNotNull();
+        final Signature sig = Signature.getInstance("Ed25519");
+        sig.initVerify(testKeyPair.getPublic());
+        sig.update(e.canonicalBytes());
+        assertThat(sig.verify(e.agentSignature)).isTrue();
+    }
+
+    @Test
+    void prepareKey_isNoOp_whenActorIdIsNull() {
+        signer = new AgentEntrySigner(
+                (actorId, data) -> Optional.of(AgentSignature.signWith(testKeyPair, data)));
+
+        final TestEntry e = entry(null);
+        signer.prepareKey(e);
+
+        assertThat(e.agentPublicKey).isNull();
+        assertThat(e.agentKeyRef).isNull();
+    }
+
+    @Test
+    void prepareKey_isNoOp_whenActorHasNoKey() {
+        signer = new AgentEntrySigner((actorId, data) -> Optional.empty());
+
+        final TestEntry e = entry("unknown-actor");
+        signer.prepareKey(e);
+
+        assertThat(e.agentPublicKey).isNull();
         assertThat(e.agentKeyRef).isNull();
     }
 }

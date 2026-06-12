@@ -93,7 +93,7 @@ class LedgerIdentityEnforcementIT {
 
         final TestEntry entry = buildEntry();
         entry.actorDid = DID;
-        // AgentSignatureEnricher will populate agentSignature + agentPublicKey from AgentSigner
+        // AgentEntrySigner will populate agentSignature + agentPublicKey in the save pipeline
 
         ledgerRepo.save(entry, DEFAULT_TENANT_ID);
         assertThat(entry.id).isNotNull();

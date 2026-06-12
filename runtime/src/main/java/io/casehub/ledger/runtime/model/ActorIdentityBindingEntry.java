@@ -90,4 +90,18 @@ public class ActorIdentityBindingEntry extends LedgerEntry {
      */
     @Column(name = "did_method", length = 32)
     public String didMethod;
+
+    @Override
+    protected byte[] domainContentBytes() {
+        String content = String.join("|",
+            boundDid != null ? boundDid : "",
+            validationResult != null ? validationResult.name() : "",
+            String.valueOf(alsoKnownAsVerified),
+            String.valueOf(keyMatchVerified),
+            verifiedKeyRef != null ? verifiedKeyRef : "",
+            credentialResult != null ? credentialResult.name() : "",
+            didMethod != null ? didMethod : ""
+        );
+        return content.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
 }

@@ -1,6 +1,5 @@
 # ledger Workspace
-**Name:** ledger
-
+**Name:** casehub-ledger
 **Project repo:** /Users/mdproctor/claude/casehub/ledger
 **Workspace type:** public
 
@@ -164,10 +163,12 @@ the domain-specific `work_item_id` that was in the original Tarkus ledger. Consu
 registered subclass tables on query. `LedgerAttestation` holds a FK to the base table —
 attestations work regardless of which subclass produced the entry.
 
-**Merkle leaf hash canonical form (core fields only)**
-`subjectId|seqNum|entryType|actorId|actorRole|occurredAt`
-Domain-specific subclass fields and supplement fields are excluded — canonical form stays
-domain-agnostic. The leaf hash is `SHA-256(0x00 | canonicalBytes)` per RFC 9162.
+**Merkle leaf hash canonical form**
+The leaf hash covers all tamper-critical fields: structural metadata, `supplementJson`,
+and subclass domain content via `domainContentBytes()`. `canonicalBytes()` is a `public final`
+instance method on `LedgerEntry`. Subclasses override `domainContentBytes()` to include
+join-table fields; a build-time guard enforces this for `@Entity` subclasses with persistent fields.
+The leaf hash is `SHA-256(0x00 | canonicalBytes)` per RFC 9162.
 The Merkle Mountain Range (stored frontier) replaces the old linear chain.
 
 **`traceId` and `causedByEntryId` are core fields**
@@ -313,7 +314,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── SigningKey.java                  — record: keyRef (Base64URL SHA-256 of public key) + KeyPair; self-derived, zero operator config
 │       │   ├── AgentSigner.java                 — SPI: sign(actorId, data) → Optional<AgentSignature>; algorithm-transparent; see PP-20260523-e7b577
 │       │   ├── ConfiguredAgentSigner.java       — @DefaultBean: loads PKCS#8 private + X.509 public PEM per actorId from casehub.ledger.agent-signing.keys.*
-│       │   ├── AgentSignatureEnricher.java      — LedgerEntryEnricher: signs canonicalBytes() at @PrePersist, stores agentSignature + agentPublicKey + agentKeyRef
+│       │   ├── AgentEntrySigner.java             — CDI bean: signs entry.canonicalBytes() in save pipeline (after hash, before persist), stores agentSignature + agentPublicKey + agentKeyRef
 │       │   ├── AgentKeyRotatedEvent.java        — CDI event record fired by KeyRotationService/ReactiveKeyRotationService after rotation is persisted; observers (ActorIdentityValidationEnricher, IdentityCacheInvalidator) invalidate their caches
 │       │   ├── KeyRotationService.java          — CDI bean: recordRotation fires AgentKeyRotatedEvent after persist; rotationHistory / compromisedWindows
 │       │   ├── ReactiveKeyRotationService.java  — compromisedWindowsAsync / rotationHistoryAsync / recordRotationAsync (Uni<T>); fires AgentKeyRotatedEvent via fireAsync (fire-and-forget); excluded when casehub.ledger.reactive.enabled=false

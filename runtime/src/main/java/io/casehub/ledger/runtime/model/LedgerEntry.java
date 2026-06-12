@@ -1,6 +1,8 @@
 package io.casehub.ledger.runtime.model;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -73,6 +75,8 @@ import io.casehub.ledger.runtime.service.identity.LedgerIdentityEnforcementListe
 @Table(name = "ledger_entry")
 @EntityListeners({LedgerTraceListener.class, LedgerIdentityEnforcementListener.class})
 public abstract class LedgerEntry {
+
+    private static final byte[] EMPTY_BYTES = new byte[0];
 
     // ── Core identity ─────────────────────────────────────────────────────────
 
@@ -158,7 +162,7 @@ public abstract class LedgerEntry {
     // ── Agent signing ─────────────────────────────────────────────────────────
 
     /**
-     * Ed25519 signature of {@link io.casehub.ledger.runtime.service.LedgerMerkleTree#canonicalBytes(LedgerEntry)}
+     * Ed25519 signature of {@link #canonicalBytes()}
      * by the agent identified in {@link #actorId}.
      * Null when the actor is not configured for bilateral signing.
      */
@@ -290,5 +294,83 @@ public abstract class LedgerEntry {
         if (occurredAt == null) {
             occurredAt = Instant.now();
         }
+    }
+
+    // ── Canonical bytes ───────────────────────────────────────────────────────
+
+    /**
+     * Compute the canonical byte representation of this entry for tamper-evident hashing.
+     *
+     * <p>
+     * Includes all tamper-critical fields:
+     * <ul>
+     * <li>Base identity: {@code subjectId}, {@code sequenceNumber}, {@code entryType}</li>
+     * <li>Actor context: {@code actorId}, {@code actorRole}, {@code actorType}</li>
+     * <li>Timing: {@code occurredAt} (truncated to milliseconds)</li>
+     * <li>Multi-tenancy: {@code tenancyId}</li>
+     * <li>Causality: {@code causedByEntryId}</li>
+     * <li>Supplements: {@code supplementJson} (if non-null)</li>
+     * <li>Domain content: {@code domainContentBytes()} (if non-empty)</li>
+     * </ul>
+     *
+     * <p>
+     * Format: pipe-delimited base fields, followed by optional supplement JSON and domain content:
+     * {@code subjectId|seqNum|entryType|actorId|actorRole|occurredAt|tenancyId|actorType|causedByEntryId[|supplementJson][|domainContent]}
+     *
+     * <p>
+     * Null fields are rendered as empty strings. Deterministic — same entry produces same bytes.
+     *
+     * @return canonical UTF-8 byte array for this entry
+     */
+    public final byte[] canonicalBytes() {
+        final List<String> parts = new ArrayList<>(9);
+
+        // Base fields (9 fields, all pipe-delimited)
+        parts.add(subjectId != null ? subjectId.toString() : "");
+        parts.add(String.valueOf(sequenceNumber));
+        parts.add(entryType != null ? entryType.name() : "");
+        parts.add(actorId != null ? actorId : "");
+        parts.add(actorRole != null ? actorRole : "");
+        parts.add(occurredAt != null
+                ? occurredAt.truncatedTo(ChronoUnit.MILLIS).toString()
+                : "");
+        parts.add(tenancyId != null ? tenancyId : "");
+        parts.add(actorType != null ? actorType.name() : "");
+        parts.add(causedByEntryId != null ? causedByEntryId.toString() : "");
+
+        // Build base canonical string
+        final StringBuilder canonical = new StringBuilder(String.join("|", parts));
+
+        // Append supplement JSON if present
+        if (supplementJson != null && !supplementJson.isEmpty()) {
+            canonical.append("|").append(supplementJson);
+        }
+
+        // Append domain content if present
+        final byte[] domainBytes = domainContentBytes();
+        if (domainBytes.length > 0) {
+            canonical.append("|");
+            // Convert domain bytes to UTF-8 string for consistent pipe-delimited format
+            canonical.append(new String(domainBytes, StandardCharsets.UTF_8));
+        }
+
+        return canonical.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Returns domain-specific content bytes for hash protection.
+     *
+     * <p>Subclasses that declare persistent fields on join tables MUST override
+     * this method to include those fields. The returned bytes are appended to the
+     * canonical form used by both the Merkle leaf hash and the agent signature.
+     *
+     * <p>Build-time enforcement: {@code LedgerProcessor} produces a deployment error
+     * if a {@code LedgerEntry} subclass declares persistent fields (non-{@code @Transient})
+     * but does not override this method.
+     *
+     * @return domain content bytes; empty array if no domain fields exist
+     */
+    protected byte[] domainContentBytes() {
+        return EMPTY_BYTES;
     }
 }

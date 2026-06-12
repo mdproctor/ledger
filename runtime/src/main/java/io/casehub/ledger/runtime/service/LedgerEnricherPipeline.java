@@ -22,8 +22,8 @@ import io.quarkus.arc.InjectableInstance;
  * is logged and swallowed; the pipeline always completes and the save is never blocked.
  *
  * <p>
- * Invoked by {@link LedgerTraceListener} at JPA {@code @PrePersist} time, and directly
- * by in-memory {@code LedgerEntryRepository} implementations before storing an entry.
+ * Invoked by {@code LedgerEntryRepository.save()} implementations before digest computation
+ * and agent signing. The full pipeline is: enrichment, digest (leafHash), agent signature, persist.
  */
 @ApplicationScoped
 public class LedgerEnricherPipeline {

@@ -67,4 +67,15 @@ public class KeyRotationEntry extends LedgerEntry {
      */
     @Column(name = "effective_since", nullable = false)
     public Instant effectiveSince;
+
+    @Override
+    protected byte[] domainContentBytes() {
+        String content = String.join("|",
+            previousKeyRef != null ? previousKeyRef : "",
+            newKeyRef != null ? newKeyRef : "",
+            reason != null ? reason.name() : "",
+            effectiveSince != null ? effectiveSince.toString() : ""
+        );
+        return content.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
 }
