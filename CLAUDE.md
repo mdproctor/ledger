@@ -296,7 +296,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   └── jpa/                              — JPA implementations (EntityManager-based)
 │       │       ├── JpaActorIdentityBindingRepository.java
 │       │       ├── JpaCrossTenantLedgerEntryRepository.java
-│       │       └── LedgerSequenceAllocator.java     — CDI bean: atomic per-subject sequence allocation via SQL-standard MERGE on ledger_subject_sequence
+│       │       └── LedgerSequenceAllocator.java     — CDI bean: atomic per-subject sequence allocation; PostgreSQL: INSERT ON CONFLICT DO NOTHING + UPDATE (row lock serialises full save pipeline); H2: SQL-standard MERGE (H2 2.x has no ON CONFLICT support; H2 tests are serial)
 │       ├── qualifier/
 │       │   └── CrossTenant.java              — CDI qualifier: disambiguates CrossTenantLedgerEntryRepository from LedgerEntryRepository (Category 1 only; build-time scope validation)
 │       ├── service/

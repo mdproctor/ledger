@@ -84,11 +84,16 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
     final ConcurrentHashMap<UUID, LedgerEntry> entries = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<UUID, LedgerAttestation> attestations = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<UUID, AtomicInteger> sequenceCounters = new ConcurrentHashMap<>();
+    // Per-subject lock: serialises the sequence-allocation → hash → frontier-update pipeline
+    // so that concurrent saves for the same subject always produce a correct Merkle chain.
+    // Different subjects still run fully concurrently. The map grows by one entry per distinct
+    // subjectId ever saved — like entries, it must be reset at session boundaries via clear().
+    private final ConcurrentHashMap<UUID, Object> subjectLocks = new ConcurrentHashMap<>();
 
     @Override
     public LedgerEntry save(final LedgerEntry entry, final String tenancyId) {
+        // Pre-work — per-entry stateless, no ordering constraint, runs concurrently across subjects.
         entry.tenancyId = tenancyId;
-
         if (entry.id == null) {
             entry.id = UUID.randomUUID();
         }
@@ -102,30 +107,41 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
                 entry.refreshSupplementJson();
             }
         });
-
-        entry.sequenceNumber = sequenceCounters
-                .computeIfAbsent(entry.subjectId, k -> new AtomicInteger(0))
-                .incrementAndGet();
-
-        // Pipeline: prepareKey → enrich → hash → sign → store
+        // prepareKey is per-entry stateless (reads actorId, writes agentPublicKey/agentKeyRef
+        // on this entry only). Runs pre-lock; enricherPipeline.enrich() reads these fields.
         agentEntrySigner.prepareKey(entry);
-        enricherPipeline.enrich(entry);
 
-        if (ledgerConfig.hashChain().enabled()) {
-            entry.digest = LedgerMerkleTree.leafHash(entry);
-        }
+        // Per-subject serialised section — sequence assignment, Merkle chain update, and
+        // everything in between must be atomic per subject to guarantee chain correctness.
+        final Object lock = subjectLocks.computeIfAbsent(entry.subjectId, k -> new Object());
+        synchronized (lock) {
+            entry.sequenceNumber = sequenceCounters
+                    .computeIfAbsent(entry.subjectId, k -> new AtomicInteger(0))
+                    .incrementAndGet();
 
-        agentEntrySigner.sign(entry);
+            enricherPipeline.enrich(entry);
 
-        entries.put(entry.id, entry);
+            if (ledgerConfig.hashChain().enabled()) {
+                entry.digest = LedgerMerkleTree.leafHash(entry);
+            }
 
-        if (ledgerConfig.hashChain().enabled()) {
-            final List<LedgerMerkleFrontier> current = frontierRepo.findBySubjectId(entry.subjectId, tenancyId);
-            final List<LedgerMerkleFrontier> newFrontier =
-                    LedgerMerkleTree.append(entry.digest, current, entry.subjectId);
-            frontierRepo.replace(entry.subjectId, newFrontier, tenancyId);
-            final String newRoot = LedgerMerkleTree.treeRoot(newFrontier);
-            merklePublisher.publish(entry.subjectId, entry.sequenceNumber, newRoot);
+            agentEntrySigner.sign(entry);
+
+            // entries.put() inside the lock: from the perspective of concurrent saves to the
+            // same subject, entry and frontier are both written before the lock releases.
+            // Concurrent reads (findBySubjectId) do not hold this lock and may observe a
+            // window between entry visibility and frontier update — same as JPA READ COMMITTED.
+            entries.put(entry.id, entry);
+
+            if (ledgerConfig.hashChain().enabled()) {
+                final List<LedgerMerkleFrontier> current =
+                        frontierRepo.findBySubjectId(entry.subjectId, tenancyId);
+                final List<LedgerMerkleFrontier> newFrontier =
+                        LedgerMerkleTree.append(entry.digest, current, entry.subjectId);
+                frontierRepo.replace(entry.subjectId, newFrontier, tenancyId);
+                merklePublisher.publish(entry.subjectId, entry.sequenceNumber,
+                        LedgerMerkleTree.treeRoot(newFrontier));
+            }
         }
 
         return entry;
@@ -296,6 +312,7 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
         entries.clear();
         attestations.clear();
         sequenceCounters.clear();
+        subjectLocks.clear();
         if (frontierRepo instanceof InMemoryLedgerMerkleFrontierRepository m) {
             m.clear();
         }
