@@ -1,6 +1,7 @@
 package io.casehub.ledger.runtime.repository.jpa;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
@@ -14,6 +15,7 @@ import io.casehub.ledger.runtime.service.LedgerMerkleTree;
 import java.util.List;
 import java.util.Optional;
 
+@Alternative
 @ApplicationScoped
 public class JpaActorIdentityBindingRepository implements ActorIdentityBindingRepository {
 

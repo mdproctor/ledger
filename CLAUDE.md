@@ -293,8 +293,11 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── KeyRotationRepository.java         — SPI: query-only (findByActorId, findCompromisedByActorIdAndKeyRef); save via LedgerEntryRepository
 │       │   ├── ReactiveKeyRotationRepository.java — reactive SPI: same two query methods with Uni<List<>> returns; no bundled JPA impl — consumers provide; test suite uses BlockingReactiveKeyRotationRepository shim
 │       │   ├── ActorIdentityBindingRepository.java         — SPI: latestBindingFor / bindingHistoryFor / save
+│       │   ├── NoOpLedgerEntryRepository.java    — @DefaultBean: CDI-satisfaction no-op; all reads return empty, save/saveAttestation return argument unchanged; active when neither JPA nor in-memory alternative is selected (see #138)
+│       │   ├── NoOpActorIdentityBindingRepository.java — @DefaultBean: CDI-satisfaction no-op for ActorIdentityBindingRepository; prevents ActorIdentityBindingObserver from requiring a datasource in consumer test contexts (see #138)
+│       │   ├── NoOpLedgerMerkleFrontierRepository.java — @DefaultBean: CDI-satisfaction no-op; findBySubjectId() returns empty, replace() is a no-op
 │       │   └── jpa/                              — JPA implementations (EntityManager-based)
-│       │       ├── JpaActorIdentityBindingRepository.java
+│       │       ├── JpaActorIdentityBindingRepository.java — @Alternative: activate via quarkus.arc.selected-alternatives; was plain @ApplicationScoped before #138 — @Alternative required so NoOpActorIdentityBindingRepository @DefaultBean can fill the default slot
 │       │       ├── JpaCrossTenantLedgerEntryRepository.java
 │       │       └── LedgerSequenceAllocator.java     — CDI bean: atomic per-subject sequence allocation; PostgreSQL: INSERT ON CONFLICT DO NOTHING + UPDATE (row lock serialises full save pipeline); H2: SQL-standard MERGE (H2 2.x has no ON CONFLICT support; H2 tests are serial)
 │       ├── qualifier/
