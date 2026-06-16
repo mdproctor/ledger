@@ -95,17 +95,16 @@
   <build>
     <plugins>
 
+      <!-- quarkus:build is intentionally omitted — this is a test-only module.
+           Test-scoped dependencies (casehub-platform, quarkus-jdbc-h2) provide
+           the CDI context and datasource needed for @QuarkusTest augmentation.
+           The build goal's augmentation phase cannot see test-scoped deps and
+           would fail CDI validation. @QuarkusTest handles its own augmentation
+           with the full test classpath. -->
       <plugin>
         <groupId>io.quarkus</groupId>
         <artifactId>quarkus-maven-plugin</artifactId>
         <version>${quarkus.version}</version>
-        <executions>
-          <execution>
-            <goals>
-              <goal>build</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
 
       <plugin>
