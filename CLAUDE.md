@@ -269,7 +269,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── LedgerEntry.java             — abstract base entity (JOINED inheritance); tenancyId (multi-tenancy, V1000); agentSignature + agentPublicKey + agentKeyRef for bilateral signing (V1005/V1006); actorDid + @Transient pendingIdentityStatus (V1008)
 │       │   ├── LedgerAttestation.java       — peer attestation entity
 │       │   ├── ActorTrustScore.java         — trust score entity; four ScoreType values (GLOBAL|CAPABILITY|DIMENSION|CAPABILITY_DIMENSION) × two-column key (capability_key, dimension_key); see ADR 0010
-│       │   ├── LedgerMerkleFrontier.java    — Merkle frontier node entity (log₂(N) rows per subject)
+│       │   ├── LedgerMerkleFrontier.java    — Merkle frontier node entity (log₂(N) rows per subject per tenant); tenancyId column added in #139
 │       │   ├── LedgerEntryArchiveRecord.java — archive snapshot record for retention-deleted entries (V1003)
 │       │   ├── KeyRotationEntry.java         — LedgerEntry subclass: key rotation/revocation event; subjectId=UUID.nameUUIDFromBytes(actorId); see ADR 0012
 │       │   ├── ActorIdentityBindingEntry.java — LedgerEntry subclass: DID/VC binding validation event; subjectId=nameUUIDFromBytes(actorId); entryType=EVENT; see ADR 0015
@@ -290,6 +290,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── CrossTenantLedgerEntryRepository.java — cross-tenant read operations (trust, health, retention)
 │       │   ├── CrossTenantReactiveLedgerEntryRepository.java — reactive cross-tenant counterpart
 │       │   ├── ActorTrustScoreRepository.java     — SPI
+│       │   ├── NoOpActorTrustScoreRepository.java — @DefaultBean: CDI-satisfaction no-op; all reads return empty/empty-list, upsert/updateGlobalTrustScore are no-ops; active when neither JPA nor in-memory alternative is selected (see #143)
 │       │   ├── KeyRotationRepository.java         — SPI: query-only (findByActorId, findCompromisedByActorIdAndKeyRef); save via LedgerEntryRepository
 │       │   ├── ReactiveKeyRotationRepository.java — reactive SPI: same two query methods with Uni<List<>> returns; no bundled JPA impl — consumers provide; test suite uses BlockingReactiveKeyRotationRepository shim
 │       │   ├── ActorIdentityBindingRepository.java         — SPI: latestBindingFor / bindingHistoryFor / save
@@ -298,8 +299,9 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── NoOpLedgerMerkleFrontierRepository.java — @DefaultBean: CDI-satisfaction no-op; findBySubjectId() returns empty, replace() is a no-op
 │       │   └── jpa/                              — JPA implementations (EntityManager-based)
 │       │       ├── JpaActorIdentityBindingRepository.java — @Alternative: activate via quarkus.arc.selected-alternatives; was plain @ApplicationScoped before #138 — @Alternative required so NoOpActorIdentityBindingRepository @DefaultBean can fill the default slot
+│       │       ├── JpaActorTrustScoreRepository.java — @Alternative @ApplicationScoped: activate via quarkus.arc.selected-alternatives; was plain @ApplicationScoped before #143 — @Alternative required so NoOpActorTrustScoreRepository @DefaultBean can fill the default slot
 │       │       ├── JpaCrossTenantLedgerEntryRepository.java
-│       │       └── LedgerSequenceAllocator.java     — CDI bean: atomic per-subject sequence allocation; PostgreSQL: INSERT ON CONFLICT DO NOTHING + UPDATE (row lock serialises full save pipeline); H2: SQL-standard MERGE (H2 2.x has no ON CONFLICT support; H2 tests are serial)
+│       │       └── LedgerSequenceAllocator.java     — CDI bean: atomic per-(subject, tenant) sequence allocation; dialect detected lazily via JDBC DatabaseMetaData (not @ConfigProperty — named datasources would get wrong key); PostgreSQL: INSERT ON CONFLICT DO NOTHING + UPDATE (row lock serialises full save pipeline per tenant); H2: SQL-standard MERGE (H2 2.x has no ON CONFLICT support; H2 tests are serial)
 │       ├── qualifier/
 │       │   └── CrossTenant.java              — CDI qualifier: disambiguates CrossTenantLedgerEntryRepository from LedgerEntryRepository (Category 1 only; build-time scope validation)
 │       ├── service/
@@ -349,10 +351,11 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── PerActorTrustComputer.java    — package-private CDI bean: delegates computation to TrustScoreCalculator, persists results, fires events; used by TrustScoreJob and IncrementalTrustUpdateObserver
 │       │   ├── IncrementalTrustUpdateObserver.java — CDI observer: @Observes(AFTER_SUCCESS) AttestationRecordedEvent → per-actor trust recomputation in REQUIRES_NEW; gated by casehub.ledger.trust-score.incremental.enabled
 │       │   ├── TrustScoreJob.java           — @Scheduled nightly recomputation; delegates per-actor work to PerActorTrustComputer
-│       │   ├── LedgerHealthJob.java         — @Scheduled gap detection + reconciliation (configurable interval, default 1h)
+│       │   ├── LedgerHealthJob.java         — @Scheduled gap detection + reconciliation (configurable interval, default 1h); JPQL groups by (subjectId, tenancyId); fires LedgerAnomalyDetected sealed events
 │       │   ├── LedgerReconciliationSource.java — SPI: consumers implement to compare domain entity counts vs ledger counts
-│       │   ├── LedgerGapDetected.java       — CDI event fired on sequence gap or reconciliation mismatch
-│       │   ├── GapType.java                 — SEQUENCE_GAP | RECONCILIATION_MISMATCH
+│       │   ├── LedgerAnomalyDetected.java   — sealed interface: base type for all health-job anomaly CDI events (see #139)
+│       │   ├── LedgerSequenceGapDetected.java — record: (UUID subjectId, String tenancyId, long expectedCount, long actualCount) implements LedgerAnomalyDetected; fired on per-(subject,tenant) sequence gap
+│       │   ├── LedgerReconciliationMismatchDetected.java — record: (String entityType, long domainCount, long ledgerCount) implements LedgerAnomalyDetected; fired on reconciliation source count discrepancy
 │       │   ├── LedgerComplianceReportService.java — CDI bean: reportForActor / reportForSubject → ComplianceReport
 │       │   ├── ComplianceReport.java        — value type: DecisionRecord list + Merkle anchor + format(ReportFormat)
 │       │   ├── DecisionRecord.java          — single automated decision entry in a compliance report
@@ -401,7 +404,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │           ├── LedgerErasureService.java    — GDPR Art.17 erasure (CDI bean)
 │           └── LedgerPrivacyProducer.java   — CDI producer for both SPIs (@DefaultBean)
 │   └── src/main/resources/db/ledger/migration/
-│       ├── V1000__ledger_base_schema.sql    — ledger_entry + ledger_attestation tables + ledger_subject_sequence (per-subject seq counter) + UNIQUE(subject_id, sequence_number)
+│       ├── V1000__ledger_base_schema.sql    — ledger_entry + ledger_attestation tables; ledger_merkle_frontier (tenancy_id, UNIQUE(subject_id, tenancy_id, level)); ledger_subject_sequence (composite PK (subject_id, tenancy_id)); ledger_entry UNIQUE index (subject_id, tenancy_id, sequence_number)
 │       ├── V1001__actor_trust_score.sql     — actor_trust_score two-column key model (UUID PK, score_type GLOBAL|CAPABILITY|DIMENSION|CAPABILITY_DIMENSION, capability_key + dimension_key, CHECK constraint, NULLS NOT DISTINCT)
 │       ├── V1002__ledger_supplement.sql     — supplement tables + drops moved columns
 │       ├── V1003__ledger_entry_archive.sql  — ledger_entry_archive table
@@ -416,8 +419,8 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       └── LedgerProcessor.java             — @BuildStep: FeatureBuildItem + excludeReactiveBeans (ExcludedTypeBuildItem when reactive.enabled=false) + validateFlywayMigrationLocation (WARN if db/ledger/migration absent from Flyway locations)
 └── persistence-memory/
     └── src/main/java/io/casehub/ledger/memory/
-        ├── InMemoryLedgerEntryRepository.java        — @Alternative @Priority(1); save pipeline mirrors JPA; allEntries() method for delegates
-        ├── InMemoryLedgerMerkleFrontierRepository.java — @Alternative @Priority(1); ConcurrentHashMap-backed
+        ├── InMemoryLedgerEntryRepository.java        — @Alternative @Priority(1); save pipeline mirrors JPA; sequenceCounters + subjectLocks keyed by SubjectKey(UUID subjectId, String tenancyId) for per-tenant isolation (#139); allEntries() method for delegates
+        ├── InMemoryLedgerMerkleFrontierRepository.java — @Alternative @Priority(1); ConcurrentHashMap keyed by FrontierKey(UUID subjectId, String tenancyId) for per-tenant frontier isolation (#139)
         ├── InMemoryActorTrustScoreRepository.java    — @Alternative @Priority(1); composite key: actorId|scoreType|cap|dim
         ├── InMemoryKeyRotationRepository.java        — @Alternative @Priority(1); reads via blocking.allEntries()
         ├── InMemoryAgentSigner.java              — @Alternative @Priority(1); ConcurrentHashMap<String,KeyPair>; register(actorId,keyPair) + clear() for session-boundary reset; see #104

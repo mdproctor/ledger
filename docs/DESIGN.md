@@ -74,7 +74,7 @@ from base entries — trust scoring works across all consumers.
 | `ledger_supplement_provenance` | V1002 | ProvenanceSupplement joined table |
 | `ledger_entry_archive` | V1003 | Archive records before retention deletion |
 | `actor_identity` | V1004 | Actor pseudonymisation token-to-identity mapping |
-| `ledger_merkle_frontier` | V1000 | Merkle Mountain Range frontier nodes (≤log₂(N) rows per subject) |
+| `ledger_merkle_frontier` | V1000 | Merkle Mountain Range frontier nodes (≤log₂(N) rows per subject per tenant); UNIQUE(subject_id, tenancy_id, level) (#139) |
 
 ### Reactive service tier separation
 
@@ -229,7 +229,7 @@ an enricher — signing seals the entry, it does not add content.
 
 ### `AgentSignatureSuspectEvent` and sync/async verification parity
 
-`AgentSignatureSuspectEvent` follows the `LedgerGapDetected` pattern: plain CDI record, `Event<T>` injection, no annotations on the record — consumers choose `@Observes` (sync) or `@ObservesAsync` (async) independently of how the producer fires.
+`AgentSignatureSuspectEvent` follows the same CDI event pattern as `LedgerAnomalyDetected`: plain CDI record (or sealed interface), `Event<T>` injection, no annotations on the record — consumers choose `@Observes` (sync) or `@ObservesAsync` (async) independently of how the producer fires.
 
 The sync `verifyAgentSignature()` fires `event.fire()` (lives in `AgentSignatureVerificationService`); the reactive `verifyAgentSignatureAsync()` twin fires `event.fireAsync()` (lives in `ReactiveAgentSignatureVerificationService` — see Reactive tier separation below). Both paths share one event type; delivery semantics are a consumer concern. Cryptographic verification logic is extracted to `AgentCryptographicVerifier` (package-private static utility, mirrors `LedgerMerkleTree`) shared by both tiers; algorithm is detected from the stored public key bytes — no algorithm hardcoded (ADR 0013); `compromisedEffectiveSince()` eliminates a structural null-check asymmetry found in code review.
 
@@ -411,9 +411,10 @@ The dimension pass always uses raw attestations — continuous `dimensionScore` 
 
 **EigenTrust transitivity** (opt-in, `casehub.ledger.trust-score.eigentrust.enabled`) — runs after the Beta pass. `EigenTrustComputer` builds a peer trust matrix C from attestation data (C[i][j] = normalised positive attestations from i on j's decisions), then runs power iteration with dampening: `t = (1-α) * Cᵀ * t + α * p`. The result is each actor's eigenvector trust share accounting for transitive relationships. Pre-trusted actors (platform SYSTEM actors, or configured via `pre-trusted-actors`) seed the distribution p.
 
-**Audit health checks (✅ #56)** — `LedgerHealthJob` runs on a configurable schedule (default 1h) and fires `LedgerGapDetected` CDI events for anomalies:
-- *Sequence gap detection*: for each subject, verifies that sequence numbers are contiguous (`COUNT(e) == MAX(seqNum) - MIN(seqNum) + 1`). A gap indicates entries were deleted after write.
-- *Reconciliation*: consumers register `LedgerReconciliationSource` SPI implementations to compare domain entity counts against ledger entry counts. Gated by `source.isActive()` — inactive sources are skipped. Fired events carry the subject type, expected count, actual count, and `GapType` (`SEQUENCE_GAP` or `RECONCILIATION_MISMATCH`). No data is modified; alerting is delegated to observers.
+**Audit health checks (✅ #56, updated #139)** — `LedgerHealthJob` runs on a configurable schedule (default 1h) and fires `LedgerAnomalyDetected` sealed CDI events for anomalies:
+- *Sequence gap detection*: for each `(subjectId, tenancyId)` pair, verifies that sequence numbers are contiguous (`COUNT(e) == MAX(seqNum) - MIN(seqNum) + 1`). A gap indicates entries were deleted after write. Fires `LedgerSequenceGapDetected(UUID subjectId, String tenancyId, long expectedCount, long actualCount)`.
+- *Reconciliation*: consumers register `LedgerReconciliationSource` SPI implementations to compare domain entity counts against ledger entry counts. Gated by `source.isActive()` — inactive sources are skipped. Fires `LedgerReconciliationMismatchDetected(String entityType, long domainCount, long ledgerCount)`. No data is modified; alerting is delegated to observers.
+- Replaced `LedgerGapDetected` (single record with `GapType` discriminator) with a sealed `LedgerAnomalyDetected` interface and two disjoint record subtypes — eliminates the discriminator-enum pattern and gives observers compile-time type safety via pattern matching.
 
 **Privacy / pseudonymisation** — ✅ Done. `ActorIdentityProvider` + `DecisionContextSanitiser` SPIs, built-in UUID tokenisation, `LedgerErasureService` for GDPR Art.17 requests. `tokenise()` accepts `ActorType` — only HUMAN actors are pseudonymised; SYSTEM and AGENT actors are stored with raw identity (not natural persons, no GDPR obligation). Null `actorType` defaults to tokenisation as a safe fallback. See `docs/PRIVACY.md`.
 
@@ -471,7 +472,7 @@ decision — see `IDEAS.md` (2026-04-23 entry).
 | **Trust score routing signals** | ✅ Done | `TrustScoreRoutingPublisher`, payload types (`TrustScoreFullPayload`, `TrustScoreDeltaPayload`, `TrustScoreComputedAt`, `TrustScoreDelta`), `LedgerConfig.routingDeltaThreshold`, `TrustScoreJob` wiring. CDI `event.fire()` + `fireAsync()` per payload type; sync/async per-consumer. Closes #33. |
 | **Dimension-scoped trust scores** | ✅ Done | `trustDimension` + `dimensionScore` on `LedgerAttestation`; `TrustScoreComputer.computeDimensionScore()` (decay-weighted average); dimension pass in `TrustScoreJob`; `TrustGateService.dimensionScores()` + `dimensionScore()`; 26 new tests (unit + IT + E2E). Closes #62. |
 | **Multi-attestation aggregation** | ✅ Done | `AttestationAggregator` CDI bean (WEIGHTED_MAJORITY / UNANIMOUS_REQUIRED / FIRST_ATTESTOR); `TrustScoreJob` aggregates per (entryId, capabilityTag) before capability and global passes; `trust-score.aggregation-strategy` config key. 17 unit + 4 IT tests. Closes #57. |
-| **Ledger health checks** | ✅ Done | `LedgerHealthJob` (scheduled gap detection + reconciliation); `LedgerReconciliationSource` SPI; `LedgerGapDetected` CDI event; `GapType` enum; `health.enabled` + `health.check-interval` config. 7 IT tests. Closes #56. |
+| **Ledger health checks** | ✅ Done | `LedgerHealthJob` (scheduled gap detection + reconciliation); `LedgerReconciliationSource` SPI; sealed `LedgerAnomalyDetected` interface + `LedgerSequenceGapDetected` / `LedgerReconciliationMismatchDetected` records (#139); `health.enabled` + `health.check-interval` config. Closes #56. |
 | **Compliance report query API** | ✅ Done | `LedgerComplianceReportService` CDI bean (`reportForActor`, `reportForSubject`); `ComplianceReport` record with `format(ReportFormat)` (PLAIN_JSON, JSON_LD, CSV); `DecisionRecord`; `findBySubjectIdAndTimeRange` added to repository SPI + reactive SPI. Merkle-root tamper-evidence anchor included. No REST endpoint — consumer responsibility. 7 IT tests. Closes #58. |
 | **@ProvenanceCapture interceptor** | ✅ Done | `@ProvenanceCapture` interceptor binding + `ProvenanceCaptureInterceptor`; `ProvenanceCaptureEnricher` auto-attaches `ProvenanceSupplement` via existing enricher pipeline; `ProvenanceContext` ThreadLocal stack (nesting, exception-safe, `agentConfigHash` preserved); `@SourceEntityId` parameter annotation. 7 IT tests. Closes #59. |
 | **Bilateral entry signing** | ✅ Done | `AgentKeyProvider` SPI (returns `Optional<SigningKey>`); `SigningKey` record (self-derived `keyRef = Base64URL(SHA-256(pubKey))`); `ConfiguredAgentKeyProvider` (@DefaultBean); `AgentEntrySigner` CDI bean (direct call in save pipeline after hash, before persist; stores `agentSignature` + `agentPublicKey` + `agentKeyRef`); `LedgerEntry` fields (V1005/V1006); `AgentSignatureVerificationService.verifyAgentSignature()` (UNSIGNED/VALID/INVALID/SUSPECT); `VerificationResult` enum; ADR 0011. Closes #79. |

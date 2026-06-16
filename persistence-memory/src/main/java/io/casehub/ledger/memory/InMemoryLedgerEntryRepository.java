@@ -83,12 +83,13 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
     // package-private so InMemoryKeyRotationRepository can read it
     final ConcurrentHashMap<UUID, LedgerEntry> entries = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<UUID, LedgerAttestation> attestations = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<UUID, AtomicInteger> sequenceCounters = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<SubjectKey, AtomicInteger> sequenceCounters = new ConcurrentHashMap<>();
     // Per-subject lock: serialises the sequence-allocation → hash → frontier-update pipeline
-    // so that concurrent saves for the same subject always produce a correct Merkle chain.
-    // Different subjects still run fully concurrently. The map grows by one entry per distinct
-    // subjectId ever saved — like entries, it must be reset at session boundaries via clear().
-    private final ConcurrentHashMap<UUID, Object> subjectLocks = new ConcurrentHashMap<>();
+    // so that concurrent saves for the same (subject, tenant) always produce a correct Merkle chain.
+    // Different subjects or different tenants run fully concurrently.
+    private final ConcurrentHashMap<SubjectKey, Object> subjectLocks = new ConcurrentHashMap<>();
+
+    private record SubjectKey(UUID subjectId, String tenancyId) {}
 
     @Override
     public LedgerEntry save(final LedgerEntry entry, final String tenancyId) {
@@ -113,10 +114,11 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
 
         // Per-subject serialised section — sequence assignment, Merkle chain update, and
         // everything in between must be atomic per subject to guarantee chain correctness.
-        final Object lock = subjectLocks.computeIfAbsent(entry.subjectId, k -> new Object());
+        final SubjectKey subjectKey = new SubjectKey(entry.subjectId, entry.tenancyId);
+        final Object lock = subjectLocks.computeIfAbsent(subjectKey, k -> new Object());
         synchronized (lock) {
             entry.sequenceNumber = sequenceCounters
-                    .computeIfAbsent(entry.subjectId, k -> new AtomicInteger(0))
+                    .computeIfAbsent(subjectKey, k -> new AtomicInteger(0))
                     .incrementAndGet();
 
             enricherPipeline.enrich(entry);

@@ -18,24 +18,23 @@ import io.casehub.ledger.runtime.repository.LedgerMerkleFrontierRepository;
 @ApplicationScoped
 public class InMemoryLedgerMerkleFrontierRepository implements LedgerMerkleFrontierRepository {
 
-    private final ConcurrentHashMap<UUID, List<LedgerMerkleFrontier>> frontierBySubject =
+    private record FrontierKey(UUID subjectId, String tenancyId) {}
+
+    private final ConcurrentHashMap<FrontierKey, List<LedgerMerkleFrontier>> frontierByKey =
             new ConcurrentHashMap<>();
 
     @Override
     public List<LedgerMerkleFrontier> findBySubjectId(final UUID subjectId, final String tenancyId) {
-        // Frontier is keyed by subjectId — tenancyId is accepted for interface compliance but
-        // not used as an additional filter (subjects are already tenant-scoped upstream).
-        return new ArrayList<>(frontierBySubject.getOrDefault(subjectId, Collections.emptyList()));
+        return new ArrayList<>(frontierByKey.getOrDefault(new FrontierKey(subjectId, tenancyId), Collections.emptyList()));
     }
 
     @Override
     public void replace(final UUID subjectId, final List<LedgerMerkleFrontier> newFrontier,
             final String tenancyId) {
-        // tenancyId accepted for interface compliance — frontier keyed by subjectId only.
-        frontierBySubject.put(subjectId, List.copyOf(newFrontier));
+        frontierByKey.put(new FrontierKey(subjectId, tenancyId), List.copyOf(newFrontier));
     }
 
     public void clear() {
-        frontierBySubject.clear();
+        frontierByKey.clear();
     }
 }

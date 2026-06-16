@@ -123,7 +123,7 @@ public class JpaLedgerEntryRepository implements LedgerEntryRepository {
             }
         });
 
-        entry.sequenceNumber = sequenceAllocator.nextSequenceNumber(entry.subjectId);
+        entry.sequenceNumber = sequenceAllocator.nextSequenceNumber(entry.subjectId, tenancyId);
 
         // Pipeline: prepareKey → enrich → hash → sign → persist
         agentEntrySigner.prepareKey(entry);

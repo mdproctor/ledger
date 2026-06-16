@@ -27,6 +27,7 @@ public class JpaLedgerMerkleFrontierRepository implements LedgerMerkleFrontierRe
     public List<LedgerMerkleFrontier> findBySubjectId(final UUID subjectId, final String tenancyId) {
         return em.createNamedQuery("LedgerMerkleFrontier.findBySubjectId", LedgerMerkleFrontier.class)
                 .setParameter("subjectId", subjectId)
+                .setParameter("tenancyId", tenancyId)
                 .getResultList();
     }
 
@@ -37,19 +38,30 @@ public class JpaLedgerMerkleFrontierRepository implements LedgerMerkleFrontierRe
                 .map(n -> n.level)
                 .collect(Collectors.toSet());
 
-        if (!newLevels.isEmpty()) {
+        if (newLevels.isEmpty()) {
+            // Empty replacement — delete all existing nodes for this subject+tenant.
             em.createQuery(
-                    "DELETE FROM LedgerMerkleFrontier f WHERE f.subjectId = :subjectId AND f.level NOT IN :levels")
+                    "DELETE FROM LedgerMerkleFrontier f WHERE f.subjectId = :subjectId AND f.tenancyId = :tenancyId")
                     .setParameter("subjectId", subjectId)
-                    .setParameter("levels", newLevels)
+                    .setParameter("tenancyId", tenancyId)
                     .executeUpdate();
+            return;
         }
+
+        em.createQuery(
+                "DELETE FROM LedgerMerkleFrontier f WHERE f.subjectId = :subjectId AND f.tenancyId = :tenancyId AND f.level NOT IN :levels")
+                .setParameter("subjectId", subjectId)
+                .setParameter("tenancyId", tenancyId)
+                .setParameter("levels", newLevels)
+                .executeUpdate();
 
         for (final LedgerMerkleFrontier node : newFrontier) {
             em.createNamedQuery("LedgerMerkleFrontier.deleteBySubjectAndLevel")
                     .setParameter("subjectId", subjectId)
                     .setParameter("level", node.level)
+                    .setParameter("tenancyId", tenancyId)
                     .executeUpdate();
+            node.tenancyId = tenancyId;
             em.persist(node);
         }
     }

@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
@@ -20,10 +19,11 @@ import org.junit.jupiter.api.Test;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
-import io.casehub.ledger.runtime.service.GapType;
-import io.casehub.ledger.runtime.service.LedgerGapDetected;
+import io.casehub.ledger.runtime.service.LedgerAnomalyDetected;
 import io.casehub.ledger.runtime.service.LedgerHealthJob;
+import io.casehub.ledger.runtime.service.LedgerReconciliationMismatchDetected;
 import io.casehub.ledger.runtime.service.LedgerReconciliationSource;
+import io.casehub.ledger.runtime.service.LedgerSequenceGapDetected;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
@@ -50,10 +50,10 @@ class LedgerHealthJobIT {
      * pattern as CountingEnricher.count in LedgerEnricherPipelineIT.
      */
     @ApplicationScoped
-    static class GapEventCapture {
-        static final List<LedgerGapDetected> EVENTS = new ArrayList<>();
+    static class AnomalyEventCapture {
+        static final List<LedgerAnomalyDetected> EVENTS = new ArrayList<>();
 
-        void onGap(@Observes final LedgerGapDetected event) {
+        void onAnomaly(@Observes final LedgerAnomalyDetected event) {
             EVENTS.add(event);
         }
     }
@@ -94,7 +94,7 @@ class LedgerHealthJobIT {
 
     @BeforeEach
     void reset() {
-        GapEventCapture.EVENTS.clear();
+        AnomalyEventCapture.EVENTS.clear();
         TestReconciliationSource.active = false;
         TestReconciliationSource.domainCount = 0;
         TestReconciliationSource.ledgerCount = 0;
@@ -106,16 +106,16 @@ class LedgerHealthJobIT {
     @Transactional
     void contiguousSequences_noGapEvent() {
         final UUID subjectId = UUID.randomUUID();
-        // Save three entries normally — repo assigns 1, 2, 3
         newEntry(subjectId);
         newEntry(subjectId);
         newEntry(subjectId);
 
         healthJob.run();
 
-        final List<LedgerGapDetected> gaps = GapEventCapture.EVENTS.stream()
-                .filter(e -> e.subjectId().equals(subjectId.toString()))
-                .filter(e -> e.type() == GapType.SEQUENCE_GAP)
+        final List<LedgerSequenceGapDetected> gaps = AnomalyEventCapture.EVENTS.stream()
+                .filter(LedgerSequenceGapDetected.class::isInstance)
+                .map(LedgerSequenceGapDetected.class::cast)
+                .filter(e -> subjectId.equals(e.subjectId()))
                 .toList();
         assertThat(gaps).isEmpty();
     }
@@ -126,7 +126,6 @@ class LedgerHealthJobIT {
     @Transactional
     void sequenceGap_eventFired() {
         final UUID subjectId = UUID.randomUUID();
-        // Save three entries normally: gets seqNum 1, 2, 3
         final TestEntry e1 = newEntry(subjectId);
         final TestEntry e2 = newEntry(subjectId);
         final TestEntry e3 = newEntry(subjectId);
@@ -139,13 +138,15 @@ class LedgerHealthJobIT {
 
         healthJob.run();
 
-        final List<LedgerGapDetected> gaps = GapEventCapture.EVENTS.stream()
-                .filter(e -> e.subjectId().equals(subjectId.toString()))
-                .filter(e -> e.type() == GapType.SEQUENCE_GAP)
+        final List<LedgerSequenceGapDetected> gaps = AnomalyEventCapture.EVENTS.stream()
+                .filter(LedgerSequenceGapDetected.class::isInstance)
+                .map(LedgerSequenceGapDetected.class::cast)
+                .filter(e -> subjectId.equals(e.subjectId()))
                 .toList();
         assertThat(gaps).hasSize(1);
         assertThat(gaps.get(0).expectedCount()).isEqualTo(4); // max-min+1 = 4-1+1 = 4
         assertThat(gaps.get(0).actualCount()).isEqualTo(3);
+        assertThat(gaps.get(0).tenancyId()).isEqualTo(DEFAULT_TENANT_ID);
     }
 
     // ── Correctness: only gapped subject fires event ───────────────────────────
@@ -161,7 +162,6 @@ class LedgerHealthJobIT {
         final TestEntry g1 = newEntry(gappedSubjectId);
         final TestEntry g2 = newEntry(gappedSubjectId);
 
-        // Create gap: change g2's sequence to 3 via native SQL
         em.createNativeQuery("UPDATE ledger_entry SET sequence_number = ?1 WHERE id = ?2")
                 .setParameter(1, 3)
                 .setParameter(2, g2.id)
@@ -169,12 +169,13 @@ class LedgerHealthJobIT {
 
         healthJob.run();
 
-        final List<LedgerGapDetected> gapEvents = GapEventCapture.EVENTS.stream()
-                .filter(e -> e.type() == GapType.SEQUENCE_GAP)
+        final List<LedgerSequenceGapDetected> gapEvents = AnomalyEventCapture.EVENTS.stream()
+                .filter(LedgerSequenceGapDetected.class::isInstance)
+                .map(LedgerSequenceGapDetected.class::cast)
                 .toList();
 
-        assertThat(gapEvents).anyMatch(e -> e.subjectId().equals(gappedSubjectId.toString()));
-        assertThat(gapEvents).noneMatch(e -> e.subjectId().equals(cleanSubjectId.toString()));
+        assertThat(gapEvents).anyMatch(e -> gappedSubjectId.equals(e.subjectId()));
+        assertThat(gapEvents).noneMatch(e -> cleanSubjectId.equals(e.subjectId()));
     }
 
     // ── Robustness: single entry per subject — no gap possible ───────────────
@@ -182,15 +183,15 @@ class LedgerHealthJobIT {
     @Test
     @Transactional
     void singleEntry_noGapEvent() {
-        // A subject with one entry always satisfies COUNT=1 = MAX-MIN+1=1, so no gap.
         final UUID subjectId = UUID.randomUUID();
         newEntry(subjectId);
 
         healthJob.run();
 
-        assertThat(GapEventCapture.EVENTS.stream()
-                .filter(e -> e.subjectId().equals(subjectId.toString()))
-                .filter(e -> e.type() == GapType.SEQUENCE_GAP)
+        assertThat(AnomalyEventCapture.EVENTS.stream()
+                .filter(LedgerSequenceGapDetected.class::isInstance)
+                .map(LedgerSequenceGapDetected.class::cast)
+                .filter(e -> subjectId.equals(e.subjectId()))
                 .toList()).isEmpty();
     }
 
@@ -204,12 +205,14 @@ class LedgerHealthJobIT {
 
         healthJob.run();
 
-        final List<LedgerGapDetected> reconciliationEvents = GapEventCapture.EVENTS.stream()
-                .filter(e -> e.type() == GapType.RECONCILIATION_MISMATCH)
+        final List<LedgerReconciliationMismatchDetected> reconciliationEvents =
+                AnomalyEventCapture.EVENTS.stream()
+                .filter(LedgerReconciliationMismatchDetected.class::isInstance)
+                .map(LedgerReconciliationMismatchDetected.class::cast)
                 .toList();
         assertThat(reconciliationEvents).hasSize(1);
-        assertThat(reconciliationEvents.get(0).expectedCount()).isEqualTo(5);
-        assertThat(reconciliationEvents.get(0).actualCount()).isEqualTo(3);
+        assertThat(reconciliationEvents.get(0).domainCount()).isEqualTo(5);
+        assertThat(reconciliationEvents.get(0).ledgerCount()).isEqualTo(3);
     }
 
     // ── Robustness: inactive reconciliation source — no event ─────────────────
@@ -218,12 +221,12 @@ class LedgerHealthJobIT {
     void inactiveReconciliationSource_noEvent() {
         TestReconciliationSource.active = false;
         TestReconciliationSource.domainCount = 10;
-        TestReconciliationSource.ledgerCount = 0; // mismatch, but inactive
+        TestReconciliationSource.ledgerCount = 0;
 
         healthJob.run();
 
-        assertThat(GapEventCapture.EVENTS.stream()
-                .filter(e -> e.type() == GapType.RECONCILIATION_MISMATCH)
+        assertThat(AnomalyEventCapture.EVENTS.stream()
+                .filter(LedgerReconciliationMismatchDetected.class::isInstance)
                 .toList()).isEmpty();
     }
 
@@ -237,8 +240,8 @@ class LedgerHealthJobIT {
 
         healthJob.run();
 
-        assertThat(GapEventCapture.EVENTS.stream()
-                .filter(e -> e.type() == GapType.RECONCILIATION_MISMATCH)
+        assertThat(AnomalyEventCapture.EVENTS.stream()
+                .filter(LedgerReconciliationMismatchDetected.class::isInstance)
                 .toList()).isEmpty();
     }
 

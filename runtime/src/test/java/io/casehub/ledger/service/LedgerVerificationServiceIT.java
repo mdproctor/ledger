@@ -54,6 +54,7 @@ class LedgerVerificationServiceIT {
         List<LedgerMerkleFrontier> frontier = em
                 .createNamedQuery("LedgerMerkleFrontier.findBySubjectId", LedgerMerkleFrontier.class)
                 .setParameter("subjectId", sub)
+                .setParameter("tenancyId", DEFAULT_TENANT_ID)
                 .getResultList();
 
         assertThat(root).isNotNull().matches("[0-9a-f]{64}");
@@ -72,6 +73,7 @@ class LedgerVerificationServiceIT {
         List<LedgerMerkleFrontier> frontier = em
                 .createNamedQuery("LedgerMerkleFrontier.findBySubjectId", LedgerMerkleFrontier.class)
                 .setParameter("subjectId", sub)
+                .setParameter("tenancyId", DEFAULT_TENANT_ID)
                 .getResultList();
         assertThat(frontier).hasSize(Integer.bitCount(5));
     }

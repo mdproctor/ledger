@@ -1,6 +1,7 @@
 package io.casehub.ledger.runtime.service;
 
 import java.util.List;
+import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
@@ -19,7 +20,7 @@ import io.quarkus.scheduler.Scheduled;
 /**
  * Scheduled health job that verifies audit completeness by:
  * <ol>
- * <li>Sequence gap detection — checks that per-subject sequence numbers are contiguous
+ * <li>Sequence gap detection — checks that per-(subject, tenant) sequence numbers are contiguous
  * (a gap indicates an entry was deleted after write).</li>
  * <li>Reconciliation — compares domain entity counts against ledger entry counts via
  * registered {@link LedgerReconciliationSource} SPI implementations.</li>
@@ -31,7 +32,7 @@ import io.quarkus.scheduler.Scheduled;
  * via {@code casehub.ledger.health.check-interval} (default {@code 1h}).
  *
  * <p>
- * Anomalies are signalled as {@link LedgerGapDetected} CDI events — consumers observe
+ * Anomalies are signalled as {@link LedgerAnomalyDetected} CDI events — consumers observe
  * them to log, alert, or trigger remediation. No data is modified.
  *
  * <p>
@@ -51,7 +52,7 @@ public class LedgerHealthJob {
     LedgerConfig config;
 
     @Inject
-    Event<LedgerGapDetected> gapEvent;
+    Event<LedgerAnomalyDetected> anomalyEvent;
 
     @Inject
     @Any
@@ -76,29 +77,32 @@ public class LedgerHealthJob {
     }
 
     /**
-     * For each subject, verify that sequence numbers are contiguous (no gaps).
+     * For each (subject, tenant) pair, verify that sequence numbers are contiguous (no gaps).
      * Gap formula: a subject with entries spanning [min, max] should have exactly
      * {@code max - min + 1} entries. A lower actual count indicates deletion after write.
      */
     private void checkSequenceGaps() {
         @SuppressWarnings("unchecked")
         final List<Object[]> results = em.createQuery(
-                "SELECT e.subjectId, COUNT(e), MIN(e.sequenceNumber), MAX(e.sequenceNumber) " +
-                "FROM LedgerEntry e " +
-                "GROUP BY e.subjectId " +
-                "HAVING COUNT(e) != MAX(e.sequenceNumber) - MIN(e.sequenceNumber) + 1")
+                """
+                SELECT e.subjectId, e.tenancyId, COUNT(e), MIN(e.sequenceNumber), MAX(e.sequenceNumber) \
+                FROM LedgerEntry e \
+                GROUP BY e.subjectId, e.tenancyId \
+                HAVING COUNT(e) != MAX(e.sequenceNumber) - MIN(e.sequenceNumber) + 1\
+                """)
                 .getResultList();
 
         for (final Object[] row : results) {
-            final String subjectId = row[0].toString();
-            final long actualCount = ((Number) row[1]).longValue();
-            final long min = ((Number) row[2]).longValue();
-            final long max = ((Number) row[3]).longValue();
-            final long expectedCount = max - min + 1;
+            final UUID subjectId   = (UUID)   row[0];
+            final String tenancyId = (String) row[1];
+            final long actualCount = ((Number) row[2]).longValue();
+            final long min         = ((Number) row[3]).longValue();
+            final long max         = ((Number) row[4]).longValue();
+            final long expected    = max - min + 1;
 
-            LOG.warnf("Sequence gap detected for subject %s: expected %d entries (seq %d–%d), found %d",
-                    subjectId, expectedCount, min, max, actualCount);
-            gapEvent.fire(new LedgerGapDetected(subjectId, expectedCount, actualCount, GapType.SEQUENCE_GAP));
+            LOG.warnf("Sequence gap for subject %s / tenant %s: expected %d entries (seq %d–%d), found %d",
+                    subjectId, tenancyId, expected, min, max, actualCount);
+            anomalyEvent.fire(new LedgerSequenceGapDetected(subjectId, tenancyId, expected, actualCount));
         }
     }
 
@@ -112,8 +116,8 @@ public class LedgerHealthJob {
             if (domainCount != ledgerCount) {
                 LOG.warnf("Reconciliation mismatch for %s: domain=%d, ledger=%d",
                         source.subjectType(), domainCount, ledgerCount);
-                gapEvent.fire(new LedgerGapDetected(
-                        source.subjectType(), domainCount, ledgerCount, GapType.RECONCILIATION_MISMATCH));
+                anomalyEvent.fire(new LedgerReconciliationMismatchDetected(
+                        source.subjectType(), domainCount, ledgerCount));
             }
         }
     }

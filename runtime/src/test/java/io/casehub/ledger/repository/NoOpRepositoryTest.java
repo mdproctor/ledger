@@ -1,16 +1,19 @@
 package io.casehub.ledger.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.time.Instant;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import io.casehub.ledger.api.model.ActorTrustScore.ScoreType;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.ActorIdentityBindingEntry;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.repository.NoOpActorIdentityBindingRepository;
+import io.casehub.ledger.runtime.repository.NoOpActorTrustScoreRepository;
 import io.casehub.ledger.runtime.repository.NoOpLedgerEntryRepository;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.casehub.platform.api.identity.ActorType;
@@ -27,6 +30,7 @@ class NoOpRepositoryTest {
 
     private final NoOpLedgerEntryRepository ledgerRepo = new NoOpLedgerEntryRepository();
     private final NoOpActorIdentityBindingRepository bindingRepo = new NoOpActorIdentityBindingRepository();
+    private final NoOpActorTrustScoreRepository trustRepo = new NoOpActorTrustScoreRepository();
 
     // ── NoOpLedgerEntryRepository ─────────────────────────────────────────────
 
@@ -124,6 +128,63 @@ class NoOpRepositoryTest {
     void bindingRepo_save_returnsEntryUnchanged() {
         final ActorIdentityBindingEntry entry = bindingEntry();
         assertThat(bindingRepo.save(entry)).isSameAs(entry);
+    }
+
+    // ── NoOpActorTrustScoreRepository ─────────────────────────────────────────
+
+    @Test
+    void trustRepo_findByActorId_returnsEmpty() {
+        assertThat(trustRepo.findByActorId("actor")).isEmpty();
+    }
+
+    @Test
+    void trustRepo_findCapabilityScore_returnsEmpty() {
+        assertThat(trustRepo.findCapabilityScore("actor", "review")).isEmpty();
+    }
+
+    @Test
+    void trustRepo_findDimensionScore_returnsEmpty() {
+        assertThat(trustRepo.findDimensionScore("actor", "accuracy")).isEmpty();
+    }
+
+    @Test
+    void trustRepo_findCapabilityDimension_returnsEmpty() {
+        assertThat(trustRepo.findCapabilityDimension("actor", "review", "accuracy")).isEmpty();
+    }
+
+    @Test
+    void trustRepo_findCapabilityDimensions_returnsEmptyList() {
+        assertThat(trustRepo.findCapabilityDimensions("actor", "review")).isEmpty();
+    }
+
+    @Test
+    void trustRepo_findByActorIdAndScoreType_returnsEmptyList() {
+        assertThat(trustRepo.findByActorIdAndScoreType("actor", ScoreType.GLOBAL)).isEmpty();
+    }
+
+    @Test
+    void trustRepo_upsert_doesNotThrow() {
+        assertThatCode(() -> trustRepo.upsert(
+                "actor", ScoreType.GLOBAL, null, null,
+                ActorType.AGENT, 0.5, 10, 2, 1.5, 0.5,
+                8, 2, Instant.now()))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void trustRepo_updateGlobalTrustScore_doesNotThrow() {
+        assertThatCode(() -> trustRepo.updateGlobalTrustScore("actor", 0.8))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void trustRepo_findAll_returnsEmptyList() {
+        assertThat(trustRepo.findAll()).isEmpty();
+    }
+
+    @Test
+    void trustRepo_findAllByLastComputedAtAfter_returnsEmptyList() {
+        assertThat(trustRepo.findAllByLastComputedAtAfter(Instant.EPOCH)).isEmpty();
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────

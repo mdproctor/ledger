@@ -71,6 +71,40 @@ class InMemoryLedgerMerkleFrontierRepositoryTest {
         assertThat(repo.findBySubjectId(s2, DEFAULT_TENANT_ID)).isEmpty();
     }
 
+    // ── Tenancy isolation ─────────────────────────────────────────────────────
+
+    @Test
+    void twoTenantsWithSameSubjectId_haveIndependentFrontiers() {
+        final UUID sharedSubjectId = UUID.randomUUID();
+        final String tenantA = "tenant-a";
+        final String tenantB = "tenant-b";
+
+        repo.replace(sharedSubjectId, List.of(frontier(sharedSubjectId, 0, "hash-from-a")), tenantA);
+        repo.replace(sharedSubjectId, List.of(frontier(sharedSubjectId, 0, "hash-from-b")), tenantB);
+
+        final List<LedgerMerkleFrontier> frontierA = repo.findBySubjectId(sharedSubjectId, tenantA);
+        final List<LedgerMerkleFrontier> frontierB = repo.findBySubjectId(sharedSubjectId, tenantB);
+
+        assertThat(frontierA).hasSize(1);
+        assertThat(frontierB).hasSize(1);
+        assertThat(frontierA.get(0).hash).isEqualTo("hash-from-a");
+        assertThat(frontierB.get(0).hash).isEqualTo("hash-from-b");
+    }
+
+    @Test
+    void tenantA_replace_doesNotOverwriteTenantB_frontier() {
+        final UUID sharedSubjectId = UUID.randomUUID();
+        final String tenantA = "tenant-a";
+        final String tenantB = "tenant-b";
+
+        repo.replace(sharedSubjectId, List.of(frontier(sharedSubjectId, 0, "b-original")), tenantB);
+        repo.replace(sharedSubjectId, List.of(frontier(sharedSubjectId, 0, "a-write")), tenantA);
+        repo.replace(sharedSubjectId, List.of(frontier(sharedSubjectId, 0, "a-second-write")), tenantA);
+
+        assertThat(repo.findBySubjectId(sharedSubjectId, tenantB).get(0).hash)
+                .isEqualTo("b-original");
+    }
+
     private LedgerMerkleFrontier frontier(UUID subjectId, int level, String hash) {
         LedgerMerkleFrontier f = new LedgerMerkleFrontier();
         f.id = UUID.randomUUID();

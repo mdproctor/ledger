@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
@@ -32,6 +33,7 @@ import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
  * safe in practice.
  */
 @ApplicationScoped
+@Alternative
 public class JpaActorTrustScoreRepository implements ActorTrustScoreRepository {
 
     @Inject

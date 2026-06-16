@@ -5,7 +5,7 @@ package io.casehub.ledger.runtime.service;
  *
  * <p>
  * Consumers implement this interface to compare their domain entity count against the
- * corresponding ledger entry count. The health job fires a {@link LedgerGapDetected}
+ * corresponding ledger entry count. The health job fires a {@link LedgerReconciliationMismatchDetected}
  * event when the counts differ, enabling operations to detect silently dropped entries
  * before filing regulatory reports.
  *
@@ -36,8 +36,8 @@ public interface LedgerReconciliationSource {
 
     /**
      * A human-readable name for the domain entity type being reconciled.
-     * Used as the {@code subjectId} in the {@link LedgerGapDetected} event when a mismatch
-     * is found. Example: {@code "WorkItem"}, {@code "Channel"}, {@code "CaseInstance"}.
+     * Used as the {@code entityType} in {@link LedgerReconciliationMismatchDetected} when a
+     * mismatch is found. Example: {@code "WorkItem"}, {@code "Channel"}, {@code "CaseInstance"}.
      */
     String subjectType();
 

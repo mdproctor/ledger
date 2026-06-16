@@ -21,6 +21,9 @@ public class LedgerMerkleFrontier {
     @Column(name = "subject_id", nullable = false)
     public UUID subjectId;
 
+    @Column(name = "tenancy_id", nullable = false)
+    public String tenancyId;
+
     @Column(nullable = false)
     public int level;
 

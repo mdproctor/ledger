@@ -53,7 +53,7 @@ public class JpaActorIdentityBindingRepository implements ActorIdentityBindingRe
         if (entry.subjectId == null) {
             throw new IllegalArgumentException("ActorIdentityBindingEntry.subjectId must not be null");
         }
-        entry.sequenceNumber = sequenceAllocator.nextSequenceNumber(entry.subjectId);
+        entry.sequenceNumber = sequenceAllocator.nextSequenceNumber(entry.subjectId, entry.tenancyId);
         if (ledgerConfig.hashChain().enabled()) {
             entry.digest = LedgerMerkleTree.leafHash(entry);
         }

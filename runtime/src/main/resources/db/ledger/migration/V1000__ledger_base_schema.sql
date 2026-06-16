@@ -39,7 +39,7 @@ CREATE TABLE ledger_entry (
     CONSTRAINT pk_ledger_entry PRIMARY KEY (id)
 );
 
-CREATE UNIQUE INDEX idx_ledger_entry_subject_seq ON ledger_entry (subject_id, sequence_number);
+CREATE UNIQUE INDEX idx_ledger_entry_subject_seq ON ledger_entry (subject_id, tenancy_id, sequence_number);
 CREATE INDEX idx_ledger_entry_subject_id  ON ledger_entry (subject_id);
 CREATE INDEX idx_ledger_entry_tenancy ON ledger_entry (tenancy_id);
 CREATE INDEX idx_ledger_entry_trace ON ledger_entry (trace_id);
@@ -70,18 +70,24 @@ CREATE INDEX idx_ledger_attestation_capability ON ledger_attestation (ledger_ent
 CREATE INDEX idx_ledger_attestation_actor_cap  ON ledger_attestation (attestor_id, capability_tag);
 CREATE INDEX idx_ledger_attestation_dimension ON ledger_attestation (attestor_id, trust_dimension);
 
+-- DEFAULT value '278776f9-e1b0-46fb-9032-8bddebdcf9ce' = TenancyConstants.DEFAULT_TENANT_ID.
+-- Must stay in sync with that constant if it ever changes.
 CREATE TABLE ledger_merkle_frontier (
-    id          UUID        NOT NULL,
-    subject_id  UUID        NOT NULL,
-    level       INTEGER     NOT NULL,
-    hash        VARCHAR(64) NOT NULL,
+    id          UUID         NOT NULL,
+    subject_id  UUID         NOT NULL,
+    tenancy_id  VARCHAR(255) NOT NULL DEFAULT '278776f9-e1b0-46fb-9032-8bddebdcf9ce',
+    level       INTEGER      NOT NULL,
+    hash        VARCHAR(64)  NOT NULL,
     CONSTRAINT pk_ledger_merkle_frontier PRIMARY KEY (id),
-    CONSTRAINT uq_merkle_frontier_subject_level UNIQUE (subject_id, level)
+    CONSTRAINT uq_merkle_frontier_subject_tenancy_level UNIQUE (subject_id, tenancy_id, level)
 );
 
-CREATE INDEX idx_merkle_frontier_subject ON ledger_merkle_frontier (subject_id);
+CREATE INDEX idx_merkle_frontier_subject ON ledger_merkle_frontier (subject_id, tenancy_id);
 
+-- DEFAULT value = TenancyConstants.DEFAULT_TENANT_ID (see comment above ledger_merkle_frontier).
 CREATE TABLE ledger_subject_sequence (
-    subject_id UUID NOT NULL PRIMARY KEY,
-    next_seq   INT  NOT NULL DEFAULT 1
+    subject_id UUID         NOT NULL,
+    tenancy_id VARCHAR(255) NOT NULL DEFAULT '278776f9-e1b0-46fb-9032-8bddebdcf9ce',
+    next_seq   INT          NOT NULL DEFAULT 1,
+    CONSTRAINT pk_ledger_subject_sequence PRIMARY KEY (subject_id, tenancy_id)
 );
