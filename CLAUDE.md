@@ -293,12 +293,12 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── NoOpActorTrustScoreRepository.java — @DefaultBean: CDI-satisfaction no-op; all reads return empty/empty-list, upsert/updateGlobalTrustScore are no-ops; active when neither JPA nor in-memory alternative is selected (see #143)
 │       │   ├── KeyRotationRepository.java         — SPI: query-only (findByActorId, findCompromisedByActorIdAndKeyRef); save via LedgerEntryRepository
 │       │   ├── ReactiveKeyRotationRepository.java — reactive SPI: same two query methods with Uni<List<>> returns; no bundled JPA impl — consumers provide; test suite uses BlockingReactiveKeyRotationRepository shim
-│       │   ├── ActorIdentityBindingRepository.java         — SPI: latestBindingFor / bindingHistoryFor / save
+│       │   ├── ActorIdentityBindingRepository.java         — SPI: query-only — latestBindingFor(actorId, tenancyId) / bindingHistoryFor(actorId, tenancyId); save via LedgerEntryRepository (mirrors KeyRotationRepository; see #144, #145)
 │       │   ├── NoOpLedgerEntryRepository.java    — @DefaultBean: CDI-satisfaction no-op; all reads return empty, save/saveAttestation return argument unchanged; active when neither JPA nor in-memory alternative is selected (see #138)
-│       │   ├── NoOpActorIdentityBindingRepository.java — @DefaultBean: CDI-satisfaction no-op for ActorIdentityBindingRepository; prevents ActorIdentityBindingObserver from requiring a datasource in consumer test contexts (see #138)
+│       │   ├── NoOpActorIdentityBindingRepository.java — @DefaultBean: CDI-satisfaction no-op for ActorIdentityBindingRepository read methods; write path uses LedgerEntryRepository (observer no longer injects this bean)
 │       │   ├── NoOpLedgerMerkleFrontierRepository.java — @DefaultBean: CDI-satisfaction no-op; findBySubjectId() returns empty, replace() is a no-op
 │       │   └── jpa/                              — JPA implementations (EntityManager-based)
-│       │       ├── JpaActorIdentityBindingRepository.java — @Alternative: activate via quarkus.arc.selected-alternatives; was plain @ApplicationScoped before #138 — @Alternative required so NoOpActorIdentityBindingRepository @DefaultBean can fill the default slot
+│       │       ├── JpaActorIdentityBindingRepository.java — @Alternative: read-only JPA implementation (latestBindingFor, bindingHistoryFor with tenancyId); no save() — saves go through JpaLedgerEntryRepository; activate via quarkus.arc.selected-alternatives
 │       │       ├── JpaActorTrustScoreRepository.java — @Alternative @ApplicationScoped: activate via quarkus.arc.selected-alternatives; was plain @ApplicationScoped before #143 — @Alternative required so NoOpActorTrustScoreRepository @DefaultBean can fill the default slot
 │       │       ├── JpaCrossTenantLedgerEntryRepository.java
 │       │       └── LedgerSequenceAllocator.java     — CDI bean: atomic per-(subject, tenant) sequence allocation; dialect detected lazily via JDBC DatabaseMetaData (not @ConfigProperty — named datasources would get wrong key); PostgreSQL: INSERT ON CONFLICT DO NOTHING + UPDATE (row lock serialises full save pipeline per tenant); H2: SQL-standard MERGE (H2 2.x has no ON CONFLICT support; H2 tests are serial)
@@ -389,8 +389,8 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │       └── SourceEntityId.java              — parameter annotation: marks the UUID to use as sourceEntityId
 │       │   └── identity/
 │       │       │   (SPIs, resolvers, and No-Op impls live in casehub-platform-identity — see below)
-│       │       ├── ActorDIDEnricher.java                 — @Priority(40) enricher: populates LedgerEntry.actorDid from ActorDIDProvider
-│       │       ├── ActorIdentityBindingObserver.java     — @ObservesAsync → @Transactional(REQUIRES_NEW) persistence of ActorIdentityBindingEntry
+│       │       ├── ActorDIDEnricher.java                 — @Priority(40) enricher: populates LedgerEntry.actorDid from ActorDIDProvider; skips ActorIdentityBindingEntry (instanceof guard — prevents event loop and boundDid/actorDid discrepancy)
+│       │       ├── ActorIdentityBindingObserver.java     — @ObservesAsync → @Transactional(REQUIRES_NEW) persistence of ActorIdentityBindingEntry; injects LedgerEntryRepository (not ActorIdentityBindingRepository) — full save pipeline runs including Merkle frontier update
 │       │       ├── ActorIdentityValidationEnricher.java  — @Priority(50) enricher: full DID/key/VC validation pipeline; sets pendingIdentityStatus
 │       │       ├── AgentIdentityVerificationService.java — read-path: verifyIdentityBinding(LedgerEntry) → IdentityVerificationResult
 │       │       ├── ReactiveAgentIdentityVerificationService.java — @DefaultBean @Unremovable: Uni<IdentityVerificationResult> bridge wrapping blocking service on worker pool; no Hibernate Reactive dep, always active
@@ -423,6 +423,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
         ├── InMemoryLedgerMerkleFrontierRepository.java — @Alternative @Priority(1); ConcurrentHashMap keyed by FrontierKey(UUID subjectId, String tenancyId) for per-tenant frontier isolation (#139)
         ├── InMemoryActorTrustScoreRepository.java    — @Alternative @Priority(1); composite key: actorId|scoreType|cap|dim
         ├── InMemoryKeyRotationRepository.java        — @Alternative @Priority(1); reads via blocking.allEntries()
+        ├── InMemoryActorIdentityBindingRepository.java — @Alternative @Priority(1); read-only delegate — reads via blocking.allEntries() filtered by instanceof ActorIdentityBindingEntry + tenancyId; mirrors InMemoryKeyRotationRepository
         ├── InMemoryAgentSigner.java              — @Alternative @Priority(1); ConcurrentHashMap<String,KeyPair>; register(actorId,keyPair) + clear() for session-boundary reset; see #104
         ├── InMemoryReactiveLedgerEntryRepository.java — @IfBuildProperty(reactive.enabled=true); delegates to blocking
         ├── InMemoryReactiveKeyRotationRepository.java — @IfBuildProperty(reactive.enabled=true); delegates to blocking

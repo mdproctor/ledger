@@ -10,14 +10,12 @@ import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.ActorTrustScore.ScoreType;
 import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.runtime.model.ActorIdentityBindingEntry;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.repository.NoOpActorIdentityBindingRepository;
 import io.casehub.ledger.runtime.repository.NoOpActorTrustScoreRepository;
 import io.casehub.ledger.runtime.repository.NoOpLedgerEntryRepository;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.casehub.platform.api.identity.ActorType;
-import io.casehub.platform.api.identity.IdentityBindingStatus;
 
 /**
  * Unit tests for {@link NoOpLedgerEntryRepository} and {@link NoOpActorIdentityBindingRepository}.
@@ -116,18 +114,12 @@ class NoOpRepositoryTest {
 
     @Test
     void bindingRepo_latestBindingFor_returnsEmpty() {
-        assertThat(bindingRepo.latestBindingFor("actor")).isEmpty();
+        assertThat(bindingRepo.latestBindingFor("actor", "tenant")).isEmpty();
     }
 
     @Test
     void bindingRepo_bindingHistoryFor_returnsEmpty() {
-        assertThat(bindingRepo.bindingHistoryFor("actor")).isEmpty();
-    }
-
-    @Test
-    void bindingRepo_save_returnsEntryUnchanged() {
-        final ActorIdentityBindingEntry entry = bindingEntry();
-        assertThat(bindingRepo.save(entry)).isSameAs(entry);
+        assertThat(bindingRepo.bindingHistoryFor("actor", "tenant")).isEmpty();
     }
 
     // ── NoOpActorTrustScoreRepository ─────────────────────────────────────────
@@ -211,11 +203,4 @@ class NoOpRepositoryTest {
         return a;
     }
 
-    private ActorIdentityBindingEntry bindingEntry() {
-        final ActorIdentityBindingEntry e = new ActorIdentityBindingEntry();
-        e.id = UUID.randomUUID();
-        e.actorId = "claude:test@v1";
-        e.validationResult = IdentityBindingStatus.VALID;
-        return e;
-    }
 }

@@ -1,12 +1,12 @@
 package io.casehub.ledger.runtime.service.identity;
 
+import io.casehub.ledger.api.model.LedgerEntryType;
+import io.casehub.ledger.runtime.model.ActorIdentityBindingEntry;
+import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.platform.api.identity.AgentIdentityValidatedEvent;
 import io.casehub.platform.api.identity.AgentIdentityViolationEvent;
 import io.casehub.platform.api.identity.CredentialValidationResult;
 import io.casehub.platform.api.identity.IdentityBindingStatus;
-import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.runtime.model.ActorIdentityBindingEntry;
-import io.casehub.ledger.runtime.repository.ActorIdentityBindingRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.ObservesAsync;
 import jakarta.inject.Inject;
@@ -22,13 +22,11 @@ import static jakarta.transaction.Transactional.TxType.REQUIRES_NEW;
 /**
  * Persists {@link ActorIdentityBindingEntry} in response to async identity validation events.
  *
- * <p>Uses {@code REQUIRES_NEW} so the binding entry commits in its own transaction,
- * independent of the parent entry's lifecycle. Failure to write the binding entry is
- * logged and swallowed — the parent write is unaffected.
+ * <p>Routes through {@link LedgerEntryRepository#save} — the full save pipeline runs:
+ * sequence allocation, hash computation, Merkle frontier update, enricher pipeline, agent signing.
  *
- * <p>Separation from {@code @PrePersist}: calling {@code entityManager.persist()} inside a
- * {@code @PrePersist} callback of a different entity is unsafe under the JPA spec.
- * The async CDI event + observer pattern decouples persistence of the binding entry.
+ * <p>Uses {@code REQUIRES_NEW} so the binding entry commits in its own transaction,
+ * independent of the parent entry's lifecycle. Failure is logged and swallowed.
  */
 @ApplicationScoped
 public class ActorIdentityBindingObserver {
@@ -36,7 +34,7 @@ public class ActorIdentityBindingObserver {
     private static final Logger LOG = Logger.getLogger(ActorIdentityBindingObserver.class);
 
     @Inject
-    ActorIdentityBindingRepository repository;
+    LedgerEntryRepository ledgerRepo;
 
     void onValidated(@ObservesAsync final AgentIdentityValidatedEvent event) {
         persistBinding(
@@ -65,7 +63,6 @@ public class ActorIdentityBindingObserver {
         try {
             final ActorIdentityBindingEntry entry = new ActorIdentityBindingEntry();
             entry.id = UUID.randomUUID();
-            entry.tenancyId = tenancyId;
             entry.subjectId = UUID.nameUUIDFromBytes(actorId.getBytes(StandardCharsets.UTF_8));
             entry.actorId = actorId;
             entry.actorType = io.casehub.platform.api.identity.ActorType.AGENT;
@@ -79,7 +76,8 @@ public class ActorIdentityBindingObserver {
             entry.verifiedKeyRef = verifiedKeyRef;
             entry.credentialResult = credentialResult;
             entry.didMethod = didMethod;
-            repository.save(entry);
+            // tenancyId is passed to ledgerRepo.save() which stamps it onto the entry; do not pre-assign here
+            ledgerRepo.save(entry, tenancyId);
         } catch (final Exception e) {
             LOG.warnf("ActorIdentityBindingObserver failed to persist binding for %s: %s",
                 actorId, e.getMessage());

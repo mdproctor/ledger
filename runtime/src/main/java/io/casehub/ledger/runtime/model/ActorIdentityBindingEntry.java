@@ -34,10 +34,14 @@ import io.casehub.platform.api.identity.IdentityBindingStatus;
 @NamedQueries({
     @NamedQuery(
         name = "ActorIdentityBindingEntry.findLatestByActorId",
-        query = "SELECT e FROM ActorIdentityBindingEntry e WHERE e.actorId = :actorId ORDER BY e.occurredAt DESC"),
+        query = "SELECT e FROM ActorIdentityBindingEntry e "
+              + "WHERE e.actorId = :actorId AND e.tenancyId = :tenancyId "
+              + "ORDER BY e.sequenceNumber DESC"),
     @NamedQuery(
         name = "ActorIdentityBindingEntry.findHistoryByActorId",
-        query = "SELECT e FROM ActorIdentityBindingEntry e WHERE e.actorId = :actorId ORDER BY e.occurredAt ASC")
+        query = "SELECT e FROM ActorIdentityBindingEntry e "
+              + "WHERE e.actorId = :actorId AND e.tenancyId = :tenancyId "
+              + "ORDER BY e.sequenceNumber ASC")
 })
 @Entity
 @Table(name = "actor_identity_binding")

@@ -1,6 +1,7 @@
 package io.casehub.ledger.runtime.service.identity;
 
 import io.casehub.platform.api.identity.ActorDIDProvider;
+import io.casehub.ledger.runtime.model.ActorIdentityBindingEntry;
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.service.LedgerEntryEnricher;
 import jakarta.annotation.Priority;
@@ -27,6 +28,7 @@ public class ActorDIDEnricher implements LedgerEntryEnricher {
     @Override
     public void enrich(final LedgerEntry entry) {
         if (entry.actorId == null || entry.actorDid != null) return;
+        if (entry instanceof ActorIdentityBindingEntry) return;
         try {
             provider.didFor(entry.actorId).ifPresent(did -> entry.actorDid = did);
         } catch (final Exception e) {

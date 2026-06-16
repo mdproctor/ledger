@@ -183,12 +183,12 @@ class ActorIdentityBindingEntryIT {
     /** Reads latest binding in its own transaction. */
     private java.util.Optional<ActorIdentityBindingEntry> readLatestBinding(final String actorId) {
         return QuarkusTransaction.requiringNew()
-            .call(() -> bindingRepo.latestBindingFor(actorId));
+            .call(() -> bindingRepo.latestBindingFor(actorId, DEFAULT_TENANT_ID));
     }
 
     /** Reads binding history in its own transaction. */
     private List<ActorIdentityBindingEntry> readBindingHistory(final String actorId) {
         return QuarkusTransaction.requiringNew()
-            .call(() -> bindingRepo.bindingHistoryFor(actorId));
+            .call(() -> bindingRepo.bindingHistoryFor(actorId, DEFAULT_TENANT_ID));
     }
 }
