@@ -1,6 +1,7 @@
 package io.casehub.ledger.runtime.privacy;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -31,14 +32,14 @@ public class LedgerPrivacyProducer {
 
     @Inject
     @LedgerPersistenceUnit
-    EntityManager em;
+    Instance<EntityManager> emInstance;
 
     @Produces
     @DefaultBean
     @ApplicationScoped
     public ActorIdentityProvider actorIdentityProvider() {
         if (config.identity().tokenisation().enabled()) {
-            return new InternalActorIdentityProvider(em);
+            return new InternalActorIdentityProvider(emInstance.get());
         }
         return new PassThroughActorIdentityProvider();
     }
