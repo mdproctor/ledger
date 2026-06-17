@@ -57,9 +57,9 @@ public class ReactiveKeyRotationService {
                         .toList());
     }
 
-    /** All rotation events for an actor, ordered by {@code occurredAt} ascending. */
-    public Uni<List<KeyRotationEntry>> rotationHistoryAsync(final String actorId) {
-        return reactiveRepository.findByActorId(actorId);
+    /** All rotation events for an actor within the given tenant, ordered by {@code occurredAt} ascending. */
+    public Uni<List<KeyRotationEntry>> rotationHistoryAsync(final String actorId, final String tenancyId) {
+        return reactiveRepository.findByActorId(actorId, tenancyId);
     }
 
     /**

@@ -74,9 +74,9 @@ public class KeyRotationService {
         return persisted;
     }
 
-    /** All rotation events for an actor, ordered by {@code occurredAt} ascending. */
-    public List<KeyRotationEntry> rotationHistory(final String actorId) {
-        return repository.findByActorId(actorId);
+    /** All rotation events for an actor within the given tenant, ordered by {@code occurredAt} ascending. */
+    public List<KeyRotationEntry> rotationHistory(final String actorId, final String tenancyId) {
+        return repository.findByActorId(actorId, tenancyId);
     }
 
     /**

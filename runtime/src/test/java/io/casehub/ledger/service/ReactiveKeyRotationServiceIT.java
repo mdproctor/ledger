@@ -104,7 +104,7 @@ class ReactiveKeyRotationServiceIT {
                 KeyRotationReason.COMPROMISED, Instant.now(), DEFAULT_TENANT_ID);
 
         final List<KeyRotationEntry> history = reactiveRotationService
-                .rotationHistoryAsync(actorId)
+                .rotationHistoryAsync(actorId, DEFAULT_TENANT_ID)
                 .await().atMost(Duration.ofSeconds(5));
 
         assertThat(history).hasSize(2);

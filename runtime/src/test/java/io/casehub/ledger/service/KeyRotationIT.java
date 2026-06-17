@@ -118,7 +118,7 @@ class KeyRotationIT {
                 nextKeyRef, null,
                 KeyRotationReason.COMPROMISED, Instant.now(), DEFAULT_TENANT_ID);
 
-        final List<KeyRotationEntry> history = rotationService.rotationHistory(actorId);
+        final List<KeyRotationEntry> history = rotationService.rotationHistory(actorId, DEFAULT_TENANT_ID);
         assertThat(history).hasSize(2);
         assertThat(history.get(0).reason).isEqualTo(KeyRotationReason.SCHEDULED);
         assertThat(history.get(1).reason).isEqualTo(KeyRotationReason.COMPROMISED);

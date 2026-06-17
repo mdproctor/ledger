@@ -52,7 +52,7 @@ class InMemoryKeyRotationRepositoryTest {
         entryRepo.save(KeyRotationEntryBuilder.build(actorId, "keyRef-B", "keyRef-C",
                 KeyRotationReason.SCHEDULED, t1, t1), DEFAULT_TENANT_ID);
 
-        List<KeyRotationEntry> results = rotationRepo.findByActorId(actorId);
+        List<KeyRotationEntry> results = rotationRepo.findByActorId(actorId, DEFAULT_TENANT_ID);
         assertThat(results).hasSize(2);
         // ordered by occurredAt ascending: t1 first
         assertThat(occurredAt(results.get(0))).isEqualTo(t1);
@@ -66,7 +66,7 @@ class InMemoryKeyRotationRepositoryTest {
         entryRepo.save(KeyRotationEntryBuilder.build("actor-B", "k1", "k2",
                 KeyRotationReason.SCHEDULED, Instant.now(), Instant.now()), DEFAULT_TENANT_ID);
 
-        assertThat(rotationRepo.findByActorId("actor-A")).hasSize(1);
+        assertThat(rotationRepo.findByActorId("actor-A", DEFAULT_TENANT_ID)).hasSize(1);
     }
 
     @Test
@@ -93,7 +93,7 @@ class InMemoryKeyRotationRepositoryTest {
 
     @Test
     void findByActorId_returnsEmptyWhenNoEntries() {
-        assertThat(rotationRepo.findByActorId("unknown-actor")).isEmpty();
+        assertThat(rotationRepo.findByActorId("unknown-actor", DEFAULT_TENANT_ID)).isEmpty();
     }
 
     @Test
@@ -120,6 +120,38 @@ class InMemoryKeyRotationRepositoryTest {
         // earlier effectiveSince must come first
         assertThat(effectiveSince(results.get(0))).isEqualTo(earlier);
         assertThat(effectiveSince(results.get(1))).isEqualTo(later);
+    }
+
+    @Test
+    void findByActorId_isTenantScoped_doesNotReturnOtherTenantEntries() {
+        String actorId = "claude:reviewer@v1";
+        String tenantA = "tenant-a";
+        String tenantB = "tenant-b";
+
+        entryRepo.save(KeyRotationEntryBuilder.build(actorId, "keyRef-A", "keyRef-B",
+                KeyRotationReason.SCHEDULED, Instant.now(), Instant.now()), tenantA);
+        entryRepo.save(KeyRotationEntryBuilder.build(actorId, "keyRef-C", "keyRef-D",
+                KeyRotationReason.SCHEDULED, Instant.now(), Instant.now()), tenantB);
+
+        assertThat(rotationRepo.findByActorId(actorId, tenantA)).hasSize(1);
+        assertThat(rotationRepo.findByActorId(actorId, tenantB)).hasSize(1);
+    }
+
+    @Test
+    void findCompromisedByActorIdAndKeyRef_isCrossTenant_returnsAcrossAllTenants() {
+        String actorId = "claude:reviewer@v1";
+        String tenantA = "tenant-a";
+        String tenantB = "tenant-b";
+        Instant effectiveSince = Instant.now().minusSeconds(3600);
+
+        // COMPROMISED reported by tenant A
+        entryRepo.save(KeyRotationEntryBuilder.build(actorId, "bad-key", "new-key",
+                KeyRotationReason.COMPROMISED, Instant.now(), effectiveSince), tenantA);
+
+        // tenant B queries — must see tenant A's compromise report
+        List<KeyRotationEntry> results =
+                rotationRepo.findCompromisedByActorIdAndKeyRef(actorId, "bad-key");
+        assertThat(results).hasSize(1);
     }
 
     // ── field readers ─────────────────────────────────────────────────────────

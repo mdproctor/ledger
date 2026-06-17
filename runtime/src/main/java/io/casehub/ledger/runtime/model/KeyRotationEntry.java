@@ -30,7 +30,7 @@ import io.casehub.ledger.api.model.KeyRotationReason;
 @NamedQueries({
     @NamedQuery(
         name = "KeyRotationEntry.findByActorId",
-        query = "SELECT e FROM KeyRotationEntry e WHERE e.actorId = :actorId ORDER BY e.occurredAt ASC"),
+        query = "SELECT e FROM KeyRotationEntry e WHERE e.actorId = :actorId AND e.tenancyId = :tenancyId ORDER BY e.occurredAt ASC"),
     @NamedQuery(
         name = "KeyRotationEntry.findCompromisedByActorIdAndKeyRef",
         query = "SELECT e FROM KeyRotationEntry e " +

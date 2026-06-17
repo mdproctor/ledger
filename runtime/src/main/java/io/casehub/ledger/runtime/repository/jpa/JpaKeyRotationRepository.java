@@ -20,9 +20,10 @@ public class JpaKeyRotationRepository implements KeyRotationRepository {
     EntityManager em;
 
     @Override
-    public List<KeyRotationEntry> findByActorId(final String actorId) {
+    public List<KeyRotationEntry> findByActorId(final String actorId, final String tenancyId) {
         return em.createNamedQuery("KeyRotationEntry.findByActorId", KeyRotationEntry.class)
                 .setParameter("actorId", actorId)
+                .setParameter("tenancyId", tenancyId)
                 .getResultList();
     }
 

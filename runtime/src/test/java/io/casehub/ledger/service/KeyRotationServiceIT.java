@@ -87,7 +87,7 @@ class KeyRotationServiceIT {
         rotationService.recordRotation(actorId, keyRef2, null,
                 KeyRotationReason.COMPROMISED, Instant.now(), DEFAULT_TENANT_ID);
 
-        final List<KeyRotationEntry> history = rotationService.rotationHistory(actorId);
+        final List<KeyRotationEntry> history = rotationService.rotationHistory(actorId, DEFAULT_TENANT_ID);
         assertThat(history).hasSize(2);
         assertThat(history.get(0).reason).isEqualTo(KeyRotationReason.SCHEDULED);
         assertThat(history.get(1).reason).isEqualTo(KeyRotationReason.COMPROMISED);
@@ -124,6 +124,38 @@ class KeyRotationServiceIT {
                 rotationService.compromisedWindows(actorId, keyRef);
 
         assertThat(windows).isEmpty();
+    }
+
+    @Test
+    @Transactional
+    void rotationHistory_isTenantScoped() throws Exception {
+        final String actorId = "claude:reviewer@tenancy-" + UUID.randomUUID();
+        final String tenantA = "tenant-a";
+        final String tenantB = "tenant-b";
+        final String keyRef1 = newKeyRef();
+        final String keyRef2 = newKeyRef();
+
+        rotationService.recordRotation(actorId, keyRef1, null,
+                KeyRotationReason.SCHEDULED, Instant.now(), tenantA);
+        rotationService.recordRotation(actorId, keyRef2, null,
+                KeyRotationReason.SCHEDULED, Instant.now(), tenantB);
+
+        assertThat(rotationService.rotationHistory(actorId, tenantA)).hasSize(1);
+        assertThat(rotationService.rotationHistory(actorId, tenantB)).hasSize(1);
+    }
+
+    @Test
+    @Transactional
+    void compromisedWindows_isCrossTenant_returnsAcrossAllTenants() throws Exception {
+        final String actorId = "claude:reviewer@cross-tenant-" + UUID.randomUUID();
+        final String keyRef = newKeyRef();
+        final Instant compromisedSince = Instant.now().minusSeconds(3600);
+
+        rotationService.recordRotation(actorId, keyRef, null,
+                KeyRotationReason.COMPROMISED, compromisedSince, "tenant-a");
+
+        // compromise reported in tenant-a must be visible globally
+        assertThat(rotationService.compromisedWindows(actorId, keyRef)).hasSize(1);
     }
 
     @Test

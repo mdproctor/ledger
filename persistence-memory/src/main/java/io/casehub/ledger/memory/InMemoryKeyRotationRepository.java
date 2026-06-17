@@ -22,11 +22,12 @@ public class InMemoryKeyRotationRepository implements KeyRotationRepository {
     InMemoryLedgerEntryRepository blocking;
 
     @Override
-    public List<KeyRotationEntry> findByActorId(final String actorId) {
+    public List<KeyRotationEntry> findByActorId(final String actorId, final String tenancyId) {
         return blocking.allEntries().stream()
                 .filter(e -> e instanceof KeyRotationEntry)
                 .map(e -> (KeyRotationEntry) e)
                 .filter(e -> actorId.equals(e.actorId))
+                .filter(e -> tenancyId.equals(e.tenancyId))
                 .sorted(Comparator.comparing(e -> e.occurredAt))
                 .collect(Collectors.toList());
     }

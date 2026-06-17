@@ -291,7 +291,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── CrossTenantReactiveLedgerEntryRepository.java — reactive cross-tenant counterpart
 │       │   ├── ActorTrustScoreRepository.java     — SPI
 │       │   ├── NoOpActorTrustScoreRepository.java — @DefaultBean: CDI-satisfaction no-op; all reads return empty/empty-list, upsert/updateGlobalTrustScore are no-ops; active when neither JPA nor in-memory alternative is selected (see #143)
-│       │   ├── KeyRotationRepository.java         — SPI: query-only (findByActorId, findCompromisedByActorIdAndKeyRef); save via LedgerEntryRepository
+│       │   ├── KeyRotationRepository.java         — SPI: query-only; findByActorId(actorId, tenancyId) tenant-scoped; findCompromisedByActorIdAndKeyRef cross-tenant (compromised key = global security signal); save via LedgerEntryRepository
 │       │   ├── ReactiveKeyRotationRepository.java — reactive SPI: same two query methods with Uni<List<>> returns; no bundled JPA impl — consumers provide; test suite uses BlockingReactiveKeyRotationRepository shim
 │       │   ├── ActorIdentityBindingRepository.java         — SPI: query-only — latestBindingFor(actorId, tenancyId) / bindingHistoryFor(actorId, tenancyId); save via LedgerEntryRepository (mirrors KeyRotationRepository; see #144, #145)
 │       │   ├── NoOpLedgerEntryRepository.java    — @DefaultBean: CDI-satisfaction no-op; all reads return empty, save/saveAttestation return argument unchanged; active when neither JPA nor in-memory alternative is selected (see #138)
@@ -321,7 +321,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── ConfiguredAgentSigner.java       — @DefaultBean: loads PKCS#8 private + X.509 public PEM per actorId from casehub.ledger.agent-signing.keys.*
 │       │   ├── AgentEntrySigner.java             — CDI bean: signs entry.canonicalBytes() in save pipeline (after hash, before persist), stores agentSignature + agentPublicKey + agentKeyRef
 │       │   ├── AgentKeyRotatedEvent.java        — CDI event record fired by KeyRotationService/ReactiveKeyRotationService after rotation is persisted; observers (ActorIdentityValidationEnricher, IdentityCacheInvalidator) invalidate their caches
-│       │   ├── KeyRotationService.java          — CDI bean: recordRotation fires AgentKeyRotatedEvent after persist; rotationHistory / compromisedWindows
+│       │   ├── KeyRotationService.java          — CDI bean: recordRotation fires AgentKeyRotatedEvent after persist; rotationHistory(actorId, tenancyId) tenant-scoped; compromisedWindows cross-tenant
 │       │   ├── ReactiveKeyRotationService.java  — compromisedWindowsAsync / rotationHistoryAsync / recordRotationAsync (Uni<T>); fires AgentKeyRotatedEvent via fireAsync (fire-and-forget); excluded when casehub.ledger.reactive.enabled=false
 │       │   ├── LedgerProvExportService.java      — W3C PROV-DM JSON-LD export (CDI bean)
 │       │   ├── LedgerProvSerializer.java         — PROV-DM serialisation utility

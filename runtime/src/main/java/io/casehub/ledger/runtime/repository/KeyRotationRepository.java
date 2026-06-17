@@ -11,9 +11,12 @@ import io.casehub.ledger.runtime.model.KeyRotationEntry;
  */
 public interface KeyRotationRepository {
 
-    /** All rotation events for an actor, ordered by {@code occurredAt} ascending. */
-    List<KeyRotationEntry> findByActorId(String actorId);
+    /** All rotation events for an actor within the given tenant, ordered by {@code occurredAt} ascending. */
+    List<KeyRotationEntry> findByActorId(String actorId, String tenancyId);
 
-    /** All COMPROMISED rotation events for a specific actor and keyRef, ordered by effectiveSince ascending. */
+    /**
+     * All COMPROMISED rotation events for a specific actor and keyRef, ordered by effectiveSince ascending.
+     * Cross-tenant: a compromised key is a global security signal, not tenant-scoped.
+     */
     List<KeyRotationEntry> findCompromisedByActorIdAndKeyRef(String actorId, String keyRef);
 }

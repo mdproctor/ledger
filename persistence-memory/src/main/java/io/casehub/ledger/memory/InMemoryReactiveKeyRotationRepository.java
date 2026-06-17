@@ -22,8 +22,8 @@ public class InMemoryReactiveKeyRotationRepository implements ReactiveKeyRotatio
     InMemoryKeyRotationRepository blocking;
 
     @Override
-    public Uni<List<KeyRotationEntry>> findByActorId(final String actorId) {
-        return Uni.createFrom().item(() -> blocking.findByActorId(actorId));
+    public Uni<List<KeyRotationEntry>> findByActorId(final String actorId, final String tenancyId) {
+        return Uni.createFrom().item(() -> blocking.findByActorId(actorId, tenancyId));
     }
 
     @Override
