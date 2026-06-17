@@ -40,6 +40,9 @@ import jakarta.persistence.UniqueConstraint;
 @NamedQuery(
         name = "ActorTrustScore.findAllByLastComputedAtAfter",
         query = "SELECT s FROM ActorTrustScore s WHERE s.lastComputedAt > :since")
+@NamedQuery(
+        name = "ActorTrustScore.findCapabilityScoresByActorIds",
+        query = "SELECT s FROM ActorTrustScore s WHERE s.actorId IN :actorIds AND s.scoreType = :scoreType AND s.capabilityKey = :capabilityKey AND s.dimensionKey IS NULL")
 public class ActorTrustScore extends io.casehub.ledger.api.model.ActorTrustScore {
 
 }

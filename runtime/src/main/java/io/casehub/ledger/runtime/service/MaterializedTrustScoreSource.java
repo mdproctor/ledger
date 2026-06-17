@@ -1,5 +1,7 @@
 package io.casehub.ledger.runtime.service;
 
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.OptionalDouble;
 import java.util.stream.Collectors;
@@ -83,5 +85,37 @@ public class MaterializedTrustScoreSource implements TrustScoreSource {
     public Map<String, Double> qualityScores(final String actorId, final String capabilityTag) {
         return repository.findCapabilityDimensions(actorId, capabilityTag).stream()
                 .collect(Collectors.toMap(s -> s.dimensionKey, s -> s.trustScore));
+    }
+
+    /**
+     * Single {@code WHERE actorId IN (...)} query rather than N per-actor lookups.
+     */
+    @Override
+    public Map<String, OptionalDouble> scoresFor(final List<String> candidateIds,
+            final String capabilityTag) {
+        if (candidateIds.isEmpty()) {
+            return Map.of();
+        }
+        final Map<String, OptionalDouble> result = new LinkedHashMap<>(candidateIds.size());
+        candidateIds.forEach(id -> result.put(id, OptionalDouble.empty()));
+        repository.findCapabilityScoresByActorIds(candidateIds, capabilityTag)
+                .forEach(s -> result.put(s.actorId, OptionalDouble.of(s.trustScore)));
+        return result;
+    }
+
+    /**
+     * Single {@code WHERE actorId IN (...)} query rather than N per-actor lookups.
+     */
+    @Override
+    public Map<String, Integer> decisionCountsFor(final List<String> candidateIds,
+            final String capabilityTag) {
+        if (candidateIds.isEmpty()) {
+            return Map.of();
+        }
+        final Map<String, Integer> result = new LinkedHashMap<>(candidateIds.size());
+        candidateIds.forEach(id -> result.put(id, 0));
+        repository.findCapabilityScoresByActorIds(candidateIds, capabilityTag)
+                .forEach(s -> result.put(s.actorId, s.decisionCount));
+        return result;
     }
 }

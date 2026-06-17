@@ -1,5 +1,6 @@
 package io.casehub.ledger.runtime.service;
 
+import java.util.List;
 import java.util.Map;
 import java.util.OptionalDouble;
 
@@ -89,5 +90,35 @@ public class TrustGateService {
     /** Returns the number of recorded decisions for the actor on the given capability. */
     public int decisionCount(final String actorId, final String capabilityTag) {
         return source.decisionCount(actorId, capabilityTag);
+    }
+
+    /**
+     * Batch capability scores for multiple candidates. Every candidate appears in the result;
+     * {@code OptionalDouble.empty()} indicates BOOTSTRAP phase (no history yet).
+     */
+    public Map<String, OptionalDouble> scoresFor(final List<String> candidateIds,
+            final String capabilityTag) {
+        return source.scoresFor(candidateIds, capabilityTag);
+    }
+
+    public Uni<Map<String, OptionalDouble>> scoresForAsync(final List<String> candidateIds,
+            final String capabilityTag) {
+        return Uni.createFrom().item(() -> source.scoresFor(candidateIds, capabilityTag))
+                .runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
+    }
+
+    /**
+     * Batch decision counts for multiple candidates. Every candidate appears in the result;
+     * 0 indicates BOOTSTRAP phase.
+     */
+    public Map<String, Integer> decisionCountsFor(final List<String> candidateIds,
+            final String capabilityTag) {
+        return source.decisionCountsFor(candidateIds, capabilityTag);
+    }
+
+    public Uni<Map<String, Integer>> decisionCountsForAsync(final List<String> candidateIds,
+            final String capabilityTag) {
+        return Uni.createFrom().item(() -> source.decisionCountsFor(candidateIds, capabilityTag))
+                .runSubscriptionOn(Infrastructure.getDefaultWorkerPool());
     }
 }

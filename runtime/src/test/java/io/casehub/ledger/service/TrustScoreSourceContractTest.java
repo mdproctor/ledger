@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.within;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -243,6 +244,34 @@ class TrustScoreSourceContractTest {
     @MethodSource("sources")
     void knownActor_unknownCapability_decisionCount_returnsZero(final TrustScoreSource source) {
         assertThat(source.decisionCount(ACTOR, "does-not-exist")).isEqualTo(0);
+    }
+
+    // ── scoresFor / decisionCountsFor ────────────────────────────────────────
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("sources")
+    void scoresFor_returnsEntryForEachCandidate_knownAndUnknown(final TrustScoreSource source) {
+        final Map<String, OptionalDouble> scores =
+                source.scoresFor(List.of(ACTOR, "nonexistent"), "review");
+        assertThat(scores).hasSize(2);
+        assertThat(scores.get(ACTOR)).isPresent();
+        assertThat(scores.get("nonexistent")).isEmpty();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("sources")
+    void scoresFor_emptyList_returnsEmptyMap(final TrustScoreSource source) {
+        assertThat(source.scoresFor(List.of(), "review")).isEmpty();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("sources")
+    void decisionCountsFor_returnsCountForKnownActor_zeroForUnknown(final TrustScoreSource source) {
+        final Map<String, Integer> counts =
+                source.decisionCountsFor(List.of(ACTOR, "nonexistent"), "review");
+        assertThat(counts).hasSize(2);
+        assertThat(counts.get(ACTOR)).isGreaterThan(0);
+        assertThat(counts.get("nonexistent")).isZero();
     }
 
     // ── Fixtures ─────────────────────────────────────────────────────────────

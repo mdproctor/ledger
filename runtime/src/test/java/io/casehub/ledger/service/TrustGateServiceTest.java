@@ -2,6 +2,7 @@ package io.casehub.ledger.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.Map;
 import java.util.OptionalDouble;
 
@@ -325,6 +326,76 @@ class TrustGateServiceTest {
         final TrustGateService gate = new TrustGateService(emptySource());
         assertThat(gate.meetsQualityThreshold("ghost", "security-review", "thoroughness", 0.0))
                 .isFalse();
+    }
+
+    // ── scoresFor ────────────────────────────────────────────────────────────
+
+    @Test
+    void scoresFor_returnsScoreForEachCandidate() {
+        final TrustGateService gate = new TrustGateService(new StubTrustScoreSource() {
+            @Override
+            public OptionalDouble capabilityScore(final String id, final String cap) {
+                if (!"review".equals(cap)) {
+                    return OptionalDouble.empty();
+                }
+                return switch (id) {
+                    case "a" -> OptionalDouble.of(0.8);
+                    case "b" -> OptionalDouble.of(0.3);
+                    default -> OptionalDouble.empty();
+                };
+            }
+        });
+
+        final Map<String, OptionalDouble> scores = gate.scoresFor(List.of("a", "b", "c"), "review");
+        assertThat(scores).hasSize(3);
+        assertThat(scores.get("a")).hasValue(0.8);
+        assertThat(scores.get("b")).hasValue(0.3);
+        assertThat(scores.get("c")).isEmpty();
+    }
+
+    @Test
+    void scoresFor_emptyList_returnsEmptyMap() {
+        final TrustGateService gate = new TrustGateService(emptySource());
+        assertThat(gate.scoresFor(List.of(), "review")).isEmpty();
+    }
+
+    @Test
+    void scoresForAsync_returnsEquivalentResult() {
+        final TrustGateService gate = new TrustGateService(new StubTrustScoreSource() {
+            @Override
+            public OptionalDouble capabilityScore(final String id, final String cap) {
+                return "x".equals(id) && "review".equals(cap)
+                        ? OptionalDouble.of(0.7) : OptionalDouble.empty();
+            }
+        });
+
+        final Map<String, OptionalDouble> scores =
+                gate.scoresForAsync(List.of("x", "y"), "review").await().indefinitely();
+        assertThat(scores.get("x")).hasValue(0.7);
+        assertThat(scores.get("y")).isEmpty();
+    }
+
+    // ── decisionCountsFor ────────────────────────────────────────────────────
+
+    @Test
+    void decisionCountsFor_returnsCountForEachCandidate() {
+        final TrustGateService gate = new TrustGateService(new StubTrustScoreSource() {
+            @Override
+            public int decisionCount(final String id, final String cap) {
+                return "review".equals(cap) && "a".equals(id) ? 5 : 0;
+            }
+        });
+
+        final Map<String, Integer> counts = gate.decisionCountsFor(List.of("a", "b"), "review");
+        assertThat(counts).hasSize(2);
+        assertThat(counts.get("a")).isEqualTo(5);
+        assertThat(counts.get("b")).isZero();
+    }
+
+    @Test
+    void decisionCountsFor_emptyList_returnsEmptyMap() {
+        final TrustGateService gate = new TrustGateService(emptySource());
+        assertThat(gate.decisionCountsFor(List.of(), "review")).isEmpty();
     }
 
     // ── Base stub ────────────────────────────────────────────────────────────

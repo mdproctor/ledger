@@ -1,6 +1,7 @@
 package io.casehub.ledger.runtime.repository.jpa;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -159,6 +160,19 @@ public class JpaActorTrustScoreRepository implements ActorTrustScoreRepository {
     public List<ActorTrustScore> findAllByLastComputedAtAfter(final Instant since) {
         return em.createNamedQuery("ActorTrustScore.findAllByLastComputedAtAfter", ActorTrustScore.class)
                 .setParameter("since", since)
+                .getResultList();
+    }
+
+    @Override
+    public List<ActorTrustScore> findCapabilityScoresByActorIds(final Collection<String> actorIds,
+            final String capabilityTag) {
+        if (actorIds.isEmpty()) {
+            return List.of();
+        }
+        return em.createNamedQuery("ActorTrustScore.findCapabilityScoresByActorIds", ActorTrustScore.class)
+                .setParameter("actorIds", actorIds)
+                .setParameter("scoreType", ScoreType.CAPABILITY)
+                .setParameter("capabilityKey", capabilityTag)
                 .getResultList();
     }
 }

@@ -1,6 +1,7 @@
 package io.casehub.ledger.runtime.repository;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -69,4 +70,26 @@ public interface ActorTrustScoreRepository {
      * Return all trust scores whose {@code lastComputedAt} timestamp is strictly after {@code since}.
      */
     List<ActorTrustScore> findAllByLastComputedAtAfter(Instant since);
+
+    /**
+     * Batch-fetch CAPABILITY scores for multiple actors against the same capability tag.
+     *
+     * <p>Returns only rows that exist — absent actors are not represented. Callers must
+     * correlate by {@code actorId} to distinguish "no score" from "score is 0".
+     *
+     * <p>Default implementation loops over {@link #findCapabilityScore}. JPA implementations
+     * should override with a single {@code WHERE actorId IN (...)} query.
+     *
+     * @param actorIds     the actors to query; empty collection returns an empty list
+     * @param capabilityTag the capability tag to filter on
+     * @return matching CAPABILITY rows in unspecified order
+     */
+    default List<ActorTrustScore> findCapabilityScoresByActorIds(final Collection<String> actorIds,
+            final String capabilityTag) {
+        return actorIds.stream()
+                .map(id -> findCapabilityScore(id, capabilityTag))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .toList();
+    }
 }
