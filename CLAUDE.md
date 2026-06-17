@@ -340,7 +340,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── MaterializedTrustScoreSource.java — @DefaultBean TrustScoreSource: reads ActorTrustScoreRepository per call
 │       │   ├── CachedTrustScoreSource.java  — @Alternative TrustScoreSource: in-memory ConcurrentHashMap cache; observes TrustScoreFullPayload + TrustScoreActorUpdatedEvent for refresh
 │       │   ├── ComputedTrustScoreSource.java — @Alternative TrustScoreSource: on-read computation from raw attestation history; per-actor computation cache with event-driven invalidation
-│       │   ├── TrustGateService.java        — CDI bean: trust threshold enforcement; injects TrustScoreSource (not repo directly); returns OptionalDouble; methods: meetsThreshold, currentScore, allDimensionScores, dimensionScore, qualityScore, qualityScores, meetsQualityThreshold, allCapabilityScores
+│       │   ├── TrustGateService.java        — CDI bean: trust threshold enforcement; injects TrustScoreSource (not repo directly); returns OptionalDouble; methods: meetsThreshold, currentScore, allDimensionScores, dimensionScore, qualityScore, qualityScores, meetsQualityThreshold, allCapabilityScores, decisionCount; batch: scoresFor(List<String> candidateIds, String capabilityTag) + decisionCountsFor() + Uni<> async variants (ledger#136)
 │       │   ├── GlobalScoreStrategy.java          — SPI: select attestations / derive global trust score (ADR 0008)
 │       │   ├── AllAttestationsGlobalStrategy.java — @DefaultBean: all attestations → global Beta (Option B)
 │       │   ├── ExplicitGlobalAttestationsStrategy.java — @Alternative: only "*" attestations (Option A)
@@ -398,7 +398,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │       ├── LedgerIdentityEnforcementListener.java — @EntityListeners @PrePersist: ENFORCE mode gate (JPA-only)
 │       │       └── LedgerIdentityViolationException.java — thrown by enforcement listener in ENFORCE mode
 │       └── privacy/
-│           ├── ActorIdentityProvider.java   — SPI: tokenise/resolve/erase actor identities; tokenise takes ActorType — only HUMAN actors are pseudonymised
+│           ├── ActorIdentityProvider.java   — moved to api/spi/ (ledger#142); SPI: tokenise/resolve/erase actor identities; tokenise takes ActorType — only HUMAN actors are pseudonymised; tokeniseForQuery() returns Optional<String> (empty=null input; present=always query by token or raw actorId)
 │           ├── DecisionContextSanitiser.java — SPI: sanitise decisionContext JSON before persist
 │           ├── InternalActorIdentityProvider.java — built-in UUID token impl (config-gated)
 │           ├── LedgerErasureService.java    — GDPR Art.17 erasure (CDI bean)

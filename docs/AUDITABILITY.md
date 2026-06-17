@@ -270,9 +270,11 @@ pseudonymisation: store tokens instead of raw identities, backed by a detachable
 **Current state:**
 Two SPIs in `io.casehub.ledger.runtime.privacy`:
 
-- `ActorIdentityProvider` — tokenises `actorId` (write) and `attestorId` on every persist.
-  `tokenise()` creates a UUID token if none exists. `tokeniseForQuery()` does a read-only
-  lookup. `erase()` deletes the mapping — the token in existing entries becomes unresolvable.
+- `ActorIdentityProvider` — SPI in `api/spi/` (ledger#142). Tokenises `actorId` (write) and `attestorId`
+  on every persist. `tokenise(rawActorId, actorType)` creates a UUID token if absent; HUMAN-only.
+  `tokeniseForQuery(rawActorId)` returns `Optional<String>`: empty = null input; present = query
+  identifier (token if mapped, raw actorId for SYSTEM/AGENT actors stored without a token).
+  `erase()` deletes the mapping — the token in existing entries becomes unresolvable.
 - `DecisionContextSanitiser` — sanitises `ComplianceSupplement.decisionContext` JSON before
   persist. Default is pass-through; consumers supply a custom CDI bean to strip PII.
 

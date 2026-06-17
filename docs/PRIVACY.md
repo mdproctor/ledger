@@ -128,13 +128,19 @@ in the local `actor_identity` table. This is appropriate when:
 public class KeycloakActorIdentityProvider implements ActorIdentityProvider {
 
     @Override
-    public String tokenise(String rawActorId) {
+    public String tokenise(String rawActorId, ActorType actorType) {
+        if (rawActorId == null) return null;
+        if (actorType != null && actorType != ActorType.HUMAN) return rawActorId;
         return keycloakClient.getPseudonymFor(rawActorId); // create if absent
     }
 
     @Override
-    public String tokeniseForQuery(String rawActorId) {
-        return keycloakClient.lookupPseudonym(rawActorId); // read-only, null if absent
+    public Optional<String> tokeniseForQuery(String rawActorId) {
+        // empty = null input (caller skips query); present = proceed with query
+        // return Optional.of(token) if mapping exists, Optional.of(rawActorId) if not (e.g. SYSTEM actors)
+        if (rawActorId == null) return Optional.empty();
+        String token = keycloakClient.lookupPseudonym(rawActorId);
+        return Optional.of(token != null ? token : rawActorId);
     }
 
     @Override
