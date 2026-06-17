@@ -5,19 +5,20 @@ import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 
+import io.casehub.ledger.api.spi.ActorIdentityProvider;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 import io.quarkus.arc.DefaultBean;
 
 /**
- * CDI producer for {@link ActorIdentityProvider} and {@link DecisionContextSanitiser}.
+ * CDI producer for {@link io.casehub.ledger.api.spi.ActorIdentityProvider} and {@link DecisionContextSanitiser}.
  *
  * <p>
  * Both producers are annotated {@link DefaultBean} — a consumer-supplied CDI bean of the
  * same type silently replaces the default without any configuration change.
  *
  * <p>
- * {@link ActorIdentityProvider}: returns {@link InternalActorIdentityProvider} when
+ * {@link io.casehub.ledger.api.spi.ActorIdentityProvider}: returns {@link InternalActorIdentityProvider} when
  * {@code casehub.ledger.identity.tokenisation.enabled=true}; otherwise pass-through.
  * {@link DecisionContextSanitiser}: always returns pass-through; replace with a
  * custom bean to scrub PII from decision context blobs.

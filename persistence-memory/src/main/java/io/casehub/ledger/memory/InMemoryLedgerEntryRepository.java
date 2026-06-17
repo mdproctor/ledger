@@ -23,7 +23,7 @@ import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
-import io.casehub.ledger.runtime.privacy.ActorIdentityProvider;
+import io.casehub.ledger.api.spi.ActorIdentityProvider;
 import io.casehub.ledger.runtime.privacy.DecisionContextSanitiser;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.repository.LedgerMerkleFrontierRepository;
@@ -230,7 +230,11 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
     @Override
     public List<LedgerEntry> findByActorId(final String actorId,
             final Instant from, final Instant to, final String tenancyId) {
-        final String token = actorIdentityProvider.tokeniseForQuery(actorId);
+        final Optional<String> tokenOpt = actorIdentityProvider.tokeniseForQuery(actorId);
+        if (tokenOpt.isEmpty()) {
+            return List.of();
+        }
+        final String token = tokenOpt.get();
         return entries.values().stream()
                 .filter(e -> tenancyId.equals(e.tenancyId))
                 .filter(e -> token.equals(e.actorId))
@@ -282,7 +286,11 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
     @Override
     public List<LedgerAttestation> findAttestationsByAttestorIdAndCapabilityTag(
             final String attestorId, final String capabilityTag, final String tenancyId) {
-        final String token = actorIdentityProvider.tokeniseForQuery(attestorId);
+        final Optional<String> tokenOpt = actorIdentityProvider.tokeniseForQuery(attestorId);
+        if (tokenOpt.isEmpty()) {
+            return List.of();
+        }
+        final String token = tokenOpt.get();
         // Filter attestations to those whose linked entry belongs to this tenant
         return attestations.values().stream()
                 .filter(a -> token.equals(a.attestorId))

@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import jakarta.persistence.EntityManager;
 
+import io.casehub.ledger.api.spi.ActorIdentityProvider;
 import io.casehub.ledger.runtime.model.ActorIdentity;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 import io.casehub.platform.api.identity.ActorType;
@@ -54,21 +55,24 @@ public class InternalActorIdentityProvider implements ActorIdentityProvider {
     }
 
     /**
-     * Returns the existing token without creating one.
-     * Returns {@code rawActorId} unchanged if no mapping exists.
-     * {@code null} input returns {@code null}.
+     * Returns the existing token for {@code rawActorId}, or the raw actorId itself
+     * if no mapping exists (SYSTEM/AGENT actors are stored under their raw identity).
+     * Returns {@link Optional#empty()} only when input is {@code null}.
+     *
+     * <p>Callers can distinguish "token found" from "no mapping" by comparing the
+     * returned value to the raw input: equal → no mapping; not equal → token found.
      */
     @Override
-    public String tokeniseForQuery(final String rawActorId) {
+    public Optional<String> tokeniseForQuery(final String rawActorId) {
         if (rawActorId == null) {
-            return null;
+            return Optional.empty();
         }
-        return em.createNamedQuery("ActorIdentity.findByActorId", ActorIdentity.class)
+        return Optional.of(em.createNamedQuery("ActorIdentity.findByActorId", ActorIdentity.class)
                 .setParameter("actorId", rawActorId)
                 .getResultStream()
                 .map(a -> a.token)
                 .findFirst()
-                .orElse(rawActorId);
+                .orElse(rawActorId));
     }
 
     /** Returns the real identity for a token, or empty if the mapping was erased. */

@@ -41,8 +41,13 @@ class PassThroughPrivacyTest {
     }
 
     @Test
-    void tokeniseForQuery_returnsRawActorId_unchanged() {
-        assertThat(provider.tokeniseForQuery("alice@example.com")).isEqualTo("alice@example.com");
+    void tokeniseForQuery_knownActor_returnsPresent() {
+        assertThat(provider.tokeniseForQuery("alice@example.com")).hasValue("alice@example.com");
+    }
+
+    @Test
+    void tokeniseForQuery_null_returnsEmpty() {
+        assertThat(provider.tokeniseForQuery(null)).isEmpty();
     }
 
     @Test

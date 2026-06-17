@@ -7,6 +7,7 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
+import io.casehub.ledger.api.spi.ActorIdentityProvider;
 import io.casehub.ledger.runtime.model.ActorIdentity;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 

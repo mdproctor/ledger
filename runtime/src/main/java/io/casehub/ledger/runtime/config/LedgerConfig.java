@@ -501,7 +501,7 @@ public interface LedgerConfig {
              *
              * <p>
              * Organisations with their own identity management systems should leave this
-             * off and provide a custom {@link io.casehub.ledger.runtime.privacy.ActorIdentityProvider}
+             * off and provide a custom {@link io.casehub.ledger.api.spi.ActorIdentityProvider}
              * CDI bean instead.
              *
              * @return {@code true} if built-in tokenisation is active; {@code false} by default

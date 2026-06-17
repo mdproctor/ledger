@@ -1,4 +1,4 @@
-package io.casehub.ledger.runtime.privacy;
+package io.casehub.ledger.api.spi;
 
 import java.util.Optional;
 
@@ -37,14 +37,24 @@ public interface ActorIdentityProvider {
     String tokenise(String rawActorId, ActorType actorType);
 
     /**
-     * Returns the existing token for {@code rawActorId} without creating one.
-     * Returns {@code rawActorId} unchanged if no mapping exists.
-     * Called on read queries ({@code findByActorId}) to avoid spurious token creation.
+     * Returns the stored query key for {@code rawActorId} without creating a token mapping.
      *
-     * @param rawActorId the real actor identity; may be {@code null}
-     * @return existing token, or {@code rawActorId} if unmapped; {@code null} if input is {@code null}
+     * <p>When a token mapping exists, returns {@code Optional.of(token)}. When no mapping exists
+     * (SYSTEM/AGENT actors are never tokenised and are stored under their raw identity), returns
+     * {@code Optional.of(rawActorId)}. Returns {@code Optional.empty()} only when input is
+     * {@code null}.
+     *
+     * <p>Callers can distinguish "token found" from "no mapping" by comparing the returned
+     * value to the raw input: equal → no mapping, use raw identity for the query; not equal →
+     * token found, use token for the query. Both cases produce a non-empty Optional and should
+     * proceed with the query. The empty case (null input) is the only short-circuit.
+     *
+     * <p>Called on read queries ({@code findByActorId}) to avoid spurious token creation.
+     *
+     * @param rawActorId the real actor identity; {@code null} returns empty
+     * @return query key to use (token or raw actorId), or empty for null input
      */
-    String tokeniseForQuery(String rawActorId);
+    Optional<String> tokeniseForQuery(String rawActorId);
 
     /**
      * Maps a stored token back to the real identity.

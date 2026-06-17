@@ -9,7 +9,7 @@ import jakarta.transaction.Transactional;
 
 import org.junit.jupiter.api.Test;
 
-import io.casehub.ledger.runtime.privacy.ActorIdentityProvider;
+import io.casehub.ledger.api.spi.ActorIdentityProvider;
 import io.casehub.platform.api.identity.ActorType;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
@@ -80,16 +80,16 @@ class InternalActorIdentityProviderIT {
     void tokeniseForQuery_existingActor_returnsToken() {
         final String actorId = "carol-" + java.util.UUID.randomUUID();
         final String token = provider.tokenise(actorId, ActorType.HUMAN);
-        assertThat(provider.tokeniseForQuery(actorId)).isEqualTo(token);
+        assertThat(provider.tokeniseForQuery(actorId)).hasValue(token);
     }
 
-    // ── Correctness: tokeniseForQuery does not create for unknown actor ────────
+    // ── Correctness: tokeniseForQuery returns raw actorId for unmapped actor ───────
 
     @Test
     @Transactional
     void tokeniseForQuery_unknownActor_returnsRawActorId() {
         final String unknown = "unknown-" + java.util.UUID.randomUUID();
-        assertThat(provider.tokeniseForQuery(unknown)).isEqualTo(unknown);
+        assertThat(provider.tokeniseForQuery(unknown)).hasValue(unknown);
     }
 
     // ── Happy path: resolve returns the real identity ─────────────────────────
@@ -139,7 +139,7 @@ class InternalActorIdentityProviderIT {
         provider.erase("never-registered-" + java.util.UUID.randomUUID());
     }
 
-    // ── Correctness: tokeniseForQuery after erase returns raw actorId ─────────
+    // ── Correctness: tokeniseForQuery after erase returns raw actorId (mapping severed, stored entries unreachable) ───
 
     @Test
     @Transactional
@@ -148,7 +148,9 @@ class InternalActorIdentityProviderIT {
         provider.tokenise(actorId, ActorType.HUMAN);
         provider.erase(actorId);
 
-        assertThat(provider.tokeniseForQuery(actorId)).isEqualTo(actorId);
+        // Mapping severed — no token, returns raw actorId. Entries remain stored under
+        // the old token (now unresolvable), so the query returns empty results regardless.
+        assertThat(provider.tokeniseForQuery(actorId)).hasValue(actorId);
     }
 
     // ── Happy path: system actors are not tokenised ───────────────────────────

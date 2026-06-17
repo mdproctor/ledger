@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -16,7 +17,7 @@ import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
-import io.casehub.ledger.runtime.privacy.ActorIdentityProvider;
+import io.casehub.ledger.api.spi.ActorIdentityProvider;
 import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
 
@@ -63,7 +64,11 @@ public class JpaCrossTenantLedgerEntryRepository implements CrossTenantLedgerEnt
     /** {@inheritDoc} */
     @Override
     public List<LedgerEntry> findEventsByActorId(final String actorId) {
-        final String token = actorIdentityProvider.tokeniseForQuery(actorId);
+        final Optional<String> tokenOpt = actorIdentityProvider.tokeniseForQuery(actorId);
+        if (tokenOpt.isEmpty()) {
+            return List.of();
+        }
+        final String token = tokenOpt.get();
         return em.createQuery(
                 "SELECT e FROM LedgerEntry e WHERE e.actorId = :actorId AND e.entryType = :type",
                 LedgerEntry.class)
@@ -100,7 +105,11 @@ public class JpaCrossTenantLedgerEntryRepository implements CrossTenantLedgerEnt
     /** {@inheritDoc} */
     @Override
     public Map<UUID, List<LedgerAttestation>> findAttestationsByActorId(final String actorId) {
-        final String token = actorIdentityProvider.tokeniseForQuery(actorId);
+        final Optional<String> tokenOpt = actorIdentityProvider.tokeniseForQuery(actorId);
+        if (tokenOpt.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        final String token = tokenOpt.get();
         final List<LedgerAttestation> all = em
                 .createNamedQuery("LedgerAttestation.findByActorIdEvents", LedgerAttestation.class)
                 .setParameter("actorId", token)
