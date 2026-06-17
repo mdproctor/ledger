@@ -138,6 +138,13 @@ public interface LedgerConfig {
     OutcomeConfig outcome();
 
     /**
+     * Erasure receipt settings — opt-in tamper-evident GDPR Art.17 erasure records.
+     *
+     * @return erasure receipt sub-configuration
+     */
+    ErasureReceiptConfig erasureReceipt();
+
+    /**
      * Reactive service tier — controls whether {@code ReactiveKeyRotationService} and
      * {@code ReactiveAgentSignatureVerificationService} are present in the CDI graph. Set
      * {@code casehub.ledger.reactive.enabled=true} only in deployments that provide a
@@ -736,5 +743,23 @@ public interface LedgerConfig {
          */
         @WithDefault("SYSTEM")
         io.casehub.platform.api.identity.ActorType defaultAttestorType();
+    }
+
+    /** Erasure receipt settings. */
+    interface ErasureReceiptConfig {
+
+        /**
+         * When {@code true}, {@code LedgerErasureService.erase()} writes an
+         * {@link io.casehub.ledger.runtime.model.ErasureReceiptLedgerEntry} to the Merkle
+         * chain on every erasure call — making the act of forgetting tamper-evident.
+         * The receipt is queryable via {@link io.casehub.ledger.runtime.repository.ErasureReceiptRepository}.
+         *
+         * <p>Off by default — enabling requires {@code JpaErasureReceiptRepository} (or the
+         * in-memory alternative) to be on the CDI path and the V1009 migration to be applied.
+         *
+         * @return {@code true} if erasure receipt writing is active; {@code false} by default
+         */
+        @WithDefault("false")
+        boolean enabled();
     }
 }

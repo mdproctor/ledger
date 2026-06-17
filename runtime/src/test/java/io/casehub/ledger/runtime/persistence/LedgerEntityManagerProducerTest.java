@@ -175,6 +175,11 @@ class LedgerEntityManagerProducerTest {
         public AgentIdentityConfig agentIdentity() {
             throw new UnsupportedOperationException();
         }
+
+        @Override
+        public ErasureReceiptConfig erasureReceipt() {
+            throw new UnsupportedOperationException();
+        }
     }
 
     private LedgerEntityManagerProducer producerWith(final LedgerConfig config) {
