@@ -21,6 +21,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
+import jakarta.persistence.NamedQuery;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
@@ -69,6 +70,15 @@ import io.casehub.ledger.runtime.service.identity.LedgerIdentityEnforcementListe
  * The {@code digest} field holds the RFC 9162 leaf hash — {@code SHA-256(0x00 | canonical fields)}.
  * Chain integrity is maintained by the Merkle Mountain Range in {@link LedgerMerkleFrontier}.
  */
+@NamedQuery(
+        name = "LedgerEntry.findSequenceStats",
+        query = """
+                SELECT NEW io.casehub.ledger.runtime.service.model.SubjectSequenceStats(
+                    e.subjectId, e.tenancyId, COUNT(e), MIN(e.sequenceNumber), MAX(e.sequenceNumber)
+                )
+                FROM LedgerEntry e
+                GROUP BY e.subjectId, e.tenancyId
+                """)
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
 @DiscriminatorColumn(name = "dtype", discriminatorType = DiscriminatorType.STRING)

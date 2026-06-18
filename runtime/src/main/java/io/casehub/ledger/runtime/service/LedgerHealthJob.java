@@ -8,13 +8,14 @@ import jakarta.enterprise.event.Event;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
-import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
 import org.jboss.logging.Logger;
 
 import io.casehub.ledger.runtime.config.LedgerConfig;
-import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
+import io.casehub.ledger.runtime.qualifier.CrossTenant;
+import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
+import io.casehub.ledger.runtime.service.model.SubjectSequenceStats;
 import io.quarkus.scheduler.Scheduled;
 
 /**
@@ -45,8 +46,8 @@ public class LedgerHealthJob {
     private static final Logger LOG = Logger.getLogger(LedgerHealthJob.class);
 
     @Inject
-    @LedgerPersistenceUnit
-    EntityManager em;
+    @CrossTenant
+    CrossTenantLedgerEntryRepository crossTenantRepo;
 
     @Inject
     LedgerConfig config;
@@ -82,27 +83,15 @@ public class LedgerHealthJob {
      * {@code max - min + 1} entries. A lower actual count indicates deletion after write.
      */
     private void checkSequenceGaps() {
-        @SuppressWarnings("unchecked")
-        final List<Object[]> results = em.createQuery(
-                """
-                SELECT e.subjectId, e.tenancyId, COUNT(e), MIN(e.sequenceNumber), MAX(e.sequenceNumber) \
-                FROM LedgerEntry e \
-                GROUP BY e.subjectId, e.tenancyId \
-                HAVING COUNT(e) != MAX(e.sequenceNumber) - MIN(e.sequenceNumber) + 1\
-                """)
-                .getResultList();
-
-        for (final Object[] row : results) {
-            final UUID subjectId   = (UUID)   row[0];
-            final String tenancyId = (String) row[1];
-            final long actualCount = ((Number) row[2]).longValue();
-            final long min         = ((Number) row[3]).longValue();
-            final long max         = ((Number) row[4]).longValue();
-            final long expected    = max - min + 1;
-
+        final List<SubjectSequenceStats> stats = crossTenantRepo.findSequenceStats();
+        for (final SubjectSequenceStats s : stats) {
+            final long expected = (long) s.max() - s.min() + 1;
+            if (s.count() == expected) {
+                continue;
+            }
             LOG.warnf("Sequence gap for subject %s / tenant %s: expected %d entries (seq %d–%d), found %d",
-                    subjectId, tenancyId, expected, min, max, actualCount);
-            anomalyEvent.fire(new LedgerSequenceGapDetected(subjectId, tenancyId, expected, actualCount));
+                    s.subjectId(), s.tenancyId(), expected, s.min(), s.max(), s.count());
+            anomalyEvent.fire(new LedgerSequenceGapDetected(s.subjectId(), s.tenancyId(), expected, s.count()));
         }
     }
 
