@@ -273,9 +273,11 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── LedgerEntryArchiveRecord.java — archive snapshot record for retention-deleted entries (V1003)
 │       │   ├── KeyRotationEntry.java         — LedgerEntry subclass: key rotation/revocation event; subjectId=UUID.nameUUIDFromBytes(actorId); see ADR 0012
 │       │   ├── ActorIdentityBindingEntry.java — LedgerEntry subclass: DID/VC binding validation event; subjectId=nameUUIDFromBytes(actorId); entryType=EVENT; see ADR 0015
+│       │   ├── ErasureReceiptLedgerEntry.java — LedgerEntry subclass: tamper-evident GDPR Art.17 erasure record; subjectId=nameUUIDFromBytes(erasedActorId); entryType=EVENT; opt-in via casehub.ledger.erasure-receipt.enabled
 │       │   ├── LedgerEntryType.java         — COMMAND | EVENT | ATTESTATION (api module)
 │       │   ├── ActorType.java               — HUMAN | AGENT | SYSTEM (api module)
 │       │   ├── KeyRotationReason.java       — SCHEDULED | COMPROMISED (api module); NIST SP 800-57 lifecycle distinction
+│       │   ├── ErasureReason.java           — GDPR_ART_17_REQUEST | RETENTION_EXPIRED | ACCOUNT_DELETION (api module); legal basis for erasure events
 │       │   ├── AttestationVerdict.java      — SOUND | FLAGGED | ENDORSED | CHALLENGED (api module)
 │       │   ├── CapabilityTag.java           — sentinel constants: GLOBAL = "*" for cross-capability attestations (api module)
 │       │   ├── ActorIdentity.java           — token↔identity mapping for pseudonymisation
@@ -297,11 +299,14 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── NoOpLedgerEntryRepository.java    — @DefaultBean: CDI-satisfaction no-op; all reads return empty, save/saveAttestation return argument unchanged; active when neither JPA nor in-memory alternative is selected (see #138)
 │       │   ├── NoOpActorIdentityBindingRepository.java — @DefaultBean: CDI-satisfaction no-op for ActorIdentityBindingRepository read methods; write path uses LedgerEntryRepository (observer no longer injects this bean)
 │       │   ├── NoOpLedgerMerkleFrontierRepository.java — @DefaultBean: CDI-satisfaction no-op; findBySubjectId() returns empty, replace() is a no-op
+│       │   ├── ErasureReceiptRepository.java  — SPI: query-only; findByErasedActorId(erasedActorId, tenancyId); save via LedgerEntryRepository
+│       │   ├── NoOpErasureReceiptRepository.java — @DefaultBean: CDI-satisfaction no-op; returns empty list
 │       │   └── jpa/                              — JPA implementations (EntityManager-based)
 │       │       ├── JpaActorIdentityBindingRepository.java — @Alternative: read-only JPA implementation (latestBindingFor, bindingHistoryFor with tenancyId); no save() — saves go through JpaLedgerEntryRepository; activate via quarkus.arc.selected-alternatives
 │       │       ├── JpaActorTrustScoreRepository.java — @Alternative @ApplicationScoped: activate via quarkus.arc.selected-alternatives; was plain @ApplicationScoped before #143 — @Alternative required so NoOpActorTrustScoreRepository @DefaultBean can fill the default slot
 │       │       ├── JpaCrossTenantLedgerEntryRepository.java
-│       │       └── LedgerSequenceAllocator.java     — CDI bean: atomic per-(subject, tenant) sequence allocation; dialect detected lazily via JDBC DatabaseMetaData (not @ConfigProperty — named datasources would get wrong key); PostgreSQL: INSERT ON CONFLICT DO NOTHING + UPDATE (row lock serialises full save pipeline per tenant); H2: SQL-standard MERGE (H2 2.x has no ON CONFLICT support; H2 tests are serial)
+│       │       ├── JpaErasureReceiptRepository.java — @Alternative: findByErasedActorId NamedQuery; activate via quarkus.arc.selected-alternatives
+│       │       └── LedgerSequenceAllocator.java     — CDI bean: atomic per-(subject, tenant) sequence allocation; dialect detected lazily via INFORMATION_SCHEMA.SETTINGS on H2 (getDatabaseProductName() returns "H2" for all modes; getMetaData().getURL() drops connection properties via Agroal — URL not reliable for mode detection); PostgreSQL and H2+MODE=PostgreSQL: INSERT ON CONFLICT DO NOTHING + UPDATE (row lock serialises full save pipeline per tenant); H2 standard mode: SQL-standard MERGE WHEN NOT MATCHED THEN INSERT + UPDATE (safe for single-threaded test contexts)
 │       ├── qualifier/
 │       │   └── CrossTenant.java              — CDI qualifier: disambiguates CrossTenantLedgerEntryRepository from LedgerEntryRepository (Category 1 only; build-time scope validation)
 │       ├── service/
@@ -401,8 +406,8 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │           ├── ActorIdentityProvider.java   — moved to api/spi/ (ledger#142); SPI: tokenise/resolve/erase actor identities; tokenise takes ActorType — only HUMAN actors are pseudonymised; tokeniseForQuery() returns Optional<String> (empty=null input; present=always query by token or raw actorId)
 │           ├── DecisionContextSanitiser.java — SPI: sanitise decisionContext JSON before persist
 │           ├── InternalActorIdentityProvider.java — built-in UUID token impl (config-gated)
-│           ├── LedgerErasureService.java    — GDPR Art.17 erasure (CDI bean)
-│           └── LedgerPrivacyProducer.java   — CDI producer for both SPIs (@DefaultBean)
+│           ├── LedgerErasureService.java    — GDPR Art.17 erasure (CDI bean); erase(rawActorId, ErasureReason) severs token→identity mapping; when casehub.ledger.erasure-receipt.enabled=true writes ErasureReceiptLedgerEntry in same TX; ErasureResult carries Optional<UUID> receiptEntryId
+│           └── LedgerPrivacyProducer.java   — CDI producer for both SPIs (@DefaultBean); injects Instance<EntityManager> (not EntityManager directly) so datasource-free deployments don't fail CDI augmentation (#149)
 │   └── src/main/resources/db/ledger/migration/
 │       ├── V1000__ledger_base_schema.sql    — ledger_entry + ledger_attestation tables; ledger_merkle_frontier (tenancy_id, UNIQUE(subject_id, tenancy_id, level)); ledger_subject_sequence (composite PK (subject_id, tenancy_id)); ledger_entry UNIQUE index (subject_id, tenancy_id, sequence_number)
 │       ├── V1001__actor_trust_score.sql     — actor_trust_score two-column key model (UUID PK, score_type GLOBAL|CAPABILITY|DIMENSION|CAPABILITY_DIMENSION, capability_key + dimension_key, CHECK constraint, NULLS NOT DISTINCT)
@@ -412,7 +417,9 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       ├── V1005__agent_signature.sql       — agent_signature + agent_public_key BYTEA nullable on ledger_entry; CHECK constraint enforces pair nullability
 │       ├── V1006__agent_key_ref.sql         — agent_key_ref TEXT on ledger_entry; CHECK enforces null iff agent_signature null
 │       ├── V1007__key_rotation_entry.sql    — key_rotation_entry table (KeyRotationEntry subclass: previous_key_ref, new_key_ref, reason, effective_since)
-│       └── V1008__actor_identity_binding.sql        — actor_did TEXT nullable on ledger_entry; actor_identity_binding join table
+│       ├── V1008__actor_identity_binding.sql        — actor_did TEXT nullable on ledger_entry; actor_identity_binding join table
+│       ├── V1009__plain_ledger_entry.sql            — plain_ledger_entry join table (PlainLedgerEntry subclass for domain-agnostic event writes via OutcomeRecorder)
+│       └── V1010__erasure_receipt_entry.sql         — erasure_receipt_entry join table (ErasureReceiptLedgerEntry; opt-in via casehub.ledger.erasure-receipt.enabled)
 └── deployment/
 │   └── src/main/java/io/casehub/ledger/deployment/
 │       ├── LedgerBuildTimeConfig.java       — @ConfigRoot(BUILD_TIME): casehub.ledger.reactive.enabled (default false)
@@ -424,6 +431,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
         ├── InMemoryActorTrustScoreRepository.java    — @Alternative @Priority(1); composite key: actorId|scoreType|cap|dim
         ├── InMemoryKeyRotationRepository.java        — @Alternative @Priority(1); reads via blocking.allEntries()
         ├── InMemoryActorIdentityBindingRepository.java — @Alternative @Priority(1); read-only delegate — reads via blocking.allEntries() filtered by instanceof ActorIdentityBindingEntry + tenancyId; mirrors InMemoryKeyRotationRepository
+        ├── InMemoryErasureReceiptRepository.java — @Alternative @Priority(1); read-only delegate — reads via blocking.allEntries() filtered by instanceof ErasureReceiptLedgerEntry + tenancyId
         ├── InMemoryAgentSigner.java              — @Alternative @Priority(1); ConcurrentHashMap<String,KeyPair>; register(actorId,keyPair) + clear() for session-boundary reset; see #104
         ├── InMemoryReactiveLedgerEntryRepository.java — @IfBuildProperty(reactive.enabled=true); delegates to blocking
         ├── InMemoryReactiveKeyRotationRepository.java — @IfBuildProperty(reactive.enabled=true); delegates to blocking
@@ -492,7 +500,7 @@ casehub-work and casehub-qhorus are siblings — neither depends on the other. B
 ## Schema Convention
 
 **No existing installations** — there are no deployed instances of `casehub-ledger` in production.
-All schema changes go directly into the base migration files (V1000–V1008) or into a new base
+All schema changes go directly into the base migration files (V1000–V1010) or into a new base
 migration file. Do NOT create incremental migration scripts to evolve the schema. Rewrite the
 relevant migration file in place. Treat every schema change as a clean-slate design decision.
 
