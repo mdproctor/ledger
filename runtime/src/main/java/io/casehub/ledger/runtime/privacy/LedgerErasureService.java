@@ -32,7 +32,7 @@ import io.casehub.platform.api.identity.TenancyConstants;
  * data link is gone. Returns an {@link ErasureResult} with diagnostic information.
  *
  * <p>
- * When {@code casehub.ledger.erasure.receipt.enabled=true}, a tamper-evident
+ * When {@code casehub.ledger.erasure-receipt.enabled=true}, a tamper-evident
  * {@link ErasureReceiptLedgerEntry} is written to the Merkle chain in the same
  * transaction. This makes the act of forgetting provable and auditable.
  */
@@ -60,7 +60,7 @@ public class LedgerErasureService {
      * @param affectedEntryCount number of ledger entries whose {@code actorId} was the severed token;
      *        informational only — entries are not deleted
      * @param receiptEntryId UUID of the written {@link ErasureReceiptLedgerEntry}, when
-     *        {@code casehub.ledger.erasure.receipt.enabled=true}; empty otherwise
+     *        {@code casehub.ledger.erasure-receipt.enabled=true}; empty otherwise
      */
     public record ErasureResult(
             String rawActorId,
@@ -77,7 +77,7 @@ public class LedgerErasureService {
      * was already erased), returns {@code mappingFound=false} with count 0.
      *
      * <p>
-     * When {@code casehub.ledger.erasure.receipt.enabled=true}, an
+     * When {@code casehub.ledger.erasure-receipt.enabled=true}, an
      * {@link ErasureReceiptLedgerEntry} is written regardless of whether a mapping was found —
      * the receipt records that an erasure was attempted.
      *

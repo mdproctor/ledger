@@ -406,7 +406,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │           ├── ActorIdentityProvider.java   — moved to api/spi/ (ledger#142); SPI: tokenise/resolve/erase actor identities; tokenise takes ActorType — only HUMAN actors are pseudonymised; tokeniseForQuery() returns Optional<String> (empty=null input; present=always query by token or raw actorId)
 │           ├── DecisionContextSanitiser.java — SPI: sanitise decisionContext JSON before persist
 │           ├── InternalActorIdentityProvider.java — built-in UUID token impl (config-gated)
-│           ├── LedgerErasureService.java    — GDPR Art.17 erasure (CDI bean); erase(rawActorId, ErasureReason) severs token→identity mapping; when casehub.ledger.erasure-receipt.enabled=true writes ErasureReceiptLedgerEntry in same TX; ErasureResult carries Optional<UUID> receiptEntryId
+│           ├── LedgerErasureService.java    — GDPR Art.17 erasure (CDI bean); erase(rawActorId, ErasureReason) severs token→identity mapping; when casehub.ledger.erasure-receipt.enabled=true (default false) writes ErasureReceiptLedgerEntry in same TX; ErasureResult carries Optional<UUID> receiptEntryId
 │           └── LedgerPrivacyProducer.java   — CDI producer for both SPIs (@DefaultBean); injects Instance<EntityManager> (not EntityManager directly) so datasource-free deployments don't fail CDI augmentation (#149)
 │   └── src/main/resources/db/ledger/migration/
 │       ├── V1000__ledger_base_schema.sql    — ledger_entry + ledger_attestation tables; ledger_merkle_frontier (tenancy_id, UNIQUE(subject_id, tenancy_id, level)); ledger_subject_sequence (composite PK (subject_id, tenancy_id)); ledger_entry UNIQUE index (subject_id, tenancy_id, sequence_number)

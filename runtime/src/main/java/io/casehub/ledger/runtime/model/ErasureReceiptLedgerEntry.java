@@ -17,7 +17,7 @@ import io.casehub.ledger.api.model.ErasureReason;
  * A first-class immutable ledger entry recording a GDPR Art.17 erasure event.
  *
  * <p>Opt-in: written by {@code LedgerErasureService} when
- * {@code casehub.ledger.erasure.receipt.enabled=true}. The receipt is part of the
+ * {@code casehub.ledger.erasure-receipt.enabled=true}. The receipt is part of the
  * Merkle chain — the act of forgetting is itself tamper-evident.
  *
  * <p>{@link #subjectId} is derived deterministically as
