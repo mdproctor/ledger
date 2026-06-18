@@ -106,6 +106,16 @@ production JPA implementation is bundled — consumers provide their own (Hibern
 reactive MongoDB, etc.). The test suite resolves it via `BlockingReactiveKeyRotationRepository`,
 a `@DefaultBean` shim wrapping the H2/JDBC blocking impl with `Uni.createFrom().item()`.
 
+### Scheduled job data access — CrossTenantLedgerEntryRepository
+
+System-level scheduled jobs (`LedgerHealthJob`, `LedgerRetentionJob`, `TrustScoreJob`) inject
+`@CrossTenant CrossTenantLedgerEntryRepository` for all cross-tenant data access. Direct
+`EntityManager` injection in scheduled jobs is prohibited — it bypasses the SPI, prevents
+in-memory substitution in tests, and produces inline JPQL that is not validated at boot.
+All JPQL against `LedgerEntry` is declared via `@NamedQuery` on the entity class; Hibernate
+validates named queries at startup, converting runtime JPQL errors (potentially delayed by an
+hourly scheduler interval) into immediate boot failures.
+
 ---
 
 ## Supplements
@@ -161,6 +171,17 @@ lazy `supplements` list is never initialised. Consumers already integrated with
 ---
 
 ## Key Design Decisions
+
+### All JPQL against `LedgerEntry` uses `@NamedQuery` — never `em.createQuery()`
+
+Every JPQL query targeting `LedgerEntry` (or any subclass) must be declared as a
+`@NamedQuery` annotation on the entity class and called via `em.createNamedQuery()`.
+Inline `em.createQuery("SELECT ...")` bypasses Hibernate's startup validation — JPQL
+errors that are dialect-specific (such as Hibernate 6 type-checker regressions on
+PostgreSQL) are discovered only at query execution time, which for hourly scheduled
+jobs can be hours after deployment. `@NamedQuery` converts these from delayed runtime
+failures into immediate boot failures visible in every environment from first startup.
+See protocol `PP-20260618-51c673` (docs/protocols/casehub/ledger-entry-named-query.md).
 
 ### `subjectId` — the generic aggregate identifier
 
