@@ -1,35 +1,40 @@
 package io.casehub.ledger.runtime.repository.jpa;
 
+import java.util.Locale;
 import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 
+import org.hibernate.Session;
+
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 
 /**
  * Atomically allocates per-subject sequence numbers from the {@code ledger_subject_sequence} table.
  *
- * <p>Uses {@code INSERT ... ON CONFLICT DO NOTHING} followed by
- * {@code UPDATE SET next_seq = next_seq + 1}. Both H2 2.2+ (in {@code MODE=PostgreSQL}) and
- * PostgreSQL support this syntax. H2's grammar accepts only the no-column-target form
- * ({@code ON CONFLICT DO NOTHING}); PostgreSQL accepts both forms. Using the no-column-target
- * form is valid for both: the {@code ledger_subject_sequence} table has exactly one unique
- * constraint (the PK on {@code (subject_id, tenancy_id)}), so the target is unambiguous.
+ * <p><strong>Dialect selection:</strong> detected once at first use via JDBC metadata and cached
+ * for the application lifetime.
  *
- * <p><strong>Concurrent first-insert safety:</strong> when two transactions race for a new
- * {@code (subjectId, tenancyId)} pair, exactly one INSERT creates the row; the other silently
- * does nothing (DO NOTHING suppresses the unique-constraint violation rather than propagating it).
- * Both transactions then issue the UPDATE, which serialises on the row lock held by whichever
- * transaction arrived first. The loser blocks at the UPDATE until the winner commits.
+ * <ul>
+ *   <li><b>PostgreSQL and H2 in {@code MODE=PostgreSQL}</b>: {@code INSERT ON CONFLICT DO NOTHING}
+ *   + {@code UPDATE}. The INSERT seeds the row on first use; concurrent first-inserts are safe —
+ *   one wins, the other silently does nothing, both then serialise on the UPDATE row lock. The row
+ *   lock is held for the enclosing {@code @Transactional save()}, which is the Merkle
+ *   Serialization Invariant: saves to the same {@code (subject, tenancy)} pair are fully
+ *   serialised including the Merkle frontier update.</li>
+ *   <li><b>H2 in standard mode</b>: SQL-standard {@code MERGE INTO … WHEN NOT MATCHED THEN INSERT}
+ *   + {@code UPDATE}. H2 in standard mode does not accept {@code ON CONFLICT} syntax. This path
+ *   is used by downstream modules (e.g. {@code casehub-engine-ledger}) that run tests with a
+ *   plain H2 datasource. Concurrent first-inserts are not safe here — two transactions can race
+ *   for the same new row; but H2 is used only in single-threaded test contexts, not production.
+ *   Production deployments always use PostgreSQL.</li>
+ * </ul>
  *
- * <p><strong>Merkle Serialization Invariant:</strong> the row lock acquired by the UPDATE is held
- * for the duration of the enclosing {@code @Transactional save()} in
- * {@code JpaLedgerEntryRepository}. This serialises the entire save pipeline — including the
- * Merkle frontier update — for concurrent saves to the same {@code (subject, tenancy)} pair.
- * Saves for different {@code (subjectId, tenancyId)} pairs proceed independently.
- * See GE-20260615-6d0ae3 and the concurrent-write-safety spec (issue #100).
+ * <p>Detection queries {@code INFORMATION_SCHEMA.SETTINGS} on H2 to check whether
+ * {@code MODE=PostgreSQL} is active — both H2 modes report {@code "H2"} as the product name,
+ * so {@code getDatabaseProductName()} alone is insufficient. Refs casehubio/ledger#150.
  *
  * <p>Shared by all JPA repositories that persist
  * {@link io.casehub.ledger.runtime.model.LedgerEntry} subclasses.
@@ -41,24 +46,22 @@ class LedgerSequenceAllocator {
     @LedgerPersistenceUnit
     EntityManager em;
 
+    // Cached result of dialect detection — fixed per application lifetime.
+    private volatile Boolean useOnConflict = null;
+
     /**
      * Returns the next contiguous sequence number for the given {@code (subjectId, tenancyId)} pair.
      *
-     * <p>The INSERT seeds the row with {@code next_seq = 1} on first use; the UPDATE increments it.
-     * After the UPDATE, {@code next_seq} holds the allocated value + 1; the SELECT returns
-     * {@code next_seq - 1} (the allocated sequence number). First allocation returns 1.
-     *
-     * <p>{@code CAST(?1 AS UUID)} is required: both H2 and PostgreSQL require an explicit cast
-     * to coerce the JDBC parameter to the UUID column type.
+     * <p>First allocation for a pair returns 1. Subsequent calls increment monotonically.
+     * {@code CAST(?1 AS UUID)} is required for both H2 and PostgreSQL to coerce the JDBC
+     * parameter to the UUID column type.
      */
     int nextSequenceNumber(final UUID subjectId, final String tenancyId) {
-        em.createNativeQuery(
-                "INSERT INTO ledger_subject_sequence (subject_id, tenancy_id, next_seq) " +
-                "VALUES (CAST(?1 AS UUID), ?2, 1) " +
-                "ON CONFLICT DO NOTHING")
-                .setParameter(1, subjectId)
-                .setParameter(2, tenancyId)
-                .executeUpdate();
+        if (useOnConflictSyntax()) {
+            onConflictInsert(subjectId, tenancyId);
+        } else {
+            mergeInsert(subjectId, tenancyId);
+        }
         em.createNativeQuery(
                 "UPDATE ledger_subject_sequence " +
                 "SET next_seq = next_seq + 1 " +
@@ -66,7 +69,7 @@ class LedgerSequenceAllocator {
                 .setParameter(1, subjectId)
                 .setParameter(2, tenancyId)
                 .executeUpdate();
-        em.flush(); // flush before SELECT reads the result within the same transaction
+        em.flush();
         final Number nextSeq = (Number) em.createNativeQuery(
                 "SELECT next_seq - 1 FROM ledger_subject_sequence " +
                 "WHERE subject_id = ?1 AND tenancy_id = ?2")
@@ -74,5 +77,56 @@ class LedgerSequenceAllocator {
                 .setParameter(2, tenancyId)
                 .getSingleResult();
         return nextSeq.intValue();
+    }
+
+    private void onConflictInsert(final UUID subjectId, final String tenancyId) {
+        em.createNativeQuery(
+                "INSERT INTO ledger_subject_sequence (subject_id, tenancy_id, next_seq) " +
+                "VALUES (CAST(?1 AS UUID), ?2, 1) " +
+                "ON CONFLICT DO NOTHING")
+                .setParameter(1, subjectId)
+                .setParameter(2, tenancyId)
+                .executeUpdate();
+    }
+
+    private void mergeInsert(final UUID subjectId, final String tenancyId) {
+        // SQL-standard MERGE: inserts the row only when no match exists.
+        // CAST(?2 AS VARCHAR) avoids H2 misinterpreting the alias as a type name.
+        em.createNativeQuery(
+                "MERGE INTO ledger_subject_sequence AS t " +
+                "USING (SELECT CAST(?1 AS UUID) AS sid, CAST(?2 AS VARCHAR) AS tval) AS s " +
+                "ON t.subject_id = s.sid AND t.tenancy_id = s.tval " +
+                "WHEN NOT MATCHED THEN INSERT (subject_id, tenancy_id, next_seq) VALUES (s.sid, s.tval, 1)")
+                .setParameter(1, subjectId)
+                .setParameter(2, tenancyId)
+                .executeUpdate();
+    }
+
+    private boolean useOnConflictSyntax() {
+        Boolean result = useOnConflict;
+        if (result == null) {
+            result = em.unwrap(Session.class).doReturningWork(conn -> {
+                final String productName = conn.getMetaData().getDatabaseProductName()
+                        .toLowerCase(Locale.ROOT);
+                if (productName.contains("postgresql")) {
+                    return true; // real PostgreSQL
+                }
+                if (!productName.contains("h2")) {
+                    return false; // unknown DB — safe default: use MERGE
+                }
+                // H2: ON CONFLICT is only supported when MODE=PostgreSQL is active.
+                // getURL() may omit connection properties, so query INFORMATION_SCHEMA directly.
+                try (var stmt = conn.createStatement();
+                     var rs = stmt.executeQuery(
+                         "SELECT SETTING_VALUE FROM INFORMATION_SCHEMA.SETTINGS " +
+                         "WHERE SETTING_NAME = 'MODE'")) {
+                    return rs.next() && "PostgreSQL".equalsIgnoreCase(rs.getString(1));
+                } catch (final Exception ignored) {
+                    return false; // older H2 or schema unavailable — use MERGE
+                }
+            });
+            useOnConflict = result;
+        }
+        return result;
     }
 }

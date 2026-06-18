@@ -12,6 +12,7 @@ import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.platform.api.identity.ActorType;
+import io.casehub.ledger.api.model.ErasureReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.privacy.LedgerErasureService;
 import io.casehub.ledger.runtime.privacy.LedgerErasureService.ErasureResult;
@@ -45,7 +46,7 @@ class LedgerErasureServiceIT {
         saveEntry(actorId);
         saveEntry(actorId);
 
-        final ErasureResult result = erasureService.erase(actorId);
+        final ErasureResult result = erasureService.erase(actorId, ErasureReason.GDPR_ART_17_REQUEST);
 
         assertThat(result.rawActorId()).isEqualTo(actorId);
         assertThat(result.mappingFound()).isTrue();
@@ -57,7 +58,7 @@ class LedgerErasureServiceIT {
     @Test
     @Transactional
     void erase_unknownActor_mappingNotFound_zeroCount() {
-        final ErasureResult result = erasureService.erase("never-saved-" + UUID.randomUUID());
+        final ErasureResult result = erasureService.erase("never-saved-" + UUID.randomUUID(), ErasureReason.GDPR_ART_17_REQUEST);
 
         assertThat(result.mappingFound()).isFalse();
         assertThat(result.affectedEntryCount()).isZero();
@@ -76,7 +77,7 @@ class LedgerErasureServiceIT {
 
         assertThat(repo.findByActorId(actorId, from, to, DEFAULT_TENANT_ID)).hasSize(1);
 
-        erasureService.erase(actorId);
+        erasureService.erase(actorId, ErasureReason.GDPR_ART_17_REQUEST);
 
         assertThat(repo.findByActorId(actorId, from, to, DEFAULT_TENANT_ID)).isEmpty();
     }
@@ -89,8 +90,8 @@ class LedgerErasureServiceIT {
         final String actorId = "double-erase-" + UUID.randomUUID();
         saveEntry(actorId);
 
-        erasureService.erase(actorId);
-        final ErasureResult second = erasureService.erase(actorId);
+        erasureService.erase(actorId, ErasureReason.GDPR_ART_17_REQUEST);
+        final ErasureResult second = erasureService.erase(actorId, ErasureReason.GDPR_ART_17_REQUEST);
 
         assertThat(second.mappingFound()).isFalse();
         assertThat(second.affectedEntryCount()).isZero();
@@ -103,7 +104,7 @@ class LedgerErasureServiceIT {
     void erase_systemActor_neverTokenised_mappingNotFound() {
         saveEntry("system:health-check", ActorType.SYSTEM);
 
-        final ErasureResult result = erasureService.erase("system:health-check");
+        final ErasureResult result = erasureService.erase("system:health-check", ErasureReason.GDPR_ART_17_REQUEST);
 
         assertThat(result.mappingFound()).isFalse();
         assertThat(result.affectedEntryCount()).isZero();
