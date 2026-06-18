@@ -2,6 +2,7 @@ package io.casehub.ledger.runtime.repository;
 
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.model.LedgerEntry;
+import io.casehub.ledger.runtime.service.model.SubjectSequenceStats;
 
 import java.time.Instant;
 import java.util.List;
@@ -75,4 +76,15 @@ public interface CrossTenantLedgerEntryRepository {
      * @return map from entry ID to its attestations; empty map if no EVENT entries exist
      */
     Map<UUID, List<LedgerAttestation>> findAttestationsByActorId(String actorId);
+
+    /**
+     * Return sequence number aggregates for every (subject, tenant) pair across all tenants.
+     *
+     * <p>Used by {@link io.casehub.ledger.runtime.service.LedgerHealthJob} for gap detection.
+     * A gap exists when {@code count != max - min + 1}, indicating that an entry was deleted
+     * after write (the sequence invariant was broken).
+     *
+     * @return one {@link SubjectSequenceStats} per (subject, tenant) pair; empty if no entries exist
+     */
+    List<SubjectSequenceStats> findSequenceStats();
 }

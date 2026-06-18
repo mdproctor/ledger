@@ -335,7 +335,8 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   │   ├── InclusionProof.java       — Merkle inclusion proof value type
 │       │   │   ├── ProofStep.java            — single sibling node in a proof path
 │       │   │   ├── VerificationResult.java  — UNSIGNED | VALID | INVALID | SUSPECT (agent signature verification result)
-│       │   │   └── CompromisedWindow.java   — record: keyRef + effectiveSince (time window for SUSPECT detection)
+│       │   │   ├── CompromisedWindow.java   — record: keyRef + effectiveSince (time window for SUSPECT detection)
+│       │   │   └── SubjectSequenceStats.java — record: (UUID subjectId, String tenancyId, long count, int min, int max); sequence aggregate projection returned by CrossTenantLedgerEntryRepository.findSequenceStats(); min/max are int to match LedgerEntry.sequenceNumber exactly
 │       │   ├── RetentionEligibilityChecker.java — pure utility: checks retention window eligibility per entry
 │       │   ├── LedgerRetentionJob.java      — @Scheduled daily retention sweep (EU AI Act Art.12)
 │       │   ├── DecayFunction.java           — SPI: attestation decay weight (ageInDays, verdict) → weight
@@ -356,7 +357,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── PerActorTrustComputer.java    — package-private CDI bean: delegates computation to TrustScoreCalculator, persists results, fires events; used by TrustScoreJob and IncrementalTrustUpdateObserver
 │       │   ├── IncrementalTrustUpdateObserver.java — CDI observer: @Observes(AFTER_SUCCESS) AttestationRecordedEvent → per-actor trust recomputation in REQUIRES_NEW; gated by casehub.ledger.trust-score.incremental.enabled
 │       │   ├── TrustScoreJob.java           — @Scheduled nightly recomputation; delegates per-actor work to PerActorTrustComputer
-│       │   ├── LedgerHealthJob.java         — @Scheduled gap detection + reconciliation (configurable interval, default 1h); JPQL groups by (subjectId, tenancyId); fires LedgerAnomalyDetected sealed events
+│       │   ├── LedgerHealthJob.java         — @Scheduled gap detection + reconciliation (configurable interval, default 1h); delegates to CrossTenantLedgerEntryRepository.findSequenceStats() — no direct EntityManager; fires LedgerAnomalyDetected sealed events
 │       │   ├── LedgerReconciliationSource.java — SPI: consumers implement to compare domain entity counts vs ledger counts
 │       │   ├── LedgerAnomalyDetected.java   — sealed interface: base type for all health-job anomaly CDI events (see #139)
 │       │   ├── LedgerSequenceGapDetected.java — record: (UUID subjectId, String tenancyId, long expectedCount, long actualCount) implements LedgerAnomalyDetected; fired on per-(subject,tenant) sequence gap

@@ -19,6 +19,7 @@ import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
+import io.casehub.ledger.runtime.service.model.SubjectSequenceStats;
 
 /**
  * In-memory implementation of {@link CrossTenantLedgerEntryRepository}.
@@ -88,5 +89,22 @@ public class InMemoryCrossTenantLedgerEntryRepository implements CrossTenantLedg
         return blocking.allAttestations().stream()
                 .filter(a -> eventIds.contains(a.ledgerEntryId))
                 .collect(Collectors.groupingBy(a -> a.ledgerEntryId));
+    }
+
+    @Override
+    public List<SubjectSequenceStats> findSequenceStats() {
+        record Key(UUID subjectId, String tenancyId) {}
+        return blocking.allEntries().stream()
+                .collect(Collectors.groupingBy(e -> new Key(e.subjectId, e.tenancyId)))
+                .entrySet().stream()
+                .map(entry -> {
+                    final Key k = entry.getKey();
+                    final List<LedgerEntry> entries = entry.getValue();
+                    final long count = entries.size();
+                    final int min = entries.stream().mapToInt(e -> e.sequenceNumber).min().getAsInt();
+                    final int max = entries.stream().mapToInt(e -> e.sequenceNumber).max().getAsInt();
+                    return new SubjectSequenceStats(k.subjectId(), k.tenancyId(), count, min, max);
+                })
+                .toList();
     }
 }

@@ -20,6 +20,7 @@ import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 import io.casehub.ledger.api.spi.ActorIdentityProvider;
 import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
+import io.casehub.ledger.runtime.service.model.SubjectSequenceStats;
 
 /**
  * JPA implementation of {@link CrossTenantLedgerEntryRepository}.
@@ -116,5 +117,12 @@ public class JpaCrossTenantLedgerEntryRepository implements CrossTenantLedgerEnt
                 .setParameter("type", LedgerEntryType.EVENT)
                 .getResultList();
         return all.stream().collect(Collectors.groupingBy(a -> a.ledgerEntryId));
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<SubjectSequenceStats> findSequenceStats() {
+        return em.createNamedQuery("LedgerEntry.findSequenceStats", SubjectSequenceStats.class)
+                .getResultList();
     }
 }
