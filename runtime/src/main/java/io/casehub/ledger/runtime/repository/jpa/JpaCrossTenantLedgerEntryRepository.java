@@ -48,16 +48,14 @@ public class JpaCrossTenantLedgerEntryRepository implements CrossTenantLedgerEnt
     /** {@inheritDoc} */
     @Override
     public List<LedgerEntry> listAll() {
-        return em.createQuery("SELECT e FROM LedgerEntry e", LedgerEntry.class)
+        return em.createNamedQuery("LedgerEntry.listAll", LedgerEntry.class)
                 .getResultList();
     }
 
     /** {@inheritDoc} */
     @Override
     public List<LedgerEntry> findAllEvents() {
-        return em.createQuery(
-                "SELECT e FROM LedgerEntry e WHERE e.entryType = :type",
-                LedgerEntry.class)
+        return em.createNamedQuery("LedgerEntry.findAllEvents", LedgerEntry.class)
                 .setParameter("type", LedgerEntryType.EVENT)
                 .getResultList();
     }
@@ -70,9 +68,7 @@ public class JpaCrossTenantLedgerEntryRepository implements CrossTenantLedgerEnt
             return List.of();
         }
         final String token = tokenOpt.get();
-        return em.createQuery(
-                "SELECT e FROM LedgerEntry e WHERE e.actorId = :actorId AND e.entryType = :type",
-                LedgerEntry.class)
+        return em.createNamedQuery("LedgerEntry.findEventsByActorId", LedgerEntry.class)
                 .setParameter("actorId", token)
                 .setParameter("type", LedgerEntryType.EVENT)
                 .getResultList();
@@ -81,10 +77,7 @@ public class JpaCrossTenantLedgerEntryRepository implements CrossTenantLedgerEnt
     /** {@inheritDoc} */
     @Override
     public List<LedgerEntry> findByTimeRange(final Instant from, final Instant to) {
-        return em.createQuery(
-                "SELECT e FROM LedgerEntry e WHERE e.occurredAt >= :from AND e.occurredAt <= :to" +
-                        " ORDER BY e.occurredAt ASC",
-                LedgerEntry.class)
+        return em.createNamedQuery("LedgerEntry.findByTimeRange", LedgerEntry.class)
                 .setParameter("from", from)
                 .setParameter("to", to)
                 .getResultList();

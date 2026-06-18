@@ -1,7 +1,6 @@
 package io.casehub.ledger.runtime.service;
 
 import java.util.List;
-import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
@@ -37,6 +36,12 @@ import io.quarkus.scheduler.Scheduled;
  * them to log, alert, or trigger remediation. No data is modified.
  *
  * <p>
+ * Each check runs in its own transaction via CDI proxy self-invocation — {@link #run()}
+ * is intentionally non-transactional so that the scheduler does not hold a single
+ * transaction across both checks. At large ledger sizes, this prevents the full
+ * {@code findSequenceStats()} result set from being held while reconciliation runs.
+ *
+ * <p>
  * {@link #run()} is exposed with package-accessible visibility for direct invocation in
  * integration tests where the scheduler is disabled via the {@code health-test} profile.
  */
@@ -59,8 +64,11 @@ public class LedgerHealthJob {
     @Any
     Instance<LedgerReconciliationSource> reconciliationSources;
 
+    /** CDI proxy of this bean — used so each check method is intercepted by @Transactional. */
+    @Inject
+    LedgerHealthJob self;
+
     @Scheduled(every = "{casehub.ledger.health.check-interval:1h}", identity = "ledger-health-job")
-    @Transactional
     public void runHealthChecks() {
         if (!config.health().enabled()) {
             return;
@@ -69,12 +77,12 @@ public class LedgerHealthJob {
     }
 
     /**
-     * Execute all health checks. Exposed for direct invocation in integration tests.
+     * Execute all health checks. Each check runs in its own transaction.
+     * Exposed as {@code public} for direct invocation in integration tests.
      */
-    @Transactional
     public void run() {
-        checkSequenceGaps();
-        checkReconciliation();
+        self.checkSequenceGaps();
+        self.checkReconciliation();
     }
 
     /**
@@ -82,7 +90,8 @@ public class LedgerHealthJob {
      * Gap formula: a subject with entries spanning [min, max] should have exactly
      * {@code max - min + 1} entries. A lower actual count indicates deletion after write.
      */
-    private void checkSequenceGaps() {
+    @Transactional
+    void checkSequenceGaps() {
         final List<SubjectSequenceStats> stats = crossTenantRepo.findSequenceStats();
         for (final SubjectSequenceStats s : stats) {
             final long expected = (long) s.max() - s.min() + 1;
@@ -95,18 +104,23 @@ public class LedgerHealthJob {
         }
     }
 
-    private void checkReconciliation() {
+    @Transactional
+    void checkReconciliation() {
         for (final LedgerReconciliationSource source : reconciliationSources) {
             if (!source.isActive()) {
                 continue;
             }
-            final long domainCount = source.countDomainEntities();
-            final long ledgerCount = source.countLedgerEntries();
-            if (domainCount != ledgerCount) {
-                LOG.warnf("Reconciliation mismatch for %s: domain=%d, ledger=%d",
-                        source.subjectType(), domainCount, ledgerCount);
-                anomalyEvent.fire(new LedgerReconciliationMismatchDetected(
-                        source.subjectType(), domainCount, ledgerCount));
+            try {
+                final long domainCount = source.countDomainEntities();
+                final long ledgerCount = source.countLedgerEntries();
+                if (domainCount != ledgerCount) {
+                    LOG.warnf("Reconciliation mismatch for %s: domain=%d, ledger=%d",
+                            source.subjectType(), domainCount, ledgerCount);
+                    anomalyEvent.fire(new LedgerReconciliationMismatchDetected(
+                            source.subjectType(), domainCount, ledgerCount));
+                }
+            } catch (final Exception e) {
+                LOG.errorf(e, "Reconciliation check failed for source %s — skipping", source.subjectType());
             }
         }
     }

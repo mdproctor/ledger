@@ -71,6 +71,18 @@ import io.casehub.ledger.runtime.service.identity.LedgerIdentityEnforcementListe
  * Chain integrity is maintained by the Merkle Mountain Range in {@link LedgerMerkleFrontier}.
  */
 @NamedQuery(
+        name = "LedgerEntry.listAll",
+        query = "SELECT e FROM LedgerEntry e")
+@NamedQuery(
+        name = "LedgerEntry.findAllEvents",
+        query = "SELECT e FROM LedgerEntry e WHERE e.entryType = :type")
+@NamedQuery(
+        name = "LedgerEntry.findEventsByActorId",
+        query = "SELECT e FROM LedgerEntry e WHERE e.actorId = :actorId AND e.entryType = :type")
+@NamedQuery(
+        name = "LedgerEntry.findByTimeRange",
+        query = "SELECT e FROM LedgerEntry e WHERE e.occurredAt >= :from AND e.occurredAt <= :to ORDER BY e.occurredAt ASC")
+@NamedQuery(
         name = "LedgerEntry.findSequenceStats",
         query = """
                 SELECT NEW io.casehub.ledger.runtime.service.model.SubjectSequenceStats(
