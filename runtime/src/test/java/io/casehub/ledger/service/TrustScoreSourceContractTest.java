@@ -37,6 +37,7 @@ import io.casehub.ledger.runtime.service.DecayFunction;
 import io.casehub.ledger.runtime.service.MaterializedTrustScoreSource;
 import io.casehub.ledger.runtime.service.TrustScoreCalculator;
 import io.casehub.ledger.runtime.service.TrustScoreCalculator.ComputedScores;
+import io.casehub.ledger.runtime.service.model.SubjectSequenceStats;
 import io.casehub.platform.api.identity.ActorType;
 
 /**
@@ -406,6 +407,6 @@ class TrustScoreSourceContractTest {
         @Override public List<LedgerEntry> listAll() { return entries; }
         @Override public List<LedgerEntry> findAllEvents() { return entries.stream().filter(e -> e.entryType == LedgerEntryType.EVENT).toList(); }
         @Override public List<LedgerEntry> findByTimeRange(final Instant f, final Instant t) { return List.of(); }
-        @Override public List<io.casehub.ledger.runtime.service.model.SubjectSequenceStats> findSequenceStats() { return List.of(); }
+        @Override public List<SubjectSequenceStats> findSequenceStats() { return List.of(); }
     }
 }
