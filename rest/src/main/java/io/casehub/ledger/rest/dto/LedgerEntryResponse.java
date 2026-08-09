@@ -16,5 +16,5 @@ public record LedgerEntryResponse(
         String digest,
         String traceId,
         UUID causedByEntryId,
-        String metadata) {
+        String payload) {
 }

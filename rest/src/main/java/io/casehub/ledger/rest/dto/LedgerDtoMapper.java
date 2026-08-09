@@ -25,7 +25,7 @@ public final class LedgerDtoMapper {
                 entry.digest,
                 entry.traceId,
                 entry.causedByEntryId,
-                entry.metadata);
+                entry.metadata);  // LedgerEntry.metadata → response.payload (blocks-ui convention)
     }
 
     public static List<LedgerEntryResponse> toResponseList(final List<? extends LedgerEntry> entries) {
