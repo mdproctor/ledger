@@ -29,3 +29,6 @@ docs/squash-plan-*.md
 package-lock.json
 proj
 .mvn/slot-settings.xml
+.worktrees
+.claude
+.claude/
