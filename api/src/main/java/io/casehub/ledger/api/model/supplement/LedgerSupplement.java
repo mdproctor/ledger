@@ -13,11 +13,12 @@ import java.util.UUID;
  * attaches one — consumers that do not use supplements incur zero schema or runtime cost.
  *
  * <p>
- * Two built-in supplements are provided:
+ * Three built-in supplements are provided:
  * <ul>
  * <li>{@link ComplianceSupplement} — GDPR Art.22 decision snapshot, EU AI Act Art.12,
  * governance reference, rationale</li>
  * <li>{@link ProvenanceSupplement} — workflow source entity</li>
+ * <li>{@link CompensationSupplement} — saga compensation record linking to original entry</li>
  * </ul>
  *
  * <p>

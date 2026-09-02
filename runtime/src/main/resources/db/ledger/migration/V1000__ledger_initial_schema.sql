@@ -161,6 +161,27 @@ CREATE TABLE ledger_supplement_provenance (
 
 CREATE INDEX idx_provenance_entry ON ledger_supplement_provenance (ledger_entry_id);
 
+-- ── ledger_supplement_compensation ──────────────────────────────────────────
+-- Self-contained (no JOINED inheritance base table).
+
+CREATE TABLE ledger_supplement_compensation (
+    id                   UUID          NOT NULL,
+    ledger_entry_id      UUID          NOT NULL,
+    supplement_type      VARCHAR(30)   NOT NULL,
+    original_entry_id    UUID          NOT NULL,
+    compensation_reason  TEXT,
+    regulatory_basis     VARCHAR(100),
+    compensation_mode    VARCHAR(20)   NOT NULL,
+    CONSTRAINT pk_ledger_supplement_compensation PRIMARY KEY (id),
+    CONSTRAINT fk_compensation_entry FOREIGN KEY (ledger_entry_id)
+        REFERENCES ledger_entry (id),
+    CONSTRAINT fk_compensation_original FOREIGN KEY (original_entry_id)
+        REFERENCES ledger_entry (id)
+);
+
+CREATE INDEX idx_compensation_entry ON ledger_supplement_compensation (ledger_entry_id);
+CREATE INDEX idx_compensation_original ON ledger_supplement_compensation (original_entry_id);
+
 -- ── ledger_entry_archive ─────────────────────────────────────────────────────
 
 CREATE TABLE ledger_entry_archive (
