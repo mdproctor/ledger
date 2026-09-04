@@ -174,4 +174,22 @@
         </attributes>
     </mapped-superclass>
 
+    <!-- CompensationSupplement: api-tier compensation fields -->
+    <mapped-superclass class="io.casehub.ledger.api.model.supplement.CompensationSupplement" access="FIELD">
+        <attributes>
+            <basic name="originalEntryId">
+                <column name="original_entry_id"/>
+            </basic>
+            <basic name="compensationReason">
+                <column name="compensation_reason" column-definition="TEXT"/>
+            </basic>
+            <basic name="regulatoryBasis">
+                <column name="regulatory_basis" length="100"/>
+            </basic>
+            <basic name="compensationMode">
+                <column name="compensation_mode" length="20"/>
+            </basic>
+        </attributes>
+    </mapped-superclass>
+
 </entity-mappings>
