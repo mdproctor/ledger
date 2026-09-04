@@ -7,6 +7,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.supplement.LedgerSupplementSerializer;
+import io.casehub.ledger.runtime.model.supplement.JpaCompensationSupplement;
 import io.casehub.ledger.runtime.model.supplement.JpaComplianceSupplement;
 import io.casehub.ledger.runtime.model.supplement.JpaProvenanceSupplement;
 
@@ -99,5 +100,65 @@ class LedgerSupplementSerializerTest {
         assertThat(json).contains("\"PROVENANCE\"");
         assertThat(json).contains("algorithmRef");
         assertThat(json).contains("quarkus-flow");
+    }
+
+    @Test
+    void toJson_compensationSupplement_containsTypeKey() {
+        final JpaCompensationSupplement cs = new JpaCompensationSupplement();
+        cs.originalEntryId = java.util.UUID.randomUUID();
+        cs.compensationMode = "automated";
+
+        final String json = LedgerSupplementSerializer.toJson(List.of(cs));
+
+        assertThat(json).isNotNull();
+        assertThat(json).contains("\"COMPENSATION\"");
+        assertThat(json).contains("\"compensationMode\":\"automated\"");
+    }
+
+    @Test
+    void toJson_allCompensationFields_serialisedCorrectly() {
+        final java.util.UUID origId = java.util.UUID.randomUUID();
+        final JpaCompensationSupplement cs = new JpaCompensationSupplement();
+        cs.originalEntryId = origId;
+        cs.compensationReason = "Clinical trial withdrawn";
+        cs.regulatoryBasis = "GDPR Art.17";
+        cs.compensationMode = "human-driven";
+
+        final String json = LedgerSupplementSerializer.toJson(List.of(cs));
+
+        assertThat(json).contains("\"originalEntryId\":\"" + origId + "\"");
+        assertThat(json).contains("\"compensationReason\":\"Clinical trial withdrawn\"");
+        assertThat(json).contains("\"regulatoryBasis\":\"GDPR Art.17\"");
+        assertThat(json).contains("\"compensationMode\":\"human-driven\"");
+    }
+
+    @Test
+    void toJson_compensationNullFieldsOmitted() {
+        final JpaCompensationSupplement cs = new JpaCompensationSupplement();
+        cs.originalEntryId = java.util.UUID.randomUUID();
+        cs.compensationMode = "automated";
+
+        final String json = LedgerSupplementSerializer.toJson(List.of(cs));
+
+        assertThat(json).contains("compensationMode");
+        assertThat(json).doesNotContain("compensationReason");
+        assertThat(json).doesNotContain("regulatoryBasis");
+    }
+
+    @Test
+    void toJson_allThreeSupplements_allPresent() {
+        final JpaComplianceSupplement cs = new JpaComplianceSupplement();
+        cs.algorithmRef = "v1";
+        final JpaProvenanceSupplement ps = new JpaProvenanceSupplement();
+        ps.sourceEntitySystem = "quarkus-flow";
+        final JpaCompensationSupplement comp = new JpaCompensationSupplement();
+        comp.originalEntryId = java.util.UUID.randomUUID();
+        comp.compensationMode = "automated";
+
+        final String json = LedgerSupplementSerializer.toJson(List.of(cs, ps, comp));
+
+        assertThat(json).contains("\"COMPLIANCE\"");
+        assertThat(json).contains("\"PROVENANCE\"");
+        assertThat(json).contains("\"COMPENSATION\"");
     }
 }

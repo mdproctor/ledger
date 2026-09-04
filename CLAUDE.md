@@ -287,6 +287,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── AttestationSummary.java      — immutable record: verdict counts + confidence stats for aggregate queries (#201)
 │       │   └── supplement/
 │       │       ├── LedgerSupplement.java        — abstract base for supplements (JPA annotations stripped — mappings in runtime/META-INF/orm.xml)
+│       │       ├── CompensationSupplement.java  — saga compensation record: originalEntryId, reason, regulatory basis, mode (JPA-free)
 │       │       ├── ComplianceSupplement.java    — GDPR Art.22, governance fields (JPA-free)
 │       │       └── ProvenanceSupplement.java    — workflow source entity; agentConfigHash (JPA-free)
 │       └── spi/
@@ -321,6 +322,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── ActorIdentity.java           — @Entity: token↔identity mapping for pseudonymisation
 │       │   └── supplement/
 │       │       ├── JpaLedgerSupplement.java      — @Entity: runtime JPA base extending api LedgerSupplement; JOINED inheritance
+│       │       ├── JpaCompensationSupplement.java — @Entity: runtime JPA layer extending api CompensationSupplement
 │       │       ├── JpaComplianceSupplement.java  — @Entity: runtime JPA layer extending api ComplianceSupplement
 │       │       ├── JpaProvenanceSupplement.java  — @Entity: runtime JPA layer extending api ProvenanceSupplement
 │       │       └── LedgerSupplementSerializer.java — JSON serialiser for supplementJson

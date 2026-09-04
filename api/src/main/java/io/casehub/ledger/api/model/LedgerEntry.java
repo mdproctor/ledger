@@ -17,6 +17,7 @@ import java.util.UUID;
 
 import io.casehub.platform.api.identity.ActorType;
 
+import io.casehub.ledger.api.model.supplement.CompensationSupplement;
 import io.casehub.ledger.api.model.supplement.ComplianceSupplement;
 import io.casehub.ledger.api.model.supplement.LedgerSupplement;
 import io.casehub.ledger.api.model.supplement.LedgerSupplementSerializer;
@@ -278,6 +279,18 @@ public abstract class LedgerEntry {
         return supplements.stream()
                 .filter(ProvenanceSupplement.class::isInstance)
                 .map(ProvenanceSupplement.class::cast)
+                .findFirst();
+    }
+
+    /**
+     * Returns the {@link CompensationSupplement} attached to this entry, if any.
+     *
+     * @return the compensation supplement, or empty if none is attached
+     */
+    public Optional<CompensationSupplement> compensation() {
+        return supplements.stream()
+                .filter(CompensationSupplement.class::isInstance)
+                .map(CompensationSupplement.class::cast)
                 .findFirst();
     }
 
