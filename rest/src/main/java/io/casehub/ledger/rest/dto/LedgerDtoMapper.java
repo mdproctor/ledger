@@ -4,7 +4,7 @@ import java.util.List;
 
 import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.api.model.LedgerEntry;
-import io.casehub.ledger.runtime.service.model.InclusionProof;
+import io.casehub.ledger.core.merkle.InclusionProof;
 
 public final class LedgerDtoMapper {
 

@@ -3,6 +3,13 @@ package io.casehub.ledger.runtime.service.federation;
 import java.time.Instant;
 
 import io.casehub.ledger.api.model.ScoreType;
+import io.casehub.ledger.core.federation.ActorExport;
+import io.casehub.ledger.core.federation.TrustExportPayload;
+import io.casehub.ledger.core.federation.CapabilityDimensionScoreExport;
+import io.casehub.ledger.core.federation.CapabilityScoreExport;
+import io.casehub.ledger.core.federation.DimensionScoreExport;
+import io.casehub.ledger.core.federation.GlobalScoreExport;
+import io.casehub.ledger.core.federation.TrustImportService;
 import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;

@@ -2,11 +2,12 @@ package io.casehub.ledger.runtime.service;
 
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.api.model.ScoreType;
+import io.casehub.ledger.core.trust.DecayFunction;
 import io.casehub.ledger.core.trust.GlobalScoreStrategy;
 import io.casehub.ledger.core.trust.TrustScoreCalculator;
 import io.casehub.ledger.core.trust.TrustScoreComputer;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
-import io.casehub.ledger.runtime.model.LedgerAttestation;
+import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.runtime.model.TrustScoreSnapshot;
 import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
 import io.casehub.ledger.runtime.repository.TrustScoreSnapshotRepository;

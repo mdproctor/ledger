@@ -2,6 +2,9 @@ package io.casehub.ledger.runtime.service.federation;
 
 import java.util.Set;
 
+import io.casehub.ledger.core.federation.TrustBootstrapSource;
+import io.casehub.ledger.core.federation.TrustExportPayload;
+import io.casehub.ledger.core.federation.TrustImportService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 

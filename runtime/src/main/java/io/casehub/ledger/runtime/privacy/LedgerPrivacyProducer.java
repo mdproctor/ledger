@@ -7,6 +7,9 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 
 import io.casehub.ledger.api.spi.ActorIdentityProvider;
+import io.casehub.ledger.core.privacy.ContentSanitiser;
+import io.casehub.ledger.core.privacy.PassThroughActorIdentityProvider;
+import io.casehub.ledger.core.privacy.PassThroughContentSanitiser;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 import io.quarkus.arc.DefaultBean;

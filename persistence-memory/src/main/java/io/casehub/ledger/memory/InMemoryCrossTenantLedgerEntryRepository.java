@@ -19,7 +19,7 @@ import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
-import io.casehub.ledger.runtime.service.model.SubjectSequenceStats;
+import io.casehub.ledger.core.model.SubjectSequenceStats;
 
 /**
  * In-memory implementation of {@link CrossTenantLedgerEntryRepository}.

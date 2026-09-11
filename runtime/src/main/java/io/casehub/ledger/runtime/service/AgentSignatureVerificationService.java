@@ -12,9 +12,11 @@ import jakarta.transaction.Transactional;
 import org.jboss.logging.Logger;
 
 import io.casehub.ledger.api.model.LedgerEntry;
+import io.casehub.ledger.core.model.AgentSignatureSuspectEvent;
+import io.casehub.ledger.core.signing.AgentCryptographicVerifier;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
-import io.casehub.ledger.runtime.service.model.CompromisedWindow;
-import io.casehub.ledger.runtime.service.model.VerificationResult;
+import io.casehub.ledger.core.model.CompromisedWindow;
+import io.casehub.ledger.core.model.VerificationResult;
 
 /**
  * Blocking-tier CDI bean for agent signature verification.

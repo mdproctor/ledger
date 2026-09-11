@@ -8,6 +8,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
 import io.casehub.ledger.api.model.LedgerEntry;
+import io.casehub.ledger.core.compliance.LedgerProvSerializer;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 
 /**

@@ -1,5 +1,6 @@
 package io.casehub.ledger.runtime.service.identity;
 
+import io.casehub.ledger.core.model.LedgerIdentityViolationException;
 import io.casehub.platform.api.identity.IdentityBindingStatus;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.runtime.model.jpa.JpaLedgerEntry;

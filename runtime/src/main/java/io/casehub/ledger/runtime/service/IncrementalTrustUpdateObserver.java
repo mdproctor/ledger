@@ -17,8 +17,9 @@ import org.jboss.logging.Logger;
 
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
-import io.casehub.ledger.runtime.model.LedgerAttestation;
+import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.api.model.LedgerEntry;
+import io.casehub.ledger.core.model.AttestationRecordedEvent;
 import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
 import io.casehub.ledger.runtime.service.routing.TrustScoreActorUpdatedEvent;
@@ -81,8 +82,9 @@ public class IncrementalTrustUpdateObserver {
                 return;
             }
 
+            @SuppressWarnings("unchecked")
             final Map<UUID, List<LedgerAttestation>> attestationsByEntry =
-                    ledgerRepo.findAttestationsByActorId(event.actorId());
+                    (Map<UUID, List<LedgerAttestation>>) (Map<?,?>) ledgerRepo.findAttestationsByActorId(event.actorId());
 
             final List<ActorTrustScore> scores =
                     perActorComputer.computeForActor(event.actorId(), decisions, attestationsByEntry, now);

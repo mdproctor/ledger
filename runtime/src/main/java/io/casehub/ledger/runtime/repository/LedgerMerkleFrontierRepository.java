@@ -3,7 +3,7 @@ package io.casehub.ledger.runtime.repository;
 import java.util.List;
 import java.util.UUID;
 
-import io.casehub.ledger.core.merkle.LedgerMerkleTree;
+import io.casehub.ledger.runtime.service.LedgerMerkleTree;
 import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
 
 /**

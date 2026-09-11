@@ -18,7 +18,7 @@ import jakarta.transaction.Transactional;
 import io.casehub.ledger.api.model.ScoreType;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
-import io.casehub.ledger.runtime.model.LedgerAttestation;
+import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 import io.casehub.ledger.runtime.qualifier.CrossTenant;
@@ -129,7 +129,8 @@ public class TrustScoreJob {
         final Set<UUID> entryIds = allEvents.stream()
                 .map(e -> e.id)
                 .collect(Collectors.toSet());
-        final Map<UUID, List<LedgerAttestation>> attestationsByEntry = ledgerRepo.findAttestationsForEntries(entryIds);
+        @SuppressWarnings("unchecked")
+        final Map<UUID, List<LedgerAttestation>> attestationsByEntry = (Map<UUID, List<LedgerAttestation>>) (Map<?,?>) ledgerRepo.findAttestationsForEntries(entryIds);
 
         for (final Map.Entry<String, List<LedgerEntry>> actorEntry : byActor.entrySet()) {
             final String actorId = actorEntry.getKey();

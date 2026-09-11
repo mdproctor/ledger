@@ -8,8 +8,9 @@ import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
 
-import io.casehub.ledger.runtime.service.AgentSignature;
-import io.casehub.ledger.runtime.service.AgentSigner;
+import io.casehub.ledger.core.signing.AgentKeyMaterial;
+import io.casehub.ledger.core.signing.AgentSignature;
+import io.casehub.ledger.core.signing.AgentSigner;
 
 /**
  * In-memory {@link AgentSigner} for CDI integration tests.

@@ -9,6 +9,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import io.casehub.ledger.api.model.ScoreType;
+import io.casehub.ledger.core.federation.ActorExport;
+import io.casehub.ledger.core.federation.CapabilityDimensionScoreExport;
+import io.casehub.ledger.core.federation.CapabilityScoreExport;
+import io.casehub.ledger.core.federation.DimensionScoreExport;
+import io.casehub.ledger.core.federation.GlobalScoreExport;
+import io.casehub.ledger.core.federation.TrustExportPayload;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.runtime.model.ActorTrustScore;

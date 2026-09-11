@@ -10,6 +10,8 @@ import java.security.Signature;
 import java.util.Base64;
 import java.util.UUID;
 
+import io.casehub.ledger.core.signing.LedgerPemUtil;
+import io.casehub.ledger.core.signing.SignatureAlgorithms;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 

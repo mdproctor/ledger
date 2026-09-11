@@ -6,7 +6,7 @@ import jakarta.inject.Inject;
 
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.runtime.model.supplement.JpaProvenanceSupplement;
-import io.casehub.ledger.runtime.service.LedgerEntryEnricher;
+import io.casehub.ledger.core.enricher.LedgerEntryEnricher;
 
 /**
  * {@link LedgerEntryEnricher} that auto-attaches a {@link JpaProvenanceSupplement} when a

@@ -2,6 +2,7 @@ package io.casehub.ledger.runtime.service;
 
 import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.LedgerEntry;
+import io.casehub.ledger.core.model.AttestorDefaults;
 import io.casehub.ledger.api.model.OutcomeRecord;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.ledger.runtime.config.LedgerConfig;

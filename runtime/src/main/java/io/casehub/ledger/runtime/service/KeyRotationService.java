@@ -14,11 +14,12 @@ import org.jboss.logging.Logger;
 
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.KeyRotationReason;
+import io.casehub.ledger.core.model.AgentKeyRotatedEvent;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.KeyRotationEntry;
 import io.casehub.ledger.runtime.repository.KeyRotationRepository;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
-import io.casehub.ledger.runtime.service.model.CompromisedWindow;
+import io.casehub.ledger.core.model.CompromisedWindow;
 
 /**
  * CDI bean for recording and querying signing key rotation events.

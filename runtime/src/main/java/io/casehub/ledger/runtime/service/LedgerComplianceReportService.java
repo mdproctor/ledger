@@ -10,6 +10,9 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
 import io.casehub.ledger.api.model.LedgerEntry;
+import io.casehub.ledger.core.compliance.ComplianceReport;
+import io.casehub.ledger.core.compliance.DecisionRecord;
+import io.casehub.ledger.core.compliance.ReportFormat;
 import io.casehub.ledger.api.model.supplement.ComplianceSupplement;
 import io.casehub.ledger.api.model.supplement.ProvenanceSupplement;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;

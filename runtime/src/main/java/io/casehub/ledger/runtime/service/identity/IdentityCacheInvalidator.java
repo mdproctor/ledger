@@ -1,7 +1,7 @@
 package io.casehub.ledger.runtime.service.identity;
 
 import io.casehub.platform.api.identity.ActorDIDProvider;
-import io.casehub.ledger.runtime.service.AgentKeyRotatedEvent;
+import io.casehub.ledger.core.model.AgentKeyRotatedEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;

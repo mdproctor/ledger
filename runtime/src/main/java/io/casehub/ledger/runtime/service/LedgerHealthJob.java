@@ -14,7 +14,11 @@ import org.jboss.logging.Logger;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
-import io.casehub.ledger.runtime.service.model.SubjectSequenceStats;
+import io.casehub.ledger.core.model.LedgerAnomalyDetected;
+import io.casehub.ledger.core.model.LedgerReconciliationMismatchDetected;
+import io.casehub.ledger.core.model.LedgerSequenceGapDetected;
+import io.casehub.ledger.core.model.SubjectSequenceStats;
+import io.casehub.ledger.core.trust.LedgerReconciliationSource;
 import io.quarkus.arc.properties.IfBuildProperty;
 import io.quarkus.scheduler.Scheduled;
 

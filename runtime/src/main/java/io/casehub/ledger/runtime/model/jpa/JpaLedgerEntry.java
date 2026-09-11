@@ -65,7 +65,7 @@ import java.util.UUID;
 @NamedQuery(
         name = "LedgerEntry.findSequenceStats",
         query = """
-                SELECT NEW io.casehub.ledger.runtime.service.model.SubjectSequenceStats(
+                SELECT NEW io.casehub.ledger.core.model.SubjectSequenceStats(
                     e.subjectId, e.tenancyId, COUNT(e), MIN(e.sequenceNumber), MAX(e.sequenceNumber)
                 )
                 FROM LedgerEntry e

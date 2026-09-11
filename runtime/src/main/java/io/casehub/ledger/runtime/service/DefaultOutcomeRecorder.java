@@ -3,6 +3,7 @@ package io.casehub.ledger.runtime.service;
 import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.OutcomeRecord;
 import io.casehub.ledger.api.spi.OutcomeRecorder;
+import io.casehub.ledger.core.model.AttestorDefaults;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.platform.api.identity.CurrentPrincipal;
