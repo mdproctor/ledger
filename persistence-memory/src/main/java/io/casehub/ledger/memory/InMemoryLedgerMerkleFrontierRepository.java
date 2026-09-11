@@ -10,7 +10,7 @@ import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
 
-import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
+import io.casehub.ledger.api.model.LedgerMerkleFrontier;
 import io.casehub.ledger.runtime.repository.LedgerMerkleFrontierRepository;
 
 @Alternative
@@ -29,7 +29,7 @@ public class InMemoryLedgerMerkleFrontierRepository implements LedgerMerkleFront
     }
 
     @Override
-    public void replace(final UUID subjectId, final List<LedgerMerkleFrontier> newFrontier,
+    public void replace(final UUID subjectId, final List<? extends io.casehub.ledger.api.model.LedgerMerkleFrontier> newFrontier,
             final String tenancyId) {
         frontierByKey.put(new FrontierKey(subjectId, tenancyId), List.copyOf(newFrontier));
     }

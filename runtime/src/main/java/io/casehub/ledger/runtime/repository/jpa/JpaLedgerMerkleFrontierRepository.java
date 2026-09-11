@@ -23,9 +23,10 @@ public class JpaLedgerMerkleFrontierRepository implements LedgerMerkleFrontierRe
     @LedgerPersistenceUnit
     EntityManager em;
 
+    @SuppressWarnings("unchecked")
     @Override
-    public List<LedgerMerkleFrontier> findBySubjectId(final UUID subjectId, final String tenancyId) {
-        return em.createNamedQuery("LedgerMerkleFrontier.findBySubjectId", LedgerMerkleFrontier.class)
+    public List<io.casehub.ledger.api.model.LedgerMerkleFrontier> findBySubjectId(final UUID subjectId, final String tenancyId) {
+        return (List<io.casehub.ledger.api.model.LedgerMerkleFrontier>) (List<?>) em.createNamedQuery("LedgerMerkleFrontier.findBySubjectId", LedgerMerkleFrontier.class)
                 .setParameter("subjectId", subjectId)
                 .setParameter("tenancyId", tenancyId)
                 .getResultList();

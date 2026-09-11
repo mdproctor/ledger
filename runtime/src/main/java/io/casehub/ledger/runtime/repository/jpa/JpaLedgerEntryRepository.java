@@ -168,7 +168,7 @@ public class JpaLedgerEntryRepository implements LedgerEntryRepository {
     }
 
     private void updateMerkleFrontier(final LedgerEntry entry, final String tenancyId) {
-        final List<LedgerMerkleFrontier> currentFrontier = frontierRepo.findBySubjectId(entry.subjectId, tenancyId);
+        final var currentFrontier = frontierRepo.findBySubjectId(entry.subjectId, tenancyId);
         final List<io.casehub.ledger.api.model.LedgerMerkleFrontier> newFrontier = LedgerMerkleTree.append(
                 entry.digest, currentFrontier, entry.subjectId);
         frontierRepo.replace(entry.subjectId, newFrontier, tenancyId);

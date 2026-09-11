@@ -139,9 +139,9 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
             entries.put(entry.id, entry);
 
             if (ledgerConfig.hashChain().enabled()) {
-                final List<LedgerMerkleFrontier> current =
+                final var current =
                         frontierRepo.findBySubjectId(entry.subjectId, tenancyId);
-                final List<LedgerMerkleFrontier> newFrontier =
+                final var newFrontier =
                         LedgerMerkleTree.append(entry.digest, current, entry.subjectId);
                 frontierRepo.replace(entry.subjectId, newFrontier, tenancyId);
                 merklePublisher.publish(entry.subjectId, entry.sequenceNumber,

@@ -13,7 +13,7 @@ import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.KeyRotationReason;
-import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
+import io.casehub.ledger.api.model.LedgerMerkleFrontier;
 import io.casehub.ledger.runtime.repository.LedgerMerkleFrontierRepository;
 import io.casehub.ledger.runtime.service.KeyRotationService;
 import io.quarkus.test.junit.QuarkusTest;

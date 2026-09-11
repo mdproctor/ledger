@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.api.model.LedgerEntry;
-import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
+import io.casehub.ledger.api.model.LedgerMerkleFrontier;
 import io.casehub.ledger.core.merkle.LedgerMerkleTree;
 import io.quarkus.test.junit.QuarkusTest;
 

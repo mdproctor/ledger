@@ -5,7 +5,7 @@ import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
 
-import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
+import io.casehub.ledger.api.model.LedgerMerkleFrontier;
 import io.quarkus.arc.DefaultBean;
 
 /**

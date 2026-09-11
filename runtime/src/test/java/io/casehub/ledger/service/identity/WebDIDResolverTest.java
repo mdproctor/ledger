@@ -3,7 +3,7 @@ package io.casehub.ledger.service.identity;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import io.casehub.platform.identity.WebDIDResolver;
-import io.casehub.platform.identity.config.IdentityConfig;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,8 +17,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.notFound;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+
 
 class WebDIDResolverTest {
 
@@ -41,7 +40,7 @@ class WebDIDResolverTest {
     @BeforeEach
     void setUp() {
         wm.resetAll();
-        resolver = new WebDIDResolver(identityConfig()) {
+        resolver = new WebDIDResolver(5000, 1_048_576) {
             @Override
             protected boolean isAllowedHost(final String host) {
                 return true; // allow localhost in tests
@@ -68,7 +67,7 @@ class WebDIDResolverTest {
     @Test
     void rejectsBlockedHostsForSsrf() {
         // Use real resolver (no SSRF override) to confirm SSRF rejection
-        final WebDIDResolver real = new WebDIDResolver(identityConfig());
+        final WebDIDResolver real = new WebDIDResolver(5000, 1_048_576);
         assertThat(real.resolve("test-actor", "did:web:localhost")).isEmpty();
         assertThat(real.resolve("test-actor", "did:web:127.0.0.1")).isEmpty();
         assertThat(real.resolve("test-actor", "did:web:192.168.1.1")).isEmpty();
@@ -193,10 +192,5 @@ class WebDIDResolverTest {
     // Helpers
     // -------------------------------------------------------------------------
 
-    private IdentityConfig identityConfig() {
-        final IdentityConfig config = mock(IdentityConfig.class);
-        when(config.webResolverTimeoutMs()).thenReturn(5000);
-        when(config.webResolverMaxResponseBytes()).thenReturn(1_048_576);
-        return config;
-    }
+
 }

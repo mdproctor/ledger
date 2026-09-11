@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import io.casehub.ledger.core.merkle.LedgerMerkleTree;
-import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
+import io.casehub.ledger.api.model.LedgerMerkleFrontier;
 
 /**
  * SPI for persisting and querying the Merkle Mountain Range frontier for a subject.
