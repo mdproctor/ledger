@@ -22,6 +22,12 @@
       <version>${project.version}</version>
     </dependency>
 
+    <!-- Ledger Core — framework-neutral business logic POJOs -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-ledger-core</artifactId>
+    </dependency>
+
     <!-- Ledger annotations — @Audited, @Attested, @SubjectId etc. (interceptor lives here in runtime) -->
     <dependency>
       <groupId>io.casehub</groupId>
