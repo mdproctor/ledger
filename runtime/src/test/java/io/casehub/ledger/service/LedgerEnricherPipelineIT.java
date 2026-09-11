@@ -22,7 +22,7 @@ import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
-import io.casehub.ledger.runtime.service.LedgerEntryEnricher;
+import io.casehub.ledger.core.enricher.LedgerEntryEnricher;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;

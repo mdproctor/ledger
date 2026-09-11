@@ -21,7 +21,7 @@ import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.ledger.runtime.repository.LedgerMerkleFrontierRepository;
-import io.casehub.ledger.runtime.service.LedgerMerkleTree;
+import io.casehub.ledger.core.merkle.LedgerMerkleTree;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.casehub.ledger.test.PostgreSQLTestProfile;
 import io.casehub.platform.api.identity.ActorType;
@@ -130,7 +130,7 @@ class JpaSequenceNumberConcurrentPgIT {
         // Build expected frontier by replaying append() in sequence order using stored digests.
         // Using entry.digest (accessible in runtime module). Fix 1's row lock guarantees
         // sequenceNumber is assigned before leafHash() is computed in the same transaction.
-        List<LedgerMerkleFrontier> expectedFrontier = new ArrayList<>();
+        List<io.casehub.ledger.api.model.LedgerMerkleFrontier> expectedFrontier = new ArrayList<>();
         for (final LedgerEntry e : entries) {
             expectedFrontier = LedgerMerkleTree.append(e.digest, expectedFrontier, subjectId);
         }

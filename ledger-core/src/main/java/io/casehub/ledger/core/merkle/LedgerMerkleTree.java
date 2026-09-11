@@ -1,4 +1,4 @@
-package io.casehub.ledger.runtime.service;
+package io.casehub.ledger.core.merkle;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -9,9 +9,7 @@ import java.util.TreeMap;
 import java.util.UUID;
 
 import io.casehub.ledger.api.model.LedgerEntry;
-import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
-import io.casehub.ledger.core.merkle.InclusionProof;
-import io.casehub.ledger.core.merkle.ProofStep;
+import io.casehub.ledger.api.model.LedgerMerkleFrontier;
 import io.casehub.ledger.core.merkle.ProofStep.Side;
 
 /**
@@ -58,7 +56,7 @@ public final class LedgerMerkleTree {
      */
     public static List<LedgerMerkleFrontier> append(
             final String leafHash,
-            final List<LedgerMerkleFrontier> frontier,
+            final List<? extends LedgerMerkleFrontier> frontier,
             final UUID subjectId) {
 
         final TreeMap<Integer, String> map = new TreeMap<>();
@@ -91,11 +89,11 @@ public final class LedgerMerkleTree {
      * Folds ASC by level: start with smallest-level, combine upward as
      * {@code internalHash(higher_level_node, current)}.
      */
-    public static String treeRoot(final List<LedgerMerkleFrontier> frontier) {
+    public static String treeRoot(final List<? extends LedgerMerkleFrontier> frontier) {
         if (frontier.isEmpty()) {
             throw new IllegalArgumentException("frontier must not be empty");
         }
-        final List<LedgerMerkleFrontier> sorted = frontier.stream()
+        final List<? extends LedgerMerkleFrontier> sorted = frontier.stream()
                 .sorted(Comparator.comparingInt(n -> n.level))
                 .toList();
         String current = sorted.get(0).hash;

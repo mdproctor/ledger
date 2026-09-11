@@ -7,7 +7,7 @@ import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.core.trust.NoOpAttestorCredibilityPolicy;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.core.trust.AllAttestationsGlobalStrategy;
-import io.casehub.ledger.runtime.service.DecayFunction;
+import io.casehub.ledger.core.trust.DecayFunction;
 import io.casehub.ledger.core.trust.FrequencyWeightedGlobalStrategy;
 import io.casehub.ledger.core.trust.TrustScoreCalculator;
 import io.casehub.ledger.core.trust.TrustScoreCalculator.ComputedScores;

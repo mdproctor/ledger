@@ -8,7 +8,7 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import io.casehub.ledger.api.model.KeyRotationReason;
 import io.casehub.platform.api.identity.ActorDIDProvider;
 import io.casehub.platform.api.identity.ActorDIDSource;
-import io.casehub.ledger.runtime.service.AgentSignature;
+import io.casehub.ledger.core.signing.AgentSignature;
 import io.casehub.ledger.runtime.service.KeyRotationService;
 import io.casehub.platform.identity.ScimActorDIDProvider;
 import io.quarkus.test.junit.QuarkusTest;

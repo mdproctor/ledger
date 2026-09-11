@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import io.casehub.ledger.core.merkle.LedgerMerkleTree;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -70,7 +71,7 @@ public class LedgerVerificationService {
     @Transactional
     public boolean verify(final UUID subjectId, final String tenancyId) {
         final List<LedgerEntry> entries = ledgerRepo.findBySubjectId(subjectId, tenancyId);
-        List<LedgerMerkleFrontier> frontier = new ArrayList<>();
+        List<io.casehub.ledger.api.model.LedgerMerkleFrontier> frontier = new ArrayList<>();
         for (final LedgerEntry entry : entries) {
             final String expected = LedgerMerkleTree.leafHash(entry);
             if (!expected.equals(entry.digest))

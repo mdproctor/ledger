@@ -3,7 +3,7 @@ package io.casehub.ledger.runtime.repository;
 import java.util.List;
 import java.util.UUID;
 
-import io.casehub.ledger.runtime.service.LedgerMerkleTree;
+import io.casehub.ledger.core.merkle.LedgerMerkleTree;
 import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
 
 /**
@@ -45,5 +45,5 @@ public interface LedgerMerkleFrontierRepository {
      *                    {@link LedgerMerkleTree#append}
      * @param tenancyId the tenant scope
      */
-    void replace(UUID subjectId, List<LedgerMerkleFrontier> newFrontier, String tenancyId);
+    void replace(UUID subjectId, List<? extends io.casehub.ledger.api.model.LedgerMerkleFrontier> newFrontier, String tenancyId);
 }

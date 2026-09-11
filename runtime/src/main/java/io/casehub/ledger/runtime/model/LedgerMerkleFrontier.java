@@ -20,22 +20,7 @@ import jakarta.persistence.Table;
 @Table(name = "ledger_merkle_frontier")
 @NamedQuery(name = "LedgerMerkleFrontier.findBySubjectId", query = "SELECT f FROM LedgerMerkleFrontier f WHERE f.subjectId = :subjectId AND f.tenancyId = :tenancyId ORDER BY f.level ASC")
 @NamedQuery(name = "LedgerMerkleFrontier.deleteBySubjectAndLevel", query = "DELETE FROM LedgerMerkleFrontier f WHERE f.subjectId = :subjectId AND f.level = :level AND f.tenancyId = :tenancyId")
-public class LedgerMerkleFrontier {
-
-    @Id
-    public UUID id;
-
-    @Column(name = "subject_id", nullable = false)
-    public UUID subjectId;
-
-    @Column(name = "tenancy_id", nullable = false)
-    public String tenancyId;
-
-    @Column(nullable = false)
-    public int level;
-
-    @Column(nullable = false, length = 64)
-    public String hash;
+public class LedgerMerkleFrontier extends io.casehub.ledger.api.model.LedgerMerkleFrontier {
 
     @PrePersist
     void prePersist() {

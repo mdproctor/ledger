@@ -19,7 +19,7 @@ import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.ActorIdentityBindingEntry;
 import io.casehub.ledger.runtime.repository.ActorIdentityBindingRepository;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
-import io.casehub.ledger.runtime.service.AgentSigner;
+import io.casehub.ledger.core.signing.AgentSigner;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.platform.api.identity.IdentityBindingStatus;
 import io.quarkus.narayana.jta.QuarkusTransaction;

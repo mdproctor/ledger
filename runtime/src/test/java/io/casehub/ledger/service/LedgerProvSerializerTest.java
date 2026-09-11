@@ -16,7 +16,7 @@ import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.supplement.JpaComplianceSupplement;
 import io.casehub.ledger.runtime.model.supplement.JpaProvenanceSupplement;
-import io.casehub.ledger.runtime.service.LedgerProvSerializer;
+import io.casehub.ledger.core.compliance.LedgerProvSerializer;
 import io.casehub.ledger.service.supplement.TestEntry;
 
 class LedgerProvSerializerTest {

@@ -41,7 +41,7 @@ public class NoOpLedgerMerkleFrontierRepository implements LedgerMerkleFrontierR
     }
 
     @Override
-    public void replace(final UUID subjectId, final List<LedgerMerkleFrontier> newFrontier, final String tenancyId) {
+    public void replace(final UUID subjectId, final List<? extends io.casehub.ledger.api.model.LedgerMerkleFrontier> newFrontier, final String tenancyId) {
         // no-op — Merkle frontier is not persisted in this deployment
     }
 }

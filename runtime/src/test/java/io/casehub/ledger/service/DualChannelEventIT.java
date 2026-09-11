@@ -20,7 +20,7 @@ import io.casehub.ledger.api.model.KeyRotationReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
-import io.casehub.ledger.runtime.service.AgentSignature;
+import io.casehub.ledger.core.signing.AgentSignature;
 import io.casehub.ledger.runtime.service.AgentSignatureVerificationService;
 import io.casehub.ledger.runtime.service.KeyRotationService;
 import io.casehub.ledger.service.supplement.TestEntry;

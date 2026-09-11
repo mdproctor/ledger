@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.AttestationVerdict;
-import io.casehub.ledger.runtime.model.LedgerAttestation;
+import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.core.trust.EigenTrustComputer;
 
 /**

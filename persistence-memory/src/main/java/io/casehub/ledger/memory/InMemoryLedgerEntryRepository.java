@@ -15,7 +15,7 @@ import io.casehub.ledger.core.signing.AgentEntrySigner;
 import io.casehub.ledger.core.model.AttestationRecordedEvent;
 import io.casehub.ledger.runtime.service.LedgerEnricherPipeline;
 import io.casehub.ledger.runtime.service.LedgerMerklePublisher;
-import io.casehub.ledger.runtime.service.LedgerMerkleTree;
+import io.casehub.ledger.core.merkle.LedgerMerkleTree;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;

@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.PlainLedgerEntry;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
-import io.casehub.ledger.runtime.service.LedgerMerkleTree;
+import io.casehub.ledger.core.merkle.LedgerMerkleTree;
 import io.casehub.ledger.runtime.service.intercept.ProvenanceContext;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.platform.api.identity.TenancyConstants;

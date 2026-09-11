@@ -13,7 +13,7 @@ import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
 import io.casehub.ledger.core.trust.AllAttestationsGlobalStrategy;
 import io.casehub.ledger.runtime.service.CachedTrustScoreSource;
 import io.casehub.ledger.runtime.service.ComputedTrustScoreSource;
-import io.casehub.ledger.runtime.service.DecayFunction;
+import io.casehub.ledger.core.trust.DecayFunction;
 import io.casehub.ledger.runtime.service.MaterializedTrustScoreSource;
 import io.casehub.ledger.core.trust.TrustScoreCalculator;
 import io.casehub.ledger.core.trust.TrustScoreCalculator.ComputedScores;
@@ -67,7 +67,9 @@ class TrustScoreSourceContractTest {
     private static final List<LedgerAttestation> ALL_ATTESTATIONS =
             List.of(A_REVIEW_SOUND, A_TRIAGE_FLAGGED, A_REVIEW_SOUND_2, A_DIM_THOROUGHNESS);
 
-    private static final Map<UUID, List<LedgerAttestation>> BY_ENTRY = buildByEntry();
+    @SuppressWarnings("unchecked")
+    private static final Map<UUID, List<io.casehub.ledger.api.model.LedgerAttestation>> BY_ENTRY =
+            (Map<UUID, List<io.casehub.ledger.api.model.LedgerAttestation>>) (Map<?, ?>) buildByEntry();
 
     // ── Source factory ────────────────────────────────────────────────────────
 

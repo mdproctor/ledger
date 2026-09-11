@@ -24,7 +24,7 @@ import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 import io.casehub.ledger.runtime.repository.ActorIdentityBindingRepository;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.platform.api.identity.IdentityBindingStatus;
-import io.casehub.ledger.runtime.service.AgentSigner;
+import io.casehub.ledger.core.signing.AgentSigner;
 import io.casehub.ledger.runtime.service.identity.ActorIdentityValidationEnricher;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.casehub.platform.api.identity.ActorType;

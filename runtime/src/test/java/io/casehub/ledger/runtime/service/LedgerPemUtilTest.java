@@ -9,6 +9,7 @@ import java.security.KeyPairGenerator;
 import java.security.PublicKey;
 import java.util.Base64;
 
+import io.casehub.ledger.core.signing.LedgerPemUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

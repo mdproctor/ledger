@@ -10,7 +10,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.event.ObservesAsync;
 
-import io.casehub.ledger.runtime.service.AttestationRecordedEvent;
+import io.casehub.ledger.core.model.AttestationRecordedEvent;
 
 @ApplicationScoped
 public class AttestationRecordedEventCapture {

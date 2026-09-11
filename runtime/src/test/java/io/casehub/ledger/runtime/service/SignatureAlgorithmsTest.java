@@ -7,6 +7,7 @@ import java.security.spec.ECGenParameterSpec;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import io.casehub.ledger.core.signing.SignatureAlgorithms;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class SignatureAlgorithmsTest {

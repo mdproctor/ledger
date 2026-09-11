@@ -1,5 +1,6 @@
 package io.casehub.ledger.runtime.service;
 
+import io.casehub.ledger.core.model.AttestationRecordedEvent;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import org.junit.jupiter.api.Test;
 

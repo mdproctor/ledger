@@ -20,7 +20,7 @@ import io.casehub.ledger.api.model.KeyRotationReason;
 import io.casehub.ledger.runtime.model.KeyRotationEntry;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
-import io.casehub.ledger.runtime.service.LedgerMerkleTree;
+import io.casehub.ledger.core.merkle.LedgerMerkleTree;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;

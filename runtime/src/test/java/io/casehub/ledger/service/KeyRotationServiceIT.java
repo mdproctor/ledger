@@ -16,11 +16,11 @@ import org.junit.jupiter.api.Test;
 import io.casehub.ledger.api.model.KeyRotationReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.KeyRotationEntry;
-import io.casehub.ledger.runtime.service.AgentKeyRotatedEvent;
-import io.casehub.ledger.runtime.service.AgentSignature;
+import io.casehub.ledger.core.model.AgentKeyRotatedEvent;
+import io.casehub.ledger.core.signing.AgentSignature;
 import io.casehub.ledger.runtime.service.KeyRotationService;
 import io.casehub.ledger.runtime.service.identity.ActorIdentityValidationEnricher;
-import io.casehub.ledger.runtime.service.model.CompromisedWindow;
+import io.casehub.ledger.core.model.CompromisedWindow;
 import io.quarkus.test.junit.QuarkusTest;
 import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 

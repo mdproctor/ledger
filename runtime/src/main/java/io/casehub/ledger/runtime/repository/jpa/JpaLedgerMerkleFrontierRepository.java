@@ -33,7 +33,7 @@ public class JpaLedgerMerkleFrontierRepository implements LedgerMerkleFrontierRe
 
     @Override
     @Transactional
-    public void replace(final UUID subjectId, final List<LedgerMerkleFrontier> newFrontier, final String tenancyId) {
+    public void replace(final UUID subjectId, final List<? extends io.casehub.ledger.api.model.LedgerMerkleFrontier> newFrontier, final String tenancyId) {
         final Set<Integer> newLevels = newFrontier.stream()
                 .map(n -> n.level)
                 .collect(Collectors.toSet());
@@ -55,12 +55,16 @@ public class JpaLedgerMerkleFrontierRepository implements LedgerMerkleFrontierRe
                 .setParameter("levels", newLevels)
                 .executeUpdate();
 
-        for (final LedgerMerkleFrontier node : newFrontier) {
+        for (final io.casehub.ledger.api.model.LedgerMerkleFrontier src : newFrontier) {
             em.createNamedQuery("LedgerMerkleFrontier.deleteBySubjectAndLevel")
                     .setParameter("subjectId", subjectId)
-                    .setParameter("level", node.level)
+                    .setParameter("level", src.level)
                     .setParameter("tenancyId", tenancyId)
                     .executeUpdate();
+            final LedgerMerkleFrontier node = new LedgerMerkleFrontier();
+            node.subjectId = src.subjectId;
+            node.level = src.level;
+            node.hash = src.hash;
             node.tenancyId = tenancyId;
             em.persist(node);
         }
