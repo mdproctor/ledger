@@ -5,6 +5,8 @@ import io.casehub.ledger.api.model.CapabilityTag;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.api.model.ScoreType;
+import io.casehub.ledger.core.trust.AllAttestationsGlobalStrategy;
+import io.casehub.ledger.core.trust.NoOpAttestorCredibilityPolicy;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
@@ -47,7 +49,7 @@ class PerActorTrustComputerTest {
                 trustRepo,
                 new NoOpTrustScoreSnapshotRepository(),
                 new AllAttestationsGlobalStrategy(),
-                new io.casehub.ledger.runtime.service.NoOpAttestorCredibilityPolicy());
+                new NoOpAttestorCredibilityPolicy());
     }
 
     // ── Test 1: No attestations → neutral GLOBAL score ───────────────────────

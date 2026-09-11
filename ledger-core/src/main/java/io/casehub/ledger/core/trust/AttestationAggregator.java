@@ -1,12 +1,10 @@
-package io.casehub.ledger.runtime.service;
+package io.casehub.ledger.core.trust;
 
 import java.util.List;
 import java.util.Optional;
 
-import jakarta.enterprise.context.ApplicationScoped;
-
 import io.casehub.ledger.api.model.AttestationVerdict;
-import io.casehub.ledger.runtime.model.LedgerAttestation;
+import io.casehub.ledger.api.model.LedgerAttestation;
 
 /**
  * Aggregates multiple attestations on the same ledger entry into a single
@@ -21,7 +19,6 @@ import io.casehub.ledger.runtime.model.LedgerAttestation;
  * <p>
  * Pure CDI bean — no database dependency. Injected by {@link TrustScoreJob}.
  */
-@ApplicationScoped
 public class AttestationAggregator {
 
     /**

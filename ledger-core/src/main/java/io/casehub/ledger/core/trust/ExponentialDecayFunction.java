@@ -1,11 +1,6 @@
-package io.casehub.ledger.runtime.service;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+package io.casehub.ledger.core.trust;
 
 import io.casehub.ledger.api.model.AttestationVerdict;
-import io.casehub.ledger.runtime.config.LedgerConfig;
-import io.quarkus.arc.DefaultBean;
 
 /**
  * Default decay function: exponential decay {@code 2^(-ageInDays / halfLifeDays)} with an
@@ -13,17 +8,14 @@ import io.quarkus.arc.DefaultBean;
  * (configurable via {@code casehub.ledger.decay.flagged-persistence-multiplier}), causing
  * them to decay slower — they persist longer as negative evidence in the trust model.
  */
-@ApplicationScoped
-@DefaultBean
 public class ExponentialDecayFunction implements DecayFunction {
 
     private final int halfLifeDays;
     private final double flaggedPersistenceMultiplier;
 
-    @Inject
-    public ExponentialDecayFunction(final LedgerConfig config) {
-        this.halfLifeDays = config.trustScore().decayHalfLifeDays();
-        this.flaggedPersistenceMultiplier = config.decay().flaggedPersistenceMultiplier();
+    public ExponentialDecayFunction(final int halfLifeDays, final double flaggedPersistenceMultiplier) {
+        this.halfLifeDays = halfLifeDays;
+        this.flaggedPersistenceMultiplier = flaggedPersistenceMultiplier;
     }
 
     @Override

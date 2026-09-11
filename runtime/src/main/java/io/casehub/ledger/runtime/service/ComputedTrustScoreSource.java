@@ -9,6 +9,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import io.casehub.ledger.core.trust.TrustScoreCalculator;
 import io.casehub.ledger.core.trust.TrustScoreComputer;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
@@ -43,8 +44,8 @@ import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
 @Alternative
 public class ComputedTrustScoreSource implements TrustScoreSource {
 
-    private final CrossTenantLedgerEntryRepository ledgerRepo;
-    private final TrustScoreCalculator calculator;
+    private final        CrossTenantLedgerEntryRepository    ledgerRepo;
+    private final        TrustScoreCalculator                calculator;
     private static final TrustScoreCalculator.ComputedScores EMPTY_SENTINEL =
             new TrustScoreCalculator.ComputedScores(Map.of(), Map.of(), Map.of(),
                     new TrustScoreComputer.ActorScore(0, 0, 0, 0, 0, 0, 0, 1.0));

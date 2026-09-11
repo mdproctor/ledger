@@ -1,11 +1,7 @@
-package io.casehub.ledger.runtime.service;
+package io.casehub.ledger.core.trust;
 
 import java.util.List;
 import java.util.stream.Collectors;
-
-import io.casehub.ledger.core.trust.GlobalScoreStrategy;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
 
 import io.casehub.ledger.api.model.CapabilityTag;
 import io.casehub.ledger.api.model.LedgerAttestation;
@@ -22,8 +18,6 @@ import io.casehub.ledger.api.model.LedgerAttestation;
  * Activate via {@code quarkus.arc.selected-alternatives=
  * io.casehub.ledger.runtime.service.ExplicitGlobalAttestationsStrategy}.
  */
-@ApplicationScoped
-@Alternative
 public class ExplicitGlobalAttestationsStrategy implements GlobalScoreStrategy {
 
     @Override

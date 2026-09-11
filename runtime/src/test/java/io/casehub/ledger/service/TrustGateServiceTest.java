@@ -1,7 +1,7 @@
 package io.casehub.ledger.service;
 
 import io.casehub.ledger.api.spi.TrustScoreSource;
-import io.casehub.ledger.runtime.service.TrustGateService;
+import io.casehub.ledger.core.trust.TrustGateService;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

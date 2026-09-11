@@ -13,7 +13,7 @@ import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.repository.NoOpActorIdentityBindingRepository;
 import io.casehub.ledger.runtime.repository.NoOpActorTrustScoreRepository;
-import io.casehub.ledger.runtime.repository.NoOpLedgerEntryRepository;
+import io.casehub.ledger.core.repository.NoOpLedgerEntryRepository;
 import io.casehub.ledger.service.supplement.TestEntry;
 import io.casehub.platform.api.identity.ActorType;
 

@@ -1,10 +1,12 @@
 package io.casehub.ledger.runtime.repository;
 
+import io.quarkus.arc.DefaultBean;
+import jakarta.enterprise.context.ApplicationScoped;
+
 import java.util.List;
 
 import io.casehub.ledger.runtime.model.ErasureReceiptLedgerEntry;
-import io.quarkus.arc.DefaultBean;
-import jakarta.enterprise.context.ApplicationScoped;
+
 
 /**
  * No-op {@link ErasureReceiptRepository} — satisfies the CDI injection point when

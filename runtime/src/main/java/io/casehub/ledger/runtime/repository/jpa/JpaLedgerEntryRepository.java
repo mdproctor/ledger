@@ -13,7 +13,7 @@ import io.casehub.ledger.runtime.model.supplement.JpaProvenanceSupplement;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 import io.casehub.ledger.runtime.privacy.ContentSanitiser;
 import io.casehub.ledger.runtime.repository.LedgerMerkleFrontierRepository;
-import io.casehub.ledger.runtime.service.AgentEntrySigner;
+import io.casehub.ledger.core.signing.AgentEntrySigner;
 import io.casehub.ledger.runtime.service.AttestationRecordedEvent;
 import io.casehub.ledger.runtime.service.LedgerEnricherPipeline;
 import io.casehub.ledger.runtime.service.LedgerMerklePublisher;

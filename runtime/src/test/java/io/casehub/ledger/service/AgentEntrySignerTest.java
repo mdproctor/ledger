@@ -19,7 +19,7 @@ import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.service.AgentKeyMaterial;
 import io.casehub.ledger.runtime.service.AgentSignature;
 import io.casehub.ledger.runtime.service.AgentSigner;
-import io.casehub.ledger.runtime.service.AgentEntrySigner;
+import io.casehub.ledger.core.signing.AgentEntrySigner;
 import io.casehub.ledger.service.supplement.TestEntry;
 
 class AgentEntrySignerTest {

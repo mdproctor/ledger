@@ -1,12 +1,6 @@
-package io.casehub.ledger.runtime.service;
+package io.casehub.ledger.core.signing;
 
-import java.security.MessageDigest;
-import java.util.Base64;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-
-import org.jboss.logging.Logger;
+import java.util.logging.Logger;
 
 import io.casehub.ledger.api.model.LedgerEntry;
 
@@ -26,14 +20,12 @@ import io.casehub.ledger.api.model.LedgerEntry;
  *
  * <p>Both methods are no-ops when the actor has no configured signing key.
  */
-@ApplicationScoped
 public class AgentEntrySigner {
 
-    private static final Logger LOG = Logger.getLogger(AgentEntrySigner.class);
+    private static final Logger LOG = Logger.getLogger(AgentEntrySigner.class.getName());
 
     private final AgentSigner signer;
 
-    @Inject
     public AgentEntrySigner(final AgentSigner signer) {
         this.signer = signer;
     }
@@ -54,8 +46,7 @@ public class AgentEntrySigner {
                         entry.agentKeyRef = km.keyRef();
                     });
         } catch (final Exception e) {
-            LOG.warnf("AgentEntrySigner.prepareKey failed for actor %s: %s",
-                    entry.actorId, e.getMessage());
+            LOG.warning("AgentEntrySigner.prepareKey failed for actor " + entry.actorId + ": " + e.getMessage());
         }
     }
 
@@ -76,8 +67,7 @@ public class AgentEntrySigner {
                         entry.agentKeyRef = sig.keyRef();
                     });
         } catch (final Exception e) {
-            LOG.warnf("AgentEntrySigner.sign failed for actor %s — entry will be unsigned: %s",
-                    entry.actorId, e.getMessage());
+            LOG.warning("AgentEntrySigner.sign failed for actor " + entry.actorId + " — entry will be unsigned: " + e.getMessage());
         }
     }
 }

@@ -23,7 +23,7 @@ import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
 import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
-import io.casehub.ledger.runtime.service.TrustGateService;
+import io.casehub.ledger.core.trust.TrustGateService;
 import io.casehub.ledger.runtime.service.TrustScoreJob;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;

@@ -45,7 +45,7 @@ public interface TrustScoreSource {
 
 ### TrustScoreCalculator — Pure Computation Extraction
 
-**Location:** `runtime/src/main/java/io/casehub/ledger/runtime/service/TrustScoreCalculator.java`
+**Location:** `../../../ledger-core/src/main/java/io/casehub/ledger/core/trust/TrustScoreCalculator.java`
 
 Extracts all pure computation logic from `PerActorTrustComputer` into a stateless CDI bean. Takes (decisions, attestations) → scores. No persistence, no CDI events.
 

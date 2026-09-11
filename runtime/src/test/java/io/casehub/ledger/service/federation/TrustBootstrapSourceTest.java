@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
-import io.casehub.ledger.runtime.service.federation.NoOpTrustBootstrapSource;
+import io.casehub.ledger.core.federation.NoOpTrustBootstrapSource;
 
 class TrustBootstrapSourceTest {
 

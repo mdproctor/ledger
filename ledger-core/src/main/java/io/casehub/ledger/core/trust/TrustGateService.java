@@ -1,8 +1,6 @@
-package io.casehub.ledger.runtime.service;
+package io.casehub.ledger.core.trust;
 
 import io.casehub.ledger.api.spi.TrustScoreSource;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 
 import java.util.List;
 import java.util.Map;
@@ -16,12 +14,10 @@ import java.util.OptionalDouble;
  * than querying the source directly — threshold checks and CAPABILITY-to-GLOBAL fallback
  * logic stays in one place.
  */
-@ApplicationScoped
 public class TrustGateService {
 
     private final TrustScoreSource source;
 
-    @Inject
     public TrustGateService(final TrustScoreSource source) {
         this.source = source;
     }

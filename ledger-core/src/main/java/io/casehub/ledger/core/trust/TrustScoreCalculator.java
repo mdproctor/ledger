@@ -1,13 +1,9 @@
-package io.casehub.ledger.runtime.service;
+package io.casehub.ledger.core.trust;
 
 import io.casehub.ledger.api.model.CapabilityTag;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.api.spi.AttestorCredibilityPolicy;
-import io.casehub.ledger.core.trust.GlobalScoreStrategy;
-import io.casehub.ledger.core.trust.TrustScoreComputer;
-import io.casehub.ledger.runtime.model.LedgerAttestation;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import io.casehub.ledger.api.model.LedgerAttestation;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -25,14 +21,12 @@ import java.util.stream.Collectors;
  * (batch/incremental write path) and {@code ComputedTrustScoreSource} (on-read path) delegate
  * here for the actual computation.
  */
-@ApplicationScoped
 public class TrustScoreCalculator {
 
     private final DecayFunction             decayFunction;
     private final GlobalScoreStrategy       globalScoreStrategy;
     private final AttestorCredibilityPolicy credibilityPolicy;
 
-    @Inject
     public TrustScoreCalculator(final DecayFunction decayFunction,
                                 final GlobalScoreStrategy globalScoreStrategy,
                                 final AttestorCredibilityPolicy credibilityPolicy) {

@@ -1,11 +1,6 @@
-package io.casehub.ledger.runtime.service;
+package io.casehub.ledger.core.trust;
 
 import java.util.List;
-
-import io.casehub.ledger.core.trust.GlobalScoreStrategy;
-import jakarta.enterprise.context.ApplicationScoped;
-
-import io.quarkus.arc.DefaultBean;
 
 import io.casehub.ledger.api.model.LedgerAttestation;
 
@@ -21,8 +16,6 @@ import io.casehub.ledger.api.model.LedgerAttestation;
  * This is the {@code @DefaultBean} — activated automatically when no alternative
  * {@link GlobalScoreStrategy} is selected.
  */
-@ApplicationScoped
-@DefaultBean
 public class AllAttestationsGlobalStrategy implements GlobalScoreStrategy {
 
     @Override

@@ -1,11 +1,7 @@
-package io.casehub.ledger.runtime.service;
+package io.casehub.ledger.core.trust;
 
 import io.casehub.ledger.api.spi.AttestorCredibilityPolicy;
-import io.quarkus.arc.DefaultBean;
-import jakarta.enterprise.context.ApplicationScoped;
 
-@DefaultBean
-@ApplicationScoped
 public class NoOpAttestorCredibilityPolicy implements AttestorCredibilityPolicy {
 
     @Override

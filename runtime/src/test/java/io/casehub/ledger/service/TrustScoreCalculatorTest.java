@@ -4,12 +4,13 @@ import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.CapabilityTag;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.api.model.LedgerEntryType;
+import io.casehub.ledger.core.trust.NoOpAttestorCredibilityPolicy;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
-import io.casehub.ledger.runtime.service.AllAttestationsGlobalStrategy;
+import io.casehub.ledger.core.trust.AllAttestationsGlobalStrategy;
 import io.casehub.ledger.runtime.service.DecayFunction;
-import io.casehub.ledger.runtime.service.FrequencyWeightedGlobalStrategy;
-import io.casehub.ledger.runtime.service.TrustScoreCalculator;
-import io.casehub.ledger.runtime.service.TrustScoreCalculator.ComputedScores;
+import io.casehub.ledger.core.trust.FrequencyWeightedGlobalStrategy;
+import io.casehub.ledger.core.trust.TrustScoreCalculator;
+import io.casehub.ledger.core.trust.TrustScoreCalculator.ComputedScores;
 import io.casehub.ledger.core.trust.TrustScoreComputer;
 import io.casehub.platform.api.identity.ActorType;
 import org.junit.jupiter.api.Test;
@@ -34,7 +35,7 @@ class TrustScoreCalculatorTest {
     private final Instant now = Instant.now();
 
     private TrustScoreCalculator calculator(final DecayFunction decay) {
-        return new TrustScoreCalculator(decay, new AllAttestationsGlobalStrategy(), new io.casehub.ledger.runtime.service.NoOpAttestorCredibilityPolicy());
+        return new TrustScoreCalculator(decay, new AllAttestationsGlobalStrategy(), new NoOpAttestorCredibilityPolicy());
     }
 
     private TrustScoreCalculator calculator() {
@@ -239,7 +240,7 @@ class TrustScoreCalculatorTest {
     @Test
     void globalScore_withDeriveStrategy_usesCapabilityFrequencyWeights() {
         final TrustScoreCalculator freqCalculator = new TrustScoreCalculator(
-                NO_DECAY, new FrequencyWeightedGlobalStrategy(), new io.casehub.ledger.runtime.service.NoOpAttestorCredibilityPolicy());
+                NO_DECAY, new FrequencyWeightedGlobalStrategy(), new NoOpAttestorCredibilityPolicy());
 
         final TestLedgerEntry d1 = decision("alice");
         final TestLedgerEntry d2 = decision("alice");
@@ -262,7 +263,7 @@ class TrustScoreCalculatorTest {
     @Test
     void globalPass_deriveReceivesRawAttestationsForFrequencyWeights() {
         final TrustScoreCalculator freqCalculator = new TrustScoreCalculator(
-                NO_DECAY, new FrequencyWeightedGlobalStrategy(), new io.casehub.ledger.runtime.service.NoOpAttestorCredibilityPolicy());
+                NO_DECAY, new FrequencyWeightedGlobalStrategy(), new NoOpAttestorCredibilityPolicy());
 
         final TestLedgerEntry d = decision("alice");
         final LedgerAttestation r1 = attestation(d.id, AttestationVerdict.SOUND, "review");

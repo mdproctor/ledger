@@ -1,15 +1,12 @@
-package io.casehub.ledger.runtime.repository;
+package io.casehub.ledger.core.repository;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import jakarta.enterprise.context.ApplicationScoped;
-
 import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.api.model.LedgerEntry;
-import io.quarkus.arc.DefaultBean;
 
 /**
  * No-op {@link io.casehub.ledger.api.spi.LedgerEntryRepository} that satisfies the CDI injection point when neither
@@ -32,8 +29,6 @@ import io.quarkus.arc.DefaultBean;
  * Use a JPA or in-memory implementation in any context where entries must actually be
  * persisted.
  */
-@DefaultBean
-@ApplicationScoped
 public class NoOpLedgerEntryRepository implements io.casehub.ledger.api.spi.LedgerEntryRepository {
 
     /**

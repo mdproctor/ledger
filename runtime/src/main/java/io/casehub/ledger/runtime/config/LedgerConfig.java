@@ -1,5 +1,6 @@
 package io.casehub.ledger.runtime.config;
 
+import io.casehub.ledger.core.trust.AttestationAggregator;
 import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.annotations.ConfigRoot;
 import io.smallrye.config.ConfigMapping;
@@ -488,7 +489,7 @@ public interface LedgerConfig {
          * @return the aggregation strategy (default {@code WEIGHTED_MAJORITY})
          */
         @WithDefault("WEIGHTED_MAJORITY")
-        io.casehub.ledger.runtime.service.AttestationAggregator.Strategy aggregationStrategy();
+        AttestationAggregator.Strategy aggregationStrategy();
     }
 
     /** Actor identity pseudonymisation settings. */

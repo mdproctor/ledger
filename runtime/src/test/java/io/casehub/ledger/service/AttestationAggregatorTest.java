@@ -11,9 +11,9 @@ import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
-import io.casehub.ledger.runtime.service.AttestationAggregator;
-import io.casehub.ledger.runtime.service.AttestationAggregator.AggregatedAttestation;
-import io.casehub.ledger.runtime.service.AttestationAggregator.Strategy;
+import io.casehub.ledger.core.trust.AttestationAggregator;
+import io.casehub.ledger.core.trust.AttestationAggregator.AggregatedAttestation;
+import io.casehub.ledger.core.trust.AttestationAggregator.Strategy;
 
 class AttestationAggregatorTest {
 
