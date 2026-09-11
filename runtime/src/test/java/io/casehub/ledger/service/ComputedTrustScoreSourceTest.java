@@ -10,7 +10,7 @@ import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
 import io.casehub.ledger.core.trust.AllAttestationsGlobalStrategy;
 import io.casehub.ledger.runtime.service.ComputedTrustScoreSource;
 import io.casehub.ledger.core.trust.TrustScoreCalculator;
-import io.casehub.ledger.runtime.service.model.SubjectSequenceStats;
+import io.casehub.ledger.core.model.SubjectSequenceStats;
 import io.casehub.platform.api.identity.ActorType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

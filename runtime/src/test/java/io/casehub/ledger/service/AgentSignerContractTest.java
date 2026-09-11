@@ -6,9 +6,9 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
-import io.casehub.ledger.runtime.service.AgentKeyMaterial;
-import io.casehub.ledger.runtime.service.AgentSignature;
-import io.casehub.ledger.runtime.service.AgentSigner;
+import io.casehub.ledger.core.signing.AgentKeyMaterial;
+import io.casehub.ledger.core.signing.AgentSignature;
+import io.casehub.ledger.core.signing.AgentSigner;
 
 /**
  * SPI contract test for {@link AgentSigner#keyMaterial(String)} default method.

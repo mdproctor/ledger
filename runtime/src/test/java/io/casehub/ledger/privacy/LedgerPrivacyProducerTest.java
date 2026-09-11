@@ -21,7 +21,7 @@ import io.casehub.ledger.api.spi.ActorIdentityProvider;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.runtime.privacy.InternalActorIdentityProvider;
 import io.casehub.ledger.runtime.privacy.LedgerPrivacyProducer;
-import io.casehub.ledger.runtime.privacy.PassThroughActorIdentityProvider;
+import io.casehub.ledger.core.privacy.PassThroughActorIdentityProvider;
 
 /**
  * Unit tests for {@link LedgerPrivacyProducer}.

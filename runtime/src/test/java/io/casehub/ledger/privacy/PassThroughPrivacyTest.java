@@ -6,8 +6,8 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
-import io.casehub.ledger.runtime.privacy.PassThroughActorIdentityProvider;
-import io.casehub.ledger.runtime.privacy.PassThroughContentSanitiser;
+import io.casehub.ledger.core.privacy.PassThroughActorIdentityProvider;
+import io.casehub.ledger.core.privacy.PassThroughContentSanitiser;
 import io.casehub.platform.api.identity.ActorType;
 
 class PassThroughPrivacyTest {

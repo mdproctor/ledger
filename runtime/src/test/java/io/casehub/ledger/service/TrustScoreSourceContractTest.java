@@ -17,7 +17,7 @@ import io.casehub.ledger.runtime.service.DecayFunction;
 import io.casehub.ledger.runtime.service.MaterializedTrustScoreSource;
 import io.casehub.ledger.core.trust.TrustScoreCalculator;
 import io.casehub.ledger.core.trust.TrustScoreCalculator.ComputedScores;
-import io.casehub.ledger.runtime.service.model.SubjectSequenceStats;
+import io.casehub.ledger.core.model.SubjectSequenceStats;
 import io.casehub.platform.api.identity.ActorType;
 import org.junit.jupiter.api.Named;
 import org.junit.jupiter.params.ParameterizedTest;

@@ -11,10 +11,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 
-import io.casehub.ledger.runtime.service.AbstractCachingAgentSigner;
-import io.casehub.ledger.runtime.service.AgentKeyMaterial;
-import io.casehub.ledger.runtime.service.AgentKeyRotatedEvent;
-import io.casehub.ledger.runtime.service.AgentSignature;
+import io.casehub.ledger.core.model.AgentKeyRotatedEvent;
+import io.casehub.ledger.core.signing.AbstractCachingAgentSigner;
+import io.casehub.ledger.core.signing.AgentKeyMaterial;
+import io.casehub.ledger.core.signing.AgentSignature;
 
 class AbstractCachingAgentSignerTest {
 

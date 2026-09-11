@@ -21,7 +21,7 @@ import io.casehub.platform.api.identity.DIDDocument;
 import io.casehub.platform.api.identity.DIDResolver;
 import io.casehub.platform.api.identity.VerificationMethod;
 import io.casehub.ledger.api.model.LedgerEntry;
-import io.casehub.ledger.runtime.service.AgentKeyRotatedEvent;
+import io.casehub.ledger.core.model.AgentKeyRotatedEvent;
 
 /**
  * Tests the package-private {@link ActorIdentityValidationEnricher#onKeyRotated} observer

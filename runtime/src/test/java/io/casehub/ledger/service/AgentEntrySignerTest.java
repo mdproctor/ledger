@@ -16,9 +16,9 @@ import org.junit.jupiter.api.Test;
 
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.runtime.service.AgentKeyMaterial;
-import io.casehub.ledger.runtime.service.AgentSignature;
-import io.casehub.ledger.runtime.service.AgentSigner;
+import io.casehub.ledger.core.signing.AgentKeyMaterial;
+import io.casehub.ledger.core.signing.AgentSignature;
+import io.casehub.ledger.core.signing.AgentSigner;
 import io.casehub.ledger.core.signing.AgentEntrySigner;
 import io.casehub.ledger.service.supplement.TestEntry;
 

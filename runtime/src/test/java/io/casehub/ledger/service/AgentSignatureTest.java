@@ -10,7 +10,7 @@ import java.util.Base64;
 
 import org.junit.jupiter.api.Test;
 
-import io.casehub.ledger.runtime.service.AgentSignature;
+import io.casehub.ledger.core.signing.AgentSignature;
 
 class AgentSignatureTest {
 

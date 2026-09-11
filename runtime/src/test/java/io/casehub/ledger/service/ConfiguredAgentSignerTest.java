@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import io.casehub.ledger.runtime.config.LedgerConfig;
-import io.casehub.ledger.runtime.service.AgentSignature;
+import io.casehub.ledger.core.signing.AgentSignature;
 import io.casehub.ledger.runtime.service.ConfiguredAgentSigner;
 
 class ConfiguredAgentSignerTest {
