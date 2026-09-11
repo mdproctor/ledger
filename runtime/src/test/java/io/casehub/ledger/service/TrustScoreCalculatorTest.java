@@ -10,7 +10,7 @@ import io.casehub.ledger.runtime.service.DecayFunction;
 import io.casehub.ledger.runtime.service.FrequencyWeightedGlobalStrategy;
 import io.casehub.ledger.runtime.service.TrustScoreCalculator;
 import io.casehub.ledger.runtime.service.TrustScoreCalculator.ComputedScores;
-import io.casehub.ledger.runtime.service.TrustScoreComputer;
+import io.casehub.ledger.core.trust.TrustScoreComputer;
 import io.casehub.platform.api.identity.ActorType;
 import org.junit.jupiter.api.Test;
 

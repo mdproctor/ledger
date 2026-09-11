@@ -1,6 +1,5 @@
-package io.casehub.ledger.runtime.service;
+package io.casehub.ledger.core.merkle;
 
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -10,10 +9,8 @@ import java.util.TreeMap;
 import java.util.UUID;
 
 import io.casehub.ledger.api.model.LedgerEntry;
-import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
-import io.casehub.ledger.runtime.service.model.InclusionProof;
-import io.casehub.ledger.runtime.service.model.ProofStep;
-import io.casehub.ledger.runtime.service.model.ProofStep.Side;
+import io.casehub.ledger.api.model.LedgerMerkleFrontier;
+import io.casehub.ledger.core.merkle.ProofStep.Side;
 
 /**
  * Pure static utility implementing the Merkle Mountain Range (stored frontier) algorithm.

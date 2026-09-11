@@ -31,7 +31,7 @@ Default = Option B (all attestations), consistent with Wang & Vassileva.
 
 ## `GlobalScoreStrategy` SPI
 
-**New file:** `runtime/src/main/java/io/casehub/ledger/runtime/service/GlobalScoreStrategy.java`
+**New file:** `../../ledger-core/src/main/java/io/casehub/ledger/core/trust/GlobalScoreStrategy.java`
 
 Follows the `DecayFunction` CDI pattern — pure Java, injectable.
 

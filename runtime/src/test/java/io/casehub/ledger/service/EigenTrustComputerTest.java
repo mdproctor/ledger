@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
-import io.casehub.ledger.runtime.service.EigenTrustComputer;
+import io.casehub.ledger.core.trust.EigenTrustComputer;
 
 /**
  * Pure JUnit 5 unit tests for {@link EigenTrustComputer} — no Quarkus runtime, no CDI.

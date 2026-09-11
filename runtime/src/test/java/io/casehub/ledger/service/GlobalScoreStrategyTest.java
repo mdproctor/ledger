@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import io.casehub.ledger.core.trust.GlobalScoreStrategy;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.platform.api.identity.ActorType;
@@ -17,10 +18,10 @@ import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.service.AllAttestationsGlobalStrategy;
 import io.casehub.ledger.runtime.service.ExplicitGlobalAttestationsStrategy;
 import io.casehub.ledger.runtime.service.FrequencyWeightedGlobalStrategy;
-import io.casehub.ledger.runtime.service.TrustScoreComputer;
+import io.casehub.ledger.core.trust.TrustScoreComputer;
 
 /**
- * Pure unit tests for all three {@link io.casehub.ledger.runtime.service.GlobalScoreStrategy} implementations.
+ * Pure unit tests for all three {@link GlobalScoreStrategy} implementations.
  * No Quarkus runtime, no CDI.
  */
 class GlobalScoreStrategyTest {

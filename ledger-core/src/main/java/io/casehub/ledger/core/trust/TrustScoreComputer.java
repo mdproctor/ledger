@@ -1,10 +1,10 @@
-package io.casehub.ledger.runtime.service;
+package io.casehub.ledger.core.trust;
 
 import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.CredibilityFlag;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.api.spi.AttestorCredibilityPolicy;
-import io.casehub.ledger.runtime.model.LedgerAttestation;
+import io.casehub.ledger.api.model.LedgerAttestation;
 
 import java.time.Instant;
 import java.util.List;

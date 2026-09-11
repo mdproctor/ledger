@@ -192,4 +192,23 @@
         </attributes>
     </mapped-superclass>
 
+    <!-- LedgerMerkleFrontier: api-tier Merkle frontier node -->
+    <mapped-superclass class="io.casehub.ledger.api.model.LedgerMerkleFrontier" access="FIELD">
+        <attributes>
+            <id name="id"/>
+            <basic name="subjectId">
+                <column name="subject_id" nullable="false"/>
+            </basic>
+            <basic name="tenancyId">
+                <column name="tenancy_id" nullable="false"/>
+            </basic>
+            <basic name="level">
+                <column nullable="false"/>
+            </basic>
+            <basic name="hash">
+                <column nullable="false" length="64"/>
+            </basic>
+        </attributes>
+    </mapped-superclass>
+
 </entity-mappings>

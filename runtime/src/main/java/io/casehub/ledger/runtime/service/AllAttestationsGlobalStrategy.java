@@ -2,11 +2,12 @@ package io.casehub.ledger.runtime.service;
 
 import java.util.List;
 
+import io.casehub.ledger.core.trust.GlobalScoreStrategy;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import io.quarkus.arc.DefaultBean;
 
-import io.casehub.ledger.runtime.model.LedgerAttestation;
+import io.casehub.ledger.api.model.LedgerAttestation;
 
 /**
  * Default {@link GlobalScoreStrategy}: all attestations feed the global Beta model.

@@ -1,10 +1,10 @@
-package io.casehub.ledger.runtime.service;
+package io.casehub.ledger.core.trust;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import io.casehub.ledger.runtime.model.LedgerAttestation;
+import io.casehub.ledger.api.model.LedgerAttestation;
 
 /**
  * SPI for determining which attestations contribute to the GLOBAL {@link io.casehub.ledger.runtime.model.ActorTrustScore}.

@@ -5,11 +5,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import io.casehub.ledger.core.trust.GlobalScoreStrategy;
+import io.casehub.ledger.core.trust.TrustScoreComputer;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
 
 import io.casehub.ledger.api.model.CapabilityTag;
-import io.casehub.ledger.runtime.model.LedgerAttestation;
+import io.casehub.ledger.api.model.LedgerAttestation;
 
 /**
  * Alternative {@link GlobalScoreStrategy}: derives the global score as a frequency-weighted

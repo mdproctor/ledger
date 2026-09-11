@@ -5,7 +5,7 @@ import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.service.DecayFunction;
-import io.casehub.ledger.runtime.service.TrustScoreComputer;
+import io.casehub.ledger.core.trust.TrustScoreComputer;
 import io.casehub.platform.api.identity.ActorType;
 import org.junit.jupiter.api.Test;
 

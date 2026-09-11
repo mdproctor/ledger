@@ -13,7 +13,7 @@ import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.api.model.LedgerEntry;
-import io.casehub.ledger.runtime.service.LedgerEntryArchiver;
+import io.casehub.ledger.core.compliance.LedgerEntryArchiver;
 
 /**
  * Unit tests for {@link LedgerEntryArchiver} — no Quarkus runtime, no CDI.

@@ -4,7 +4,6 @@ import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_I
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -21,7 +20,7 @@ import org.junit.jupiter.api.Test;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
-import io.casehub.ledger.runtime.service.LedgerMerkleTree;
+import io.casehub.ledger.core.merkle.LedgerMerkleTree;
 import io.quarkus.test.junit.QuarkusTest;
 
 /**
