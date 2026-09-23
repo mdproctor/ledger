@@ -1,23 +1,22 @@
 package io.casehub.ledger.runtime.repository.jpa;
 
-import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.api.model.AttestationSummary;
 import io.casehub.ledger.api.model.AttestationVerdict;
+import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.api.spi.ActorIdentityProvider;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
+import io.casehub.ledger.core.merkle.LedgerMerkleTree;
+import io.casehub.ledger.core.model.AttestationRecordedEvent;
+import io.casehub.ledger.core.privacy.ContentSanitiser;
+import io.casehub.ledger.core.signing.AgentEntrySigner;
 import io.casehub.ledger.runtime.config.LedgerConfig;
-import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
 import io.casehub.ledger.runtime.model.supplement.JpaComplianceSupplement;
 import io.casehub.ledger.runtime.model.supplement.JpaProvenanceSupplement;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
-import io.casehub.ledger.core.privacy.ContentSanitiser;
 import io.casehub.ledger.runtime.repository.LedgerMerkleFrontierRepository;
-import io.casehub.ledger.core.signing.AgentEntrySigner;
-import io.casehub.ledger.core.model.AttestationRecordedEvent;
 import io.casehub.ledger.runtime.service.LedgerEnricherPipeline;
 import io.casehub.ledger.runtime.service.LedgerMerklePublisher;
-import io.casehub.ledger.core.merkle.LedgerMerkleTree;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.enterprise.inject.Alternative;
@@ -565,5 +564,21 @@ public class JpaLedgerEntryRepository implements LedgerEntryRepository {
      */
     private void loadSupplements(final LedgerEntry entry) {
         loadSupplements(List.of(entry));
+    }
+
+    @Override
+    public List<LedgerEntry> findByTimeRange(final Instant from, final Instant to, final String tenancyId) {
+        return em.createNamedQuery("LedgerEntry.findByTenancyAndTimeRange", LedgerEntry.class)
+                 .setParameter("tenancyId", tenancyId)
+                 .setParameter("from", from)
+                 .setParameter("to", to)
+                 .getResultList();
+    }
+
+    @Override
+    public List<UUID> findDistinctSubjectIds(final String tenancyId) {
+        return em.createNamedQuery("LedgerEntry.findDistinctSubjectIds", UUID.class)
+                 .setParameter("tenancyId", tenancyId)
+                 .getResultList();
     }
 }

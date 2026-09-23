@@ -98,6 +98,12 @@ import java.util.UUID;
 @NamedQuery(
         name = "LedgerEntry.findBySubjectIdPaged",
         query = "SELECT e FROM LedgerEntry e WHERE e.subjectId = :subjectId AND e.sequenceNumber > :afterSequence AND e.tenancyId = :tenancyId ORDER BY e.sequenceNumber ASC")
+@NamedQuery(
+        name = "LedgerEntry.findByTenancyAndTimeRange",
+        query = "SELECT e FROM LedgerEntry e WHERE e.tenancyId = :tenancyId AND e.occurredAt >= :from AND e.occurredAt <= :to ORDER BY e.occurredAt ASC")
+@NamedQuery(
+        name = "LedgerEntry.findDistinctSubjectIds",
+        query = "SELECT DISTINCT e.subjectId FROM LedgerEntry e WHERE e.tenancyId = :tenancyId")
 @Entity(name = "LedgerEntry")
 @Inheritance(strategy = InheritanceType.JOINED)
 @DiscriminatorColumn(name = "dtype", discriminatorType = DiscriminatorType.STRING)
