@@ -847,7 +847,7 @@ Merkle Mountain Range with stored frontier — O(log N) storage, immediate inclu
 - **GDPR Art.22 compliance** — `ComplianceSupplement` carries algorithm reference, confidence score, contestation URI, human override availability
 - **W3C PROV-DM** — `LedgerProvExportService` maps entries/actors/causality to `prov:Entity`/`Agent`/`Activity` relations
 - **Retention** — `LedgerRetentionJob` daily sweep with configurable window; `LedgerEntryArchiver` serialises before deletion
-- **Compliance reporting** — `LedgerComplianceReportService.reportForActor()` produces `ComplianceReport` with Merkle root anchor
+- **Compliance reporting** — `LedgerComplianceReportService` produces `ComplianceReport` with Merkle root anchor (per-actor, per-subject, tenancy-level). `AuditTrailExportService` aggregates entries + Merkle verification + PROV-O export across all subjects in a tenancy. `MerkleVerificationBundleService` generates offline verification packages with embedded Python script. Opt-in `casehub-ledger-reporting` module adds Qute HTML templates, PDF rendering via platform `PdfGenerator`, and content negotiation (`OutputFormat`)
 
 Not closed here: agent identity binding verification (L6), trust scoring for attestation quality (L4).
 

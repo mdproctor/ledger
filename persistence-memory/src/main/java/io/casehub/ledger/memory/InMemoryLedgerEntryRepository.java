@@ -7,15 +7,14 @@ import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.api.spi.ActorIdentityProvider;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
-import io.casehub.ledger.runtime.config.LedgerConfig;
-import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
-import io.casehub.ledger.core.privacy.ContentSanitiser;
-import io.casehub.ledger.runtime.repository.LedgerMerkleFrontierRepository;
-import io.casehub.ledger.core.signing.AgentEntrySigner;
+import io.casehub.ledger.core.merkle.LedgerMerkleTree;
 import io.casehub.ledger.core.model.AttestationRecordedEvent;
+import io.casehub.ledger.core.privacy.ContentSanitiser;
+import io.casehub.ledger.core.signing.AgentEntrySigner;
+import io.casehub.ledger.runtime.config.LedgerConfig;
+import io.casehub.ledger.runtime.repository.LedgerMerkleFrontierRepository;
 import io.casehub.ledger.runtime.service.LedgerEnricherPipeline;
 import io.casehub.ledger.runtime.service.LedgerMerklePublisher;
-import io.casehub.ledger.core.merkle.LedgerMerkleTree;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
@@ -426,5 +425,23 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
         if (frontierRepo instanceof InMemoryLedgerMerkleFrontierRepository m) {
             m.clear();
         }
+    }
+
+    @Override
+    public List<LedgerEntry> findByTimeRange(final Instant from, final Instant to, final String tenancyId) {
+        return allEntries().stream()
+                           .filter(e -> tenancyId.equals(e.tenancyId))
+                           .filter(e -> e.occurredAt != null && !e.occurredAt.isBefore(from) && !e.occurredAt.isAfter(to))
+                           .sorted(java.util.Comparator.comparing(e -> e.occurredAt))
+                           .toList();
+    }
+
+    @Override
+    public List<UUID> findDistinctSubjectIds(final String tenancyId) {
+        return allEntries().stream()
+                           .filter(e -> tenancyId.equals(e.tenancyId))
+                           .map(e -> e.subjectId)
+                           .distinct()
+                           .toList();
     }
 }

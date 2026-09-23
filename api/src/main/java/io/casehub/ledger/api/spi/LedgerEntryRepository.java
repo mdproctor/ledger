@@ -212,5 +212,28 @@ public interface LedgerEntryRepository {
         return AttestationSummary.EMPTY;
     }
 
+    /**
+     * Return all ledger entries for the given tenancy whose {@code occurredAt} falls
+     * within [{@code from}, {@code to}] inclusive, ordered by {@code occurredAt} ascending.
+     *
+     * @param from      start of the time range (inclusive)
+     * @param to        end of the time range (inclusive)
+     * @param tenancyId the tenant scope
+     * @return ordered list; empty if none match
+     */
+    default List<LedgerEntry> findByTimeRange(Instant from, Instant to, String tenancyId) {
+        return List.of();
+    }
+
+    /**
+     * Return all distinct subject IDs that have at least one entry in the given tenancy.
+     *
+     * @param tenancyId the tenant scope
+     * @return list of distinct subject UUIDs; empty if none exist
+     */
+    default List<UUID> findDistinctSubjectIds(String tenancyId) {
+        return List.of();
+    }
+
 
 }

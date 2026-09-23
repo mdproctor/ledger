@@ -1,21 +1,20 @@
 package io.casehub.ledger.runtime.service;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.StringJoiner;
-import java.util.UUID;
-
+import io.casehub.ledger.api.model.LedgerEntry;
+import io.casehub.ledger.api.model.supplement.ComplianceSupplement;
+import io.casehub.ledger.api.model.supplement.ProvenanceSupplement;
+import io.casehub.ledger.api.spi.LedgerEntryRepository;
+import io.casehub.ledger.core.compliance.ComplianceReport;
+import io.casehub.ledger.core.compliance.ComplianceSummary;
+import io.casehub.ledger.core.compliance.DecisionRecord;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
-import io.casehub.ledger.api.model.LedgerEntry;
-import io.casehub.ledger.core.compliance.ComplianceReport;
-import io.casehub.ledger.core.compliance.DecisionRecord;
-import io.casehub.ledger.core.compliance.ReportFormat;
-import io.casehub.ledger.api.model.supplement.ComplianceSupplement;
-import io.casehub.ledger.api.model.supplement.ProvenanceSupplement;
-import io.casehub.ledger.api.spi.LedgerEntryRepository;
+import java.time.Instant;
+import java.util.List;
+import java.util.StringJoiner;
+import java.util.UUID;
 
 /**
  * CDI bean providing pre-formatted regulatory query output for GDPR Art.22 and
@@ -66,12 +65,13 @@ public class LedgerComplianceReportService {
             final String tenancyId) {
         final List<LedgerEntry> entries = repo.findByActorId(actorId, from, to, tenancyId);
         final List<DecisionRecord> decisions = entries.stream()
-                .filter(e -> e.compliance().isPresent())
-                .map(this::toDecisionRecord)
-                .toList();
+                                                      .filter(e -> e.compliance().isPresent())
+                                                      .map(this::toDecisionRecord)
+                                                      .toList();
 
-        final String merkleRoot = buildActorMerkleRoot(entries, tenancyId);
-        return new ComplianceReport(actorId, null, from, to, decisions.size(), decisions, merkleRoot);
+        final ComplianceSummary summary    = ComplianceSummary.fromDecisions(decisions);
+        final String            merkleRoot = buildActorMerkleRoot(entries, tenancyId);
+        return new ComplianceReport(actorId, null, tenancyId, from, to, decisions.size(), decisions, summary, merkleRoot);
     }
 
     /**
@@ -91,22 +91,41 @@ public class LedgerComplianceReportService {
             final String tenancyId) {
         final List<LedgerEntry> entries = repo.findBySubjectIdAndTimeRange(subjectId, from, to, tenancyId);
         final List<DecisionRecord> decisions = entries.stream()
-                .filter(e -> e.compliance().isPresent())
-                .map(this::toDecisionRecord)
-                .toList();
+                                                      .filter(e -> e.compliance().isPresent())
+                                                      .map(this::toDecisionRecord)
+                                                      .toList();
 
-        final String merkleRoot = resolveSubjectMerkleRoot(subjectId, tenancyId);
-        return new ComplianceReport(null, subjectId, from, to, decisions.size(), decisions, merkleRoot);
+        final ComplianceSummary summary    = ComplianceSummary.fromDecisions(decisions);
+        final String            merkleRoot = resolveSubjectMerkleRoot(subjectId, tenancyId);
+        return new ComplianceReport(null, subjectId, tenancyId, from, to, decisions.size(), decisions, summary, merkleRoot);
     }
+
+    @Transactional
+    public ComplianceReport reportForTenancy(
+            final String tenancyId, final Instant from, final Instant to) {
+        final List<LedgerEntry> entries = repo.findByTimeRange(from, to, tenancyId);
+        final List<DecisionRecord> decisions = entries.stream()
+                                                      .filter(e -> e.compliance().isPresent())
+                                                      .map(this::toDecisionRecord)
+                                                      .toList();
+        final ComplianceSummary summary    = ComplianceSummary.fromDecisions(decisions);
+        final String            merkleRoot = buildActorMerkleRoot(entries, tenancyId);
+        return new ComplianceReport(null, null, tenancyId, from, to,
+                                    decisions.size(), decisions, summary, merkleRoot);
+    }
+
 
     private DecisionRecord toDecisionRecord(final LedgerEntry entry) {
         final ComplianceSupplement cs = entry.compliance().orElseThrow();
         final ProvenanceSupplement ps = entry.provenance().orElse(null);
         return new DecisionRecord(
                 entry.id,
+                entry.getClass().getSimpleName(),
                 entry.occurredAt,
+                entry.actorId,
                 cs.algorithmRef,
                 cs.confidenceScore,
+                cs.planRef,
                 cs.contestationUri,
                 cs.humanOverrideAvailable,
                 ps != null ? ps.sourceEntityType : null,
@@ -114,8 +133,9 @@ public class LedgerComplianceReportService {
     }
 
     /**
-     * For an actor report, builds a semicolon-separated list of {@code subjectId=merkleRoot}
-     * pairs for all distinct subjects referenced in the report entries.
+     * Builds a semicolon-separated list of {@code subjectId=merkleRoot} pairs for all
+     * distinct subjects referenced in the given entries. Used by actor, subject, and
+     * tenancy-level reports.
      */
     private String buildActorMerkleRoot(final List<LedgerEntry> entries, final String tenancyId) {
         final List<UUID> subjectIds = entries.stream()

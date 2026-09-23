@@ -1,29 +1,27 @@
 package io.casehub.ledger.service;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import io.casehub.ledger.api.model.LedgerEntryType;
+import io.casehub.ledger.api.spi.LedgerEntryRepository;
+import io.casehub.ledger.core.compliance.ComplianceReport;
+import io.casehub.ledger.core.compliance.ReportFormat;
+import io.casehub.ledger.runtime.model.supplement.JpaComplianceSupplement;
+import io.casehub.ledger.runtime.model.supplement.JpaProvenanceSupplement;
+import io.casehub.ledger.runtime.service.LedgerComplianceReportService;
+import io.casehub.ledger.service.supplement.TestEntry;
+import io.casehub.platform.api.identity.ActorType;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
+import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
+import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
-import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
-
-import org.junit.jupiter.api.Test;
-
-import io.casehub.platform.api.identity.ActorType;
-import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.api.spi.LedgerEntryRepository;
-import io.casehub.ledger.core.compliance.ComplianceReport;
-import io.casehub.ledger.runtime.service.LedgerComplianceReportService;
-import io.casehub.ledger.core.compliance.ReportFormat;
-import io.casehub.ledger.runtime.model.supplement.JpaComplianceSupplement;
-import io.casehub.ledger.runtime.model.supplement.JpaProvenanceSupplement;
-import io.casehub.ledger.service.supplement.TestEntry;
-import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.TestProfile;
 import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Integration tests for {@link LedgerComplianceReportService}.
@@ -175,6 +173,45 @@ class LedgerComplianceReportServiceIT {
     }
 
     // ── fixtures ─────────────────────────────────────────────────────────────
+
+
+// ── Tenancy-level reporting ──────────────────────────────────────────
+
+    @Test
+    @Transactional
+    void tenancyReport_aggregatesAcrossSubjects() {
+        final UUID    subject1 = UUID.randomUUID();
+        final UUID    subject2 = UUID.randomUUID();
+        final Instant from     = Instant.now().minus(1, ChronoUnit.HOURS);
+        final Instant to       = Instant.now().plus(1, ChronoUnit.HOURS);
+
+        entryWithComplianceForSubject(subject1, "tenancy-actor-1", "alg-1", 0.9);
+        entryWithComplianceForSubject(subject2, "tenancy-actor-2", "alg-2", 0.8);
+        bareEntry("tenancy-actor-3");
+
+        final ComplianceReport report = reportService.reportForTenancy(DEFAULT_TENANT_ID, from, to);
+
+        assertThat(report.tenancyId()).isEqualTo(DEFAULT_TENANT_ID);
+        assertThat(report.actorId()).isNull();
+        assertThat(report.subjectId()).isNull();
+        assertThat(report.totalDecisions()).isGreaterThanOrEqualTo(2);
+        assertThat(report.summary()).isNotNull();
+        assertThat(report.summary().aiAssistedDecisions()).isGreaterThanOrEqualTo(2);
+    }
+
+    @Test
+    @Transactional
+    void tenancyReport_emptyTenancy_zeroCounts() {
+        final String  tenancyId = "empty-tenant-" + UUID.randomUUID();
+        final Instant from      = Instant.now().minus(1, ChronoUnit.HOURS);
+        final Instant to        = Instant.now().plus(1, ChronoUnit.HOURS);
+
+        final ComplianceReport report = reportService.reportForTenancy(tenancyId, from, to);
+
+        assertThat(report.totalDecisions()).isEqualTo(0);
+        assertThat(report.decisions()).isEmpty();
+        assertThat(report.summary().totalDecisions()).isEqualTo(0);
+    }
 
     private TestEntry entryWithCompliance(final String actorId, final String algorithmRef, final double confidence) {
         final TestEntry e = base(UUID.randomUUID(), actorId);

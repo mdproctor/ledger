@@ -3,6 +3,7 @@ package io.casehub.ledger.service.identity;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import io.casehub.platform.identity.WebDIDResolver;
+import io.casehub.platform.identity.WebDIDResolverProperties;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -40,7 +41,10 @@ class WebDIDResolverTest {
     @BeforeEach
     void setUp() {
         wm.resetAll();
-        resolver = new WebDIDResolver(5000, 1_048_576) {
+        resolver = new WebDIDResolver(new WebDIDResolverProperties() {
+            @Override public int timeoutMs() { return 5000; }
+            @Override public int maxResponseBytes() { return 1_048_576; }
+        }) {
             @Override
             protected boolean isAllowedHost(final String host) {
                 return true; // allow localhost in tests
@@ -67,7 +71,10 @@ class WebDIDResolverTest {
     @Test
     void rejectsBlockedHostsForSsrf() {
         // Use real resolver (no SSRF override) to confirm SSRF rejection
-        final WebDIDResolver real = new WebDIDResolver(5000, 1_048_576);
+        final WebDIDResolver real = new WebDIDResolver(new WebDIDResolverProperties() {
+            @Override public int timeoutMs() { return 5000; }
+            @Override public int maxResponseBytes() { return 1_048_576; }
+        });
         assertThat(real.resolve("test-actor", "did:web:localhost")).isEmpty();
         assertThat(real.resolve("test-actor", "did:web:127.0.0.1")).isEmpty();
         assertThat(real.resolve("test-actor", "did:web:192.168.1.1")).isEmpty();

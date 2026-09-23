@@ -24,6 +24,7 @@
     <module>testing</module>
     <module>rest</module>
     <module>graphql</module>
+    <module>reporting</module>
   </modules>
 
   <repositories>

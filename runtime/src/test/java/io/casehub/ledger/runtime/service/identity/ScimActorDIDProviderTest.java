@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.*;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import io.casehub.platform.identity.ScimActorDIDProvider;
 import io.casehub.platform.identity.ScimAgentLookup;
+import io.casehub.platform.identity.ScimAgentLookupProperties;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,8 +40,13 @@ class ScimActorDIDProviderTest {
     void setUp() {
         wm = new WireMockServer(wireMockConfig().dynamicPort());
         wm.start();
-        ScimAgentLookup lookup = new ScimAgentLookup(
-                "http://localhost:" + wm.port(), "test-token", 5000, Duration.ofMinutes(5), false);
+        ScimAgentLookup lookup = new ScimAgentLookup(new ScimAgentLookupProperties() {
+            @Override public java.util.Optional<String> endpoint() { return java.util.Optional.of("http://localhost:" + wm.port()); }
+            @Override public java.util.Optional<String> authToken() { return java.util.Optional.of("test-token"); }
+            @Override public int timeoutMs() { return 5000; }
+            @Override public int cacheTtlMinutes() { return 5; }
+            @Override public boolean requireHttps() { return false; }
+        });
         provider = new ScimActorDIDProvider(lookup);
     }
 
@@ -184,8 +190,13 @@ class ScimActorDIDProviderTest {
 
     @Test
     void httpsValidation_throwsForHttpEndpoint() {
-        final ScimAgentLookup httpLookup = new ScimAgentLookup(
-                "http://localhost:9090", "token", 5000, Duration.ofMinutes(5), true);
+        final ScimAgentLookup httpLookup = new ScimAgentLookup(new ScimAgentLookupProperties() {
+            @Override public java.util.Optional<String> endpoint() { return java.util.Optional.of("http://localhost:9090"); }
+            @Override public java.util.Optional<String> authToken() { return java.util.Optional.of("token"); }
+            @Override public int timeoutMs() { return 5000; }
+            @Override public int cacheTtlMinutes() { return 5; }
+            @Override public boolean requireHttps() { return true; }
+        });
         assertThatThrownBy(httpLookup::validate)
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("must use HTTPS");
@@ -193,8 +204,13 @@ class ScimActorDIDProviderTest {
 
     @Test
     void httpsValidation_passesForHttpsEndpoint() {
-        final ScimAgentLookup httpsLookup = new ScimAgentLookup(
-                "https://idp.example.com", "token", 5000, Duration.ofMinutes(5), true);
+        final ScimAgentLookup httpsLookup = new ScimAgentLookup(new ScimAgentLookupProperties() {
+            @Override public java.util.Optional<String> endpoint() { return java.util.Optional.of("https://idp.example.com"); }
+            @Override public java.util.Optional<String> authToken() { return java.util.Optional.of("token"); }
+            @Override public int timeoutMs() { return 5000; }
+            @Override public int cacheTtlMinutes() { return 5; }
+            @Override public boolean requireHttps() { return true; }
+        });
         assertThatCode(httpsLookup::validate).doesNotThrowAnyException();
     }
 }

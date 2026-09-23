@@ -136,6 +136,7 @@ in V1000–V1008 and always present when `casehub-ledger` is on the classpath.
 | Testing artifactId | `casehub-ledger-testing` |
 | REST artifactId | `casehub-ledger-rest` |
 | GraphQL artifactId | `casehub-ledger-graphql` |
+| Reporting artifactId | `casehub-ledger-reporting` |
 | Annotations artifactId | `casehub-ledger-annotations` / `casehub-ledger-annotations-deployment` |
 | Vault Transit artifactId | `casehub-ledger-vault-transit` / `casehub-ledger-vault-transit-quarkus` |
 | AWS KMS artifactId | `casehub-ledger-aws-kms` / `casehub-ledger-aws-kms-quarkus` |
@@ -400,7 +401,9 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── LedgerAnomalyDetected.java   — sealed interface: base type for all health-job anomaly CDI events (see #139)
 │       │   ├── LedgerSequenceGapDetected.java — record: (UUID subjectId, String tenancyId, long expectedCount, long actualCount) implements LedgerAnomalyDetected; fired on per-(subject,tenant) sequence gap
 │       │   ├── LedgerReconciliationMismatchDetected.java — record: (String entityType, long domainCount, long ledgerCount) implements LedgerAnomalyDetected; fired on reconciliation source count discrepancy
-│       │   ├── LedgerComplianceReportService.java — CDI bean: reportForActor / reportForSubject → ComplianceReport
+│       │   ├── MerkleVerificationBundleService.java — CDI bean: generates offline verification bundles (entry digests, MMR frontier, Python script)
+│       │   ├── LedgerComplianceReportService.java — CDI bean: reportForActor / reportForSubject / reportForTenancy → ComplianceReport
+│       │   ├── AuditTrailExportService.java     — CDI bean: tenancy-level audit trail with per-subject Merkle verification and PROV-O export
 │       │   ├── ComplianceReport.java        — value type: DecisionRecord list + Merkle anchor + format(ReportFormat)
 │       │   ├── DecisionRecord.java          — single automated decision entry in a compliance report
 │       │   ├── ReportFormat.java            — PLAIN_JSON | JSON_LD | CSV
@@ -514,6 +517,11 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
             ├── TrustScoreResponse.java
             ├── VerificationResponse.java
             └── LedgerDtoMapper.java             — entity → DTO conversion
+└── reporting/                            — opt-in compliance reporting: Qute HTML templates, PDF via platform PdfGenerator, content negotiation (plain JAR)
+    └── src/main/java/io/casehub/ledger/reporting/
+        ├── LedgerReportingService.java          — @ApplicationScoped: renders ComplianceReport and AuditTrailExport to JSON/CSV/HTML/PDF via OutputFormat
+        ├── OutputFormat.java                    — enum: JSON, JSON_LD, CSV, HTML, PDF (presentation-layer format; distinct from ledger-core ReportFormat)
+        └── ReportMediaType.java                 — static utility: fromAcceptHeader(String) → OutputFormat for content negotiation
 └── annotations/                          — annotation-driven audit, compliance, and attestation (Quarkus extension)
     ├── pom.xml                           — aggregator POM
     ├── runtime/                          → io.casehub:casehub-ledger-annotations
