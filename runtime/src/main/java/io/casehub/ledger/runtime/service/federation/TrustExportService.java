@@ -18,7 +18,7 @@ import io.casehub.ledger.core.federation.TrustExportPayload;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
-import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
+import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -112,16 +112,16 @@ public class TrustExportService {
         final GlobalScoreExport global = scores.stream()
                 .filter(s -> s.scoreType == ScoreType.GLOBAL)
                 .findFirst()
-                .map(s -> new GlobalScoreExport(s.alpha, s.beta, s.trustScore,
-                        s.decisionCount, s.attestationPositive, s.attestationNegative,
-                        s.lastComputedAt))
+                .map(s -> new GlobalScoreExport(s.alphaValue, s.betaValue, s.trustScore,
+                                                s.decisionCount, s.attestationPositive, s.attestationNegative,
+                                                s.lastComputedAt))
                 .orElse(null);
 
         final List<CapabilityScoreExport> capabilities = scores.stream()
                 .filter(s -> s.scoreType == ScoreType.CAPABILITY)
-                .map(s -> new CapabilityScoreExport(s.capabilityKey, s.alpha, s.beta, s.trustScore,
-                        s.decisionCount, s.attestationPositive, s.attestationNegative,
-                        s.lastComputedAt))
+                .map(s -> new CapabilityScoreExport(s.capabilityKey, s.alphaValue, s.betaValue, s.trustScore,
+                                                    s.decisionCount, s.attestationPositive, s.attestationNegative,
+                                                    s.lastComputedAt))
                 .collect(Collectors.toList());
 
         final List<DimensionScoreExport> dimensions = scores.stream()

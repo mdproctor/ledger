@@ -16,7 +16,7 @@ import io.casehub.ledger.api.model.ScoreType;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
-import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
+import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 
 /**
  * JPA / EntityManager implementation of {@link ActorTrustScoreRepository}.
@@ -121,8 +121,8 @@ public class JpaActorTrustScoreRepository implements ActorTrustScoreRepository {
         }
         score.actorType = actorType;
         score.trustScore = trustScore;
-        score.alpha = alpha;
-        score.beta = beta;
+        score.alphaValue    = alpha;
+        score.betaValue     = beta;
         score.decisionCount = decisionCount;
         score.overturnedCount = overturnedCount;
         score.attestationPositive = attestationPositive;

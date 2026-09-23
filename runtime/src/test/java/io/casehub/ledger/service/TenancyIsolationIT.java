@@ -5,7 +5,7 @@ import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.model.PlainLedgerEntry;
 import io.casehub.ledger.runtime.qualifier.CrossTenant;
-import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
+import io.casehub.ledger.api.spi.CrossTenantLedgerEntryRepository;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;

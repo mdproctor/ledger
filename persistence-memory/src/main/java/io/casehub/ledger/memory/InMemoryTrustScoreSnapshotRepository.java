@@ -11,7 +11,7 @@ import jakarta.enterprise.inject.Alternative;
 
 import io.casehub.ledger.api.model.ScoreType;
 import io.casehub.ledger.runtime.model.TrustScoreSnapshot;
-import io.casehub.ledger.runtime.repository.TrustScoreSnapshotRepository;
+import io.casehub.ledger.api.spi.TrustScoreSnapshotRepository;
 
 @Alternative
 @Priority(1)

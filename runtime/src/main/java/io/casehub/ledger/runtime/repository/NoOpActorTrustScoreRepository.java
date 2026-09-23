@@ -7,7 +7,8 @@ import java.util.Optional;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import io.casehub.ledger.api.model.ScoreType;
-import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.platform.api.identity.ActorType;
 import io.quarkus.arc.DefaultBean;
 
@@ -35,36 +36,36 @@ import io.quarkus.arc.DefaultBean;
 public class NoOpActorTrustScoreRepository implements ActorTrustScoreRepository {
 
     @Override
-    public Optional<ActorTrustScore> findByActorId(final String actorId) {
+    public Optional<ActorTrustScoreBase> findByActorId(final String actorId) {
         return Optional.empty();
     }
 
     @Override
-    public Optional<ActorTrustScore> findCapabilityScore(final String actorId,
+    public Optional<ActorTrustScoreBase> findCapabilityScore(final String actorId,
             final String capabilityTag) {
         return Optional.empty();
     }
 
     @Override
-    public Optional<ActorTrustScore> findDimensionScore(final String actorId,
+    public Optional<ActorTrustScoreBase> findDimensionScore(final String actorId,
             final String dimension) {
         return Optional.empty();
     }
 
     @Override
-    public Optional<ActorTrustScore> findCapabilityDimension(final String actorId,
+    public Optional<ActorTrustScoreBase> findCapabilityDimension(final String actorId,
             final String capabilityTag, final String dimension) {
         return Optional.empty();
     }
 
     @Override
-    public List<ActorTrustScore> findCapabilityDimensions(final String actorId,
+    public List<ActorTrustScoreBase> findCapabilityDimensions(final String actorId,
             final String capabilityTag) {
         return List.of();
     }
 
     @Override
-    public List<ActorTrustScore> findByActorIdAndScoreType(final String actorId,
+    public List<ActorTrustScoreBase> findByActorIdAndScoreType(final String actorId,
             final ScoreType scoreType) {
         return List.of();
     }
@@ -86,12 +87,12 @@ public class NoOpActorTrustScoreRepository implements ActorTrustScoreRepository 
     }
 
     @Override
-    public List<ActorTrustScore> findAll() {
+    public List<ActorTrustScoreBase> findAll() {
         return List.of();
     }
 
     @Override
-    public List<ActorTrustScore> findAllByLastComputedAtAfter(final Instant since) {
+    public List<ActorTrustScoreBase> findAllByLastComputedAtAfter(final Instant since) {
         return List.of();
     }
 }

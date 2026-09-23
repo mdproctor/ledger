@@ -1,5 +1,6 @@
 package io.casehub.ledger.runtime.qualifier;
 
+import io.casehub.ledger.api.spi.CrossTenantLedgerEntryRepository;
 import jakarta.inject.Qualifier;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -9,7 +10,7 @@ import java.lang.annotation.Target;
 /**
  * CDI qualifier for cross-tenant data access where a tenant-scoped variant exists.
  *
- * <p>Applied to implementations of {@link io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository}
+ * <p>Applied to implementations of {@link CrossTenantLedgerEntryRepository}
  * and its reactive counterpart. The qualifier disambiguates between the tenant-scoped
  * {@link io.casehub.ledger.api.spi.LedgerEntryRepository} and the cross-tenant variant.
  * Unqualified injection of {@code CrossTenantLedgerEntryRepository} fails at startup —

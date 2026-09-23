@@ -1,9 +1,9 @@
-package io.casehub.ledger.runtime.repository;
+package io.casehub.ledger.api.spi;
 
 import java.util.List;
 import java.util.UUID;
 
-import io.casehub.ledger.core.merkle.LedgerMerkleTree;
+
 import io.casehub.ledger.api.model.LedgerMerkleFrontier;
 
 /**
@@ -42,7 +42,7 @@ public interface LedgerMerkleFrontierRepository {
      *
      * @param subjectId   the aggregate identifier
      * @param newFrontier the complete new frontier; computed by
-     *                    {@link LedgerMerkleTree#append}
+     *                    {@code LedgerMerkleTree.append()}
      * @param tenancyId the tenant scope
      */
     void replace(UUID subjectId, List<? extends io.casehub.ledger.api.model.LedgerMerkleFrontier> newFrontier, String tenancyId);

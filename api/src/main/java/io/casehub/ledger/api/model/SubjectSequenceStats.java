@@ -1,4 +1,4 @@
-package io.casehub.ledger.core.model;
+package io.casehub.ledger.api.model;
 
 import java.util.UUID;
 

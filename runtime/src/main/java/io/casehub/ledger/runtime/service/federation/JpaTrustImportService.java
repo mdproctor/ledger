@@ -10,7 +10,7 @@ import io.casehub.ledger.core.federation.CapabilityScoreExport;
 import io.casehub.ledger.core.federation.DimensionScoreExport;
 import io.casehub.ledger.core.federation.GlobalScoreExport;
 import io.casehub.ledger.core.federation.TrustImportService;
-import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
+import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;

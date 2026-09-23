@@ -193,6 +193,86 @@
         </attributes>
     </mapped-superclass>
 
+    <!-- ActorTrustScoreBase: api-tier trust score fields -->
+    <mapped-superclass class="io.casehub.ledger.api.model.ActorTrustScoreBase" access="FIELD">
+        <attributes>
+            <id name="id"/>
+            <basic name="actorId">
+                <column name="actor_id" nullable="false"/>
+            </basic>
+            <basic name="scoreType">
+                <column name="score_type" nullable="false"/>
+                <enumerated>STRING</enumerated>
+            </basic>
+            <basic name="capabilityKey">
+                <column name="capability_key"/>
+            </basic>
+            <basic name="dimensionKey">
+                <column name="dimension_key"/>
+            </basic>
+            <basic name="actorType">
+                <column name="actor_type"/>
+                <enumerated>STRING</enumerated>
+            </basic>
+            <basic name="trustScore">
+                <column name="trust_score"/>
+            </basic>
+            <basic name="alphaValue">
+                <column name="alpha_value"/>
+            </basic>
+            <basic name="betaValue">
+                <column name="beta_value"/>
+            </basic>
+            <basic name="decisionCount">
+                <column name="decision_count"/>
+            </basic>
+            <basic name="overturnedCount">
+                <column name="overturned_count"/>
+            </basic>
+            <basic name="attestationPositive">
+                <column name="attestation_positive"/>
+            </basic>
+            <basic name="attestationNegative">
+                <column name="attestation_negative"/>
+            </basic>
+            <basic name="lastComputedAt">
+                <column name="last_computed_at"/>
+            </basic>
+            <basic name="globalTrustScore">
+                <column name="global_trust_score"/>
+            </basic>
+        </attributes>
+    </mapped-superclass>
+
+    <!-- TrustScoreSnapshotBase: api-tier snapshot fields -->
+    <mapped-superclass class="io.casehub.ledger.api.model.TrustScoreSnapshotBase" access="FIELD">
+        <attributes>
+            <id name="id"/>
+            <basic name="actorId">
+                <column name="actor_id" nullable="false"/>
+            </basic>
+            <basic name="scoreType">
+                <column name="score_type" nullable="false"/>
+                <enumerated>STRING</enumerated>
+            </basic>
+            <basic name="capabilityTag">
+                <column name="capability_tag"/>
+            </basic>
+            <basic name="dimensionKey">
+                <column name="dimension_key"/>
+            </basic>
+            <basic name="score">
+                <column name="score" nullable="false"/>
+            </basic>
+            <basic name="previousScore">
+                <column name="previous_score" nullable="false"/>
+            </basic>
+            <basic name="occurredAt">
+                <column name="occurred_at" nullable="false"/>
+            </basic>
+        </attributes>
+    </mapped-superclass>
+
     <!-- CompensationSupplement: api-tier compensation fields -->
     <mapped-superclass class="io.casehub.ledger.api.model.supplement.CompensationSupplement" access="FIELD">
         <attributes>

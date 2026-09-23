@@ -24,7 +24,7 @@ import io.casehub.ledger.runtime.model.LedgerEntryArchiveRecord;
 import io.casehub.ledger.runtime.model.jpa.JpaLedgerEntry;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 import io.casehub.ledger.runtime.qualifier.CrossTenant;
-import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
+import io.casehub.ledger.api.spi.CrossTenantLedgerEntryRepository;
 import io.quarkus.scheduler.Scheduled;
 
 /**

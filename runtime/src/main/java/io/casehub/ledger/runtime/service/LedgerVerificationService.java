@@ -12,7 +12,7 @@ import jakarta.transaction.Transactional;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.api.model.LedgerMerkleFrontier;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
-import io.casehub.ledger.runtime.repository.LedgerMerkleFrontierRepository;
+import io.casehub.ledger.api.spi.LedgerMerkleFrontierRepository;
 import io.casehub.ledger.core.merkle.InclusionProof;
 
 /**

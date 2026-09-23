@@ -10,7 +10,7 @@ import jakarta.persistence.EntityManager;
 
 import io.casehub.ledger.runtime.model.TrustScoreSnapshot;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
-import io.casehub.ledger.runtime.repository.TrustScoreSnapshotRepository;
+import io.casehub.ledger.api.spi.TrustScoreSnapshotRepository;
 
 @ApplicationScoped
 @Alternative

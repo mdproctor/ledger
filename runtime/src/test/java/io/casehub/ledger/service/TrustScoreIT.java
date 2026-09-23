@@ -68,8 +68,8 @@ class TrustScoreIT {
         final ActorTrustScore score = trustRepo.findByActorId(actorId).orElse(null);
         assertThat(score).isNotNull();
         assertThat(score.trustScore).isCloseTo(0.5, within(0.01));
-        assertThat(score.alpha).isCloseTo(1.0, within(0.01));
-        assertThat(score.beta).isCloseTo(1.0, within(0.01));
+        assertThat(score.alphaValue).isCloseTo(1.0, within(0.01));
+        assertThat(score.betaValue).isCloseTo(1.0, within(0.01));
         assertThat(score.decisionCount).isEqualTo(2);
     }
 
@@ -90,7 +90,7 @@ class TrustScoreIT {
         final ActorTrustScore score = trustRepo.findByActorId(actorId).orElse(null);
         assertThat(score).isNotNull();
         assertThat(score.trustScore).isGreaterThan(0.75);
-        assertThat(score.alpha).isGreaterThan(score.beta);
+        assertThat(score.alphaValue).isGreaterThan(score.betaValue);
         assertThat(score.attestationPositive).isEqualTo(3);
         assertThat(score.attestationNegative).isEqualTo(0);
     }
@@ -111,7 +111,7 @@ class TrustScoreIT {
         final ActorTrustScore score = trustRepo.findByActorId(actorId).orElse(null);
         assertThat(score).isNotNull();
         assertThat(score.trustScore).isLessThan(0.4);
-        assertThat(score.beta).isGreaterThan(score.alpha);
+        assertThat(score.betaValue).isGreaterThan(score.alphaValue);
         assertThat(score.overturnedCount).isEqualTo(2);
     }
 
@@ -133,8 +133,8 @@ class TrustScoreIT {
         final ActorTrustScore score = trustRepo.findByActorId(actorId).orElse(null);
         assertThat(score).isNotNull();
         assertThat(score.trustScore).isCloseTo(2.0 / 3.0, within(0.02));
-        assertThat(score.alpha).isCloseTo(2.0, within(0.05));
-        assertThat(score.beta).isCloseTo(1.0, within(0.05));
+        assertThat(score.alphaValue).isCloseTo(2.0, within(0.05));
+        assertThat(score.betaValue).isCloseTo(1.0, within(0.05));
     }
 
     // ── End-to-end: recency — old negative, recent positive → score > 0.5 ────

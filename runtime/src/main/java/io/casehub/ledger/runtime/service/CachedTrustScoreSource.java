@@ -14,7 +14,7 @@ import jakarta.inject.Inject;
 import io.casehub.ledger.api.model.ScoreType;
 import io.casehub.ledger.api.spi.TrustScoreSource;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
-import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
+import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.casehub.ledger.runtime.service.routing.TrustScoreActorUpdatedEvent;
 import io.casehub.ledger.runtime.service.routing.TrustScoreFullPayload;
 

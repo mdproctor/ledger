@@ -14,7 +14,7 @@ import io.quarkus.arc.DefaultBean;
 import io.casehub.ledger.api.model.ScoreType;
 import io.casehub.ledger.api.spi.TrustScoreSource;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
-import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
+import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 
 /**
  * Default {@link TrustScoreSource}: reads pre-computed scores from {@link ActorTrustScoreRepository}.

@@ -3,6 +3,7 @@ package io.casehub.ledger.runtime.repository;
 import java.util.List;
 import java.util.UUID;
 
+import io.casehub.ledger.api.spi.LedgerMerkleFrontierRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import io.casehub.ledger.api.model.LedgerMerkleFrontier;

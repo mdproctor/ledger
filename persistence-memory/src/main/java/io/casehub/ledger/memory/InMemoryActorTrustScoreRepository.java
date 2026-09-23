@@ -13,7 +13,7 @@ import jakarta.enterprise.inject.Alternative;
 
 import io.casehub.ledger.api.model.ScoreType;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
-import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
+import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.casehub.platform.api.identity.ActorType;
 
 @Alternative
@@ -95,8 +95,8 @@ public class InMemoryActorTrustScoreRepository implements ActorTrustScoreReposit
             }
             score.actorType = actorType;
             score.trustScore = trustScore;
-            score.alpha = alpha;
-            score.beta = beta;
+            score.alphaValue    = alpha;
+            score.betaValue     = beta;
             score.decisionCount = decisionCount;
             score.overturnedCount = overturnedCount;
             score.attestationPositive = attestationPositive;

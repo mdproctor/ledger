@@ -3,6 +3,7 @@ package io.casehub.ledger.runtime.repository;
 import java.time.Instant;
 import java.util.List;
 
+import io.casehub.ledger.api.spi.TrustScoreSnapshotRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import io.casehub.ledger.runtime.model.TrustScoreSnapshot;

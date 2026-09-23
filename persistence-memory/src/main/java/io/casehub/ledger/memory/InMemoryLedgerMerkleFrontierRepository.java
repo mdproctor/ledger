@@ -11,7 +11,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
 
 import io.casehub.ledger.api.model.LedgerMerkleFrontier;
-import io.casehub.ledger.runtime.repository.LedgerMerkleFrontierRepository;
+import io.casehub.ledger.api.spi.LedgerMerkleFrontierRepository;
 
 @Alternative
 @Priority(1)

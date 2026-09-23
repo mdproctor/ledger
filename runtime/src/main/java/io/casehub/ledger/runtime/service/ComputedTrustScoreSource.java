@@ -22,7 +22,7 @@ import io.casehub.ledger.api.spi.TrustScoreSource;
 import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.runtime.qualifier.CrossTenant;
-import io.casehub.ledger.runtime.repository.CrossTenantLedgerEntryRepository;
+import io.casehub.ledger.api.spi.CrossTenantLedgerEntryRepository;
 
 /**
  * On-read {@link TrustScoreSource}: computes trust scores from raw attestation history

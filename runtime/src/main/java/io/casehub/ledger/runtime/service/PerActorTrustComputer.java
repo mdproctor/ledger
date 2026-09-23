@@ -9,8 +9,8 @@ import io.casehub.ledger.core.trust.TrustScoreComputer;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
 import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.runtime.model.TrustScoreSnapshot;
-import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
-import io.casehub.ledger.runtime.repository.TrustScoreSnapshotRepository;
+import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
+import io.casehub.ledger.api.spi.TrustScoreSnapshotRepository;
 
 import io.casehub.platform.api.identity.ActorType;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -152,8 +152,8 @@ class PerActorTrustComputer {
         s.trustScore = score.trustScore();
         s.decisionCount = score.decisionCount();
         s.overturnedCount = score.overturnedCount();
-        s.alpha = score.alpha();
-        s.beta = score.beta();
+        s.alphaValue          = score.alpha();
+        s.betaValue           = score.beta();
         s.attestationPositive = score.attestationPositive();
         s.attestationNegative = score.attestationNegative();
         s.lastComputedAt = now;
@@ -176,8 +176,8 @@ class PerActorTrustComputer {
         s.trustScore = score;
         s.decisionCount = decisionCount;
         s.overturnedCount = 0;
-        s.alpha = 0.0;
-        s.beta = 0.0;
+        s.alphaValue          = 0.0;
+        s.betaValue           = 0.0;
         s.attestationPositive = positive;
         s.attestationNegative = negative;
         s.lastComputedAt = now;

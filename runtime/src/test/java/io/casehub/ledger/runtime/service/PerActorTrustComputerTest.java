@@ -65,8 +65,8 @@ class PerActorTrustComputerTest {
         assertThat(global).isNotNull();
         assertThat(global.scoreType).isEqualTo(ScoreType.GLOBAL);
         assertThat(global.trustScore).isCloseTo(0.5, within(0.01));
-        assertThat(global.alpha).isCloseTo(1.0, within(0.01));
-        assertThat(global.beta).isCloseTo(1.0, within(0.01));
+        assertThat(global.alphaValue).isCloseTo(1.0, within(0.01));
+        assertThat(global.betaValue).isCloseTo(1.0, within(0.01));
         // Only GLOBAL row produced — no capability/dimension attestations
         assertThat(trustRepo.allScores()).hasSize(1);
     }
@@ -86,7 +86,7 @@ class PerActorTrustComputerTest {
         final ActorTrustScore global = trustRepo.findByActorId(actorId).orElse(null);
         assertThat(global).isNotNull();
         assertThat(global.trustScore).isGreaterThan(0.6);
-        assertThat(global.alpha).isGreaterThan(global.beta);
+        assertThat(global.alphaValue).isGreaterThan(global.betaValue);
         assertThat(global.attestationPositive).isEqualTo(1);
         assertThat(global.attestationNegative).isEqualTo(0);
     }
@@ -175,7 +175,7 @@ class PerActorTrustComputerTest {
         assertThat(capScore).isPresent();
         assertThat(capScore.get().scoreType).isEqualTo(ScoreType.CAPABILITY);
         assertThat(capScore.get().trustScore).isLessThan(0.5);
-        assertThat(capScore.get().beta).isGreaterThan(capScore.get().alpha);
+        assertThat(capScore.get().betaValue).isGreaterThan(capScore.get().alphaValue);
         assertThat(capScore.get().attestationNegative).isEqualTo(1);
     }
 
@@ -208,8 +208,8 @@ class PerActorTrustComputerTest {
 
         final Optional<ActorTrustScore> capScore = trustRepo.findCapabilityScore(actorId, "security-review");
         assertThat(capScore).isPresent();
-        assertThat(capScore.get().beta).as("FLAGGED must increment beta beyond prior")
-                .isGreaterThan(1.0);
+        assertThat(capScore.get().betaValue).as("FLAGGED must increment beta beyond prior")
+                                            .isGreaterThan(1.0);
         assertThat(capScore.get().trustScore).as("FLAGGED must decrease capability score")
                 .isLessThan(0.9);
         assertThat(capScore.get().attestationNegative).as("FLAGGED attestation must be counted")
@@ -248,8 +248,8 @@ class PerActorTrustComputerTest {
         final Optional<ActorTrustScore> capScore = trustRepo.findCapabilityScore(actorId, "security-review");
         assertThat(capScore).isPresent();
         // The FLAGGED attestation must increment beta — not be masked by aggregation
-        assertThat(capScore.get().beta).as("FLAGGED on same entry must still increment beta")
-                .isGreaterThan(1.0);
+        assertThat(capScore.get().betaValue).as("FLAGGED on same entry must still increment beta")
+                                            .isGreaterThan(1.0);
         assertThat(capScore.get().attestationNegative).as("FLAGGED must be counted")
                 .isGreaterThanOrEqualTo(1);
         // Score must be lower than pure-SOUND (11/12 = 0.917)
@@ -377,8 +377,8 @@ class PerActorTrustComputerTest {
                 }
                 score.actorType = actorType;
                 score.trustScore = trustScore;
-                score.alpha = alpha;
-                score.beta = beta;
+                score.alphaValue    = alpha;
+                score.betaValue     = beta;
                 score.decisionCount = decisionCount;
                 score.overturnedCount = overturnedCount;
                 score.attestationPositive = attestationPositive;

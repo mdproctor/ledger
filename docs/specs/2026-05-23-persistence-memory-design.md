@@ -25,7 +25,7 @@ can be correct: frontier SPI extraction, enricher pipeline extraction, and two r
 
 ### 1a. `LedgerMerkleFrontierRepository` SPI
 
-New file: `runtime/src/main/java/io/casehub/ledger/runtime/repository/LedgerMerkleFrontierRepository.java`
+New file: `../../api/src/main/java/io/casehub/ledger/api/spi/LedgerMerkleFrontierRepository.java`
 
 ```java
 public interface LedgerMerkleFrontierRepository {
