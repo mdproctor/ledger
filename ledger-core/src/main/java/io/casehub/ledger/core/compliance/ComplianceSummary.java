@@ -26,6 +26,6 @@ public record ComplianceSummary(
                 byType.merge(d.entryType(), 1, Integer::sum);
             }
         }
-        return new ComplianceSummary(decisions.size(), aiAssisted, humanOverride, Map.copyOf(byType));
+        return new ComplianceSummary(decisions.size(), aiAssisted, humanOverride, java.util.Collections.unmodifiableMap(byType));
     }
 }

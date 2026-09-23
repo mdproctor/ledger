@@ -133,8 +133,9 @@ public class LedgerComplianceReportService {
     }
 
     /**
-     * For an actor report, builds a semicolon-separated list of {@code subjectId=merkleRoot}
-     * pairs for all distinct subjects referenced in the report entries.
+     * Builds a semicolon-separated list of {@code subjectId=merkleRoot} pairs for all
+     * distinct subjects referenced in the given entries. Used by actor, subject, and
+     * tenancy-level reports.
      */
     private String buildActorMerkleRoot(final List<LedgerEntry> entries, final String tenancyId) {
         final List<UUID> subjectIds = entries.stream()

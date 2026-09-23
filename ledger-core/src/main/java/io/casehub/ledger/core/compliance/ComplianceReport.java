@@ -37,7 +37,15 @@ public record ComplianceReport(
             sb.append("  \"summary\": {\n");
             sb.append("    \"totalDecisions\": ").append(summary.totalDecisions()).append(",\n");
             sb.append("    \"aiAssistedDecisions\": ").append(summary.aiAssistedDecisions()).append(",\n");
-            sb.append("    \"humanOverrideCount\": ").append(summary.humanOverrideCount()).append("\n");
+            sb.append("    \"humanOverrideCount\": ").append(summary.humanOverrideCount()).append(",\n");
+            sb.append("    \"decisionsByType\": {");
+            final var byType = summary.decisionsByType();
+            int idx = 0;
+            for (final var entry : byType.entrySet()) {
+                sb.append(jsonStr(entry.getKey())).append(": ").append(entry.getValue());
+                if (++idx < byType.size()) sb.append(", ");
+            }
+            sb.append("}\n");
             sb.append("  },\n");
         }
         sb.append("  \"decisions\": [\n");
