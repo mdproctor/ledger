@@ -403,6 +403,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── LedgerReconciliationMismatchDetected.java — record: (String entityType, long domainCount, long ledgerCount) implements LedgerAnomalyDetected; fired on reconciliation source count discrepancy
 │       │   ├── MerkleVerificationBundleService.java — CDI bean: generates offline verification bundles (entry digests, MMR frontier, Python script)
 │       │   ├── LedgerComplianceReportService.java — CDI bean: reportForActor / reportForSubject / reportForTenancy → ComplianceReport
+│       │   ├── AuditTrailExportService.java     — CDI bean: tenancy-level audit trail with per-subject Merkle verification and PROV-O export
 │       │   ├── ComplianceReport.java        — value type: DecisionRecord list + Merkle anchor + format(ReportFormat)
 │       │   ├── DecisionRecord.java          — single automated decision entry in a compliance report
 │       │   ├── ReportFormat.java            — PLAIN_JSON | JSON_LD | CSV
