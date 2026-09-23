@@ -100,6 +100,21 @@ public class LedgerComplianceReportService {
         return new ComplianceReport(null, subjectId, tenancyId, from, to, decisions.size(), decisions, summary, merkleRoot);
     }
 
+    @Transactional
+    public ComplianceReport reportForTenancy(
+            final String tenancyId, final Instant from, final Instant to) {
+        final List<LedgerEntry> entries = repo.findByTimeRange(from, to, tenancyId);
+        final List<DecisionRecord> decisions = entries.stream()
+                                                      .filter(e -> e.compliance().isPresent())
+                                                      .map(this::toDecisionRecord)
+                                                      .toList();
+        final ComplianceSummary summary    = ComplianceSummary.fromDecisions(decisions);
+        final String            merkleRoot = buildActorMerkleRoot(entries, tenancyId);
+        return new ComplianceReport(null, null, tenancyId, from, to,
+                                    decisions.size(), decisions, summary, merkleRoot);
+    }
+
+
     private DecisionRecord toDecisionRecord(final LedgerEntry entry) {
         final ComplianceSupplement cs = entry.compliance().orElseThrow();
         final ProvenanceSupplement ps = entry.provenance().orElse(null);
