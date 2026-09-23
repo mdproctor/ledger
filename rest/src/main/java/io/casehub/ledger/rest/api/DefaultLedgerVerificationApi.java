@@ -11,7 +11,7 @@ import jakarta.inject.Inject;
 
 import java.util.UUID;
 
-@McpDomain(value = "ledger/verification", basePath = "/api/v1/ledger")
+@McpDomain(value = "ledger/verification", app = "ledger", basePath = "/api/v1/ledger", summary = "Merkle tree integrity verification and inclusion proofs")
 @ApplicationScoped
 public class DefaultLedgerVerificationApi {
 

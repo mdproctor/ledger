@@ -10,7 +10,7 @@ import io.casehub.platform.api.mcp.PlatformQuery;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
-@McpDomain(value = "ledger/trust", basePath = "/api/v1/ledger/trust")
+@McpDomain(value = "ledger/trust", app = "ledger", basePath = "/api/v1/ledger/trust", summary = "Trust score queries — global, capability, and dimension scores")
 @ApplicationScoped
 public class DefaultLedgerTrustApi {
 

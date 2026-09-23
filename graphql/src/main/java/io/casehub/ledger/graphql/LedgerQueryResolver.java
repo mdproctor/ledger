@@ -26,7 +26,7 @@ import org.eclipse.microprofile.graphql.GraphQLApi;
 import org.eclipse.microprofile.graphql.Query;
 
 @GraphQLApi
-@McpDomain("ledger")
+@McpDomain(value = "ledger/model", app = "ledger", summary = "Ledger domain model enrichment and state")
 @ApplicationScoped
 public class LedgerQueryResolver {
 

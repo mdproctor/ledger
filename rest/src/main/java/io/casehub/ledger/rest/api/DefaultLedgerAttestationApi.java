@@ -15,7 +15,7 @@ import jakarta.inject.Inject;
 import java.util.List;
 import java.util.UUID;
 
-@McpDomain("ledger/attestations")
+@McpDomain(value = "ledger/attestations", app = "ledger", summary = "Peer attestation lifecycle — create and query attestations")
 @ApplicationScoped
 public class DefaultLedgerAttestationApi {
 

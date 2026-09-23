@@ -18,7 +18,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-@McpDomain(value = "ledger/entries", basePath = "/api/v1/ledger")
+@McpDomain(value = "ledger/entries", app = "ledger", basePath = "/api/v1/ledger", summary = "Ledger entry queries — by subject, actor, or ID with causal chain")
 @ApplicationScoped
 public class DefaultLedgerEntryApi {
 

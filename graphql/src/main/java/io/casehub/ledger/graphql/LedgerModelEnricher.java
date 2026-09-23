@@ -5,7 +5,7 @@ import io.casehub.platform.api.mcp.ModelEnricher;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.Map;
 
-@McpDomain("ledger")
+@McpDomain(value = "ledger/model", app = "ledger", summary = "Ledger domain model enrichment and state")
 @ApplicationScoped
 public class LedgerModelEnricher implements ModelEnricher {
 
