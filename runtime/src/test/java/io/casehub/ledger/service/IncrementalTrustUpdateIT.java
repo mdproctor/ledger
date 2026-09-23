@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.CapabilityTag;
 import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
@@ -83,7 +83,7 @@ class IncrementalTrustUpdateIT {
         });
 
         // Score should now exist — incremental recomputation ran
-        final ActorTrustScore score = readGlobalScore(actorId);
+        final ActorTrustScoreBase score = readGlobalScore(actorId);
         assertThat(score).isNotNull();
         assertThat(score.trustScore).isGreaterThan(0.5);
         assertThat(score.decisionCount).isEqualTo(2);
@@ -131,7 +131,7 @@ class IncrementalTrustUpdateIT {
     /**
      * Reads the GLOBAL trust score in its own transaction.
      */
-    private ActorTrustScore readGlobalScore(final String actorId) {
+    private ActorTrustScoreBase readGlobalScore(final String actorId) {
         return QuarkusTransaction.requiringNew()
                 .call(() -> trustRepo.findByActorId(actorId).orElse(null));
     }
@@ -139,7 +139,7 @@ class IncrementalTrustUpdateIT {
     /**
      * Reads a CAPABILITY trust score in its own transaction.
      */
-    private java.util.Optional<ActorTrustScore> readCapabilityScore(
+    private java.util.Optional<ActorTrustScoreBase> readCapabilityScore(
             final String actorId, final String capabilityTag) {
         return QuarkusTransaction.requiringNew()
                 .call(() -> trustRepo.findCapabilityScore(actorId, capabilityTag));

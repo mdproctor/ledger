@@ -14,7 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.AttestationVerdict;
-import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.ledger.runtime.service.TrustScoreJob;
@@ -77,7 +77,7 @@ class TrustScoreRoutingDisabledIT {
 
         trustScoreJob.runComputation();
 
-        final ActorTrustScore score = trustRepo.findByActorId(actorId).orElse(null);
+        final ActorTrustScoreBase score = trustRepo.findByActorId(actorId).orElse(null);
         assertThat(score).isNotNull();
         assertThat(score.trustScore).isGreaterThan(0.5);
     }

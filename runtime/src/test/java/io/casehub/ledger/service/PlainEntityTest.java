@@ -7,7 +7,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.LedgerEntry;
-import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.model.LedgerEntryArchiveRecord;
 import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
@@ -28,7 +28,7 @@ class PlainEntityTest {
     private static final List<Class<?>> JPA_ENTITIES = List.of(
             LedgerMerkleFrontier.class,
             LedgerAttestation.class,
-            ActorTrustScore.class,
+            ActorTrustScoreBase.class,
             LedgerEntryArchiveRecord.class,
             JpaComplianceSupplement.class,
             JpaProvenanceSupplement.class);

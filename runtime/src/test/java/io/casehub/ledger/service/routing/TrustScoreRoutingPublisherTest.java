@@ -8,7 +8,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
-import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.runtime.service.routing.TrustScoreDelta;
 import io.casehub.ledger.runtime.service.routing.TrustScoreRoutingPublisher;
 
@@ -16,9 +16,9 @@ class TrustScoreRoutingPublisherTest {
 
     // ── Fixture ───────────────────────────────────────────────────────────────
 
-    private static ActorTrustScore score(final String actorId,
+    private static ActorTrustScoreBase score(final String actorId,
             final double trustScore, final double globalScore) {
-        final ActorTrustScore s = new ActorTrustScore();
+        final ActorTrustScoreBase s = new ActorTrustScoreBase();
         s.actorId = actorId;
         s.trustScore = trustScore;
         s.globalTrustScore = globalScore;
@@ -32,7 +32,7 @@ class TrustScoreRoutingPublisherTest {
         final var current = List.of(
                 score("agent-a", 0.7, 0.4),
                 score("agent-b", 0.3, 0.1));
-        final var previous = Map.<String, ActorTrustScore> of();
+        final var previous = Map.<String, ActorTrustScoreBase> of();
 
         final var deltas = TrustScoreRoutingPublisher.computeDeltas(current, previous, 0.01);
 

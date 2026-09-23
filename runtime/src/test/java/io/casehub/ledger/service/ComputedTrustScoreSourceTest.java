@@ -2,15 +2,15 @@ package io.casehub.ledger.service;
 
 import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.CapabilityTag;
+import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.core.trust.NoOpAttestorCredibilityPolicy;
-import io.casehub.ledger.runtime.model.LedgerAttestation;
+import io.casehub.ledger.api.model.SubjectSequenceStats;
 import io.casehub.ledger.api.spi.CrossTenantLedgerEntryRepository;
 import io.casehub.ledger.core.trust.AllAttestationsGlobalStrategy;
-import io.casehub.ledger.runtime.service.ComputedTrustScoreSource;
+import io.casehub.ledger.core.trust.NoOpAttestorCredibilityPolicy;
 import io.casehub.ledger.core.trust.TrustScoreCalculator;
-import io.casehub.ledger.api.model.SubjectSequenceStats;
+import io.casehub.ledger.runtime.service.ComputedTrustScoreSource;
 import io.casehub.platform.api.identity.ActorType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -323,5 +323,8 @@ class ComputedTrustScoreSourceTest {
         @Override public List<LedgerEntry> findAllEvents() { return entries.stream().filter(e -> e.entryType == LedgerEntryType.EVENT).toList(); }
         @Override public List<LedgerEntry> findByTimeRange(final Instant f, final Instant t) { return List.of(); }
         @Override public List<SubjectSequenceStats> findSequenceStats() { return List.of(); }
+
+        @Override
+        public long countByActorId(final String actorId, final String tenancyId) {return 0L;}
     }
 }

@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 import io.casehub.ledger.api.model.ScoreType;
 import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.CapabilityTag;
-import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.ledger.core.trust.TrustGateService;
@@ -63,14 +63,14 @@ class TrustScoreCapabilityIT {
 
         trustScoreJob.runComputation();
 
-        final List<ActorTrustScore> capScores = trustRepo.findByActorIdAndScoreType(actorId, ScoreType.CAPABILITY);
+        final List<ActorTrustScoreBase> capScores = trustRepo.findByActorIdAndScoreType(actorId, ScoreType.CAPABILITY);
         assertThat(capScores).hasSize(2);
 
-        final ActorTrustScore secScore = capScores.stream()
+        final ActorTrustScoreBase secScore = capScores.stream()
                 .filter(s -> "security-review".equals(s.capabilityKey)).findFirst().orElseThrow();
         assertThat(secScore.trustScore).isGreaterThan(0.6);
 
-        final ActorTrustScore styleScore = capScores.stream()
+        final ActorTrustScoreBase styleScore = capScores.stream()
                 .filter(s -> "style-review".equals(s.capabilityKey)).findFirst().orElseThrow();
         assertThat(styleScore.trustScore).isLessThan(0.5);
     }
@@ -89,8 +89,8 @@ class TrustScoreCapabilityIT {
 
         trustScoreJob.runComputation();
 
-        final ActorTrustScore global = trustRepo.findByActorId(actorId).orElseThrow();
-        final List<ActorTrustScore> caps = trustRepo.findByActorIdAndScoreType(actorId, ScoreType.CAPABILITY);
+        final ActorTrustScoreBase global = trustRepo.findByActorId(actorId).orElseThrow();
+        final List<ActorTrustScoreBase> caps = trustRepo.findByActorIdAndScoreType(actorId, ScoreType.CAPABILITY);
 
         final double secScore = caps.stream().filter(s -> "security-review".equals(s.capabilityKey))
                 .findFirst().orElseThrow().trustScore;
@@ -139,10 +139,10 @@ class TrustScoreCapabilityIT {
 
         trustScoreJob.runComputation();
 
-        final List<ActorTrustScore> capScores = trustRepo.findByActorIdAndScoreType(actorId, ScoreType.CAPABILITY);
+        final List<ActorTrustScoreBase> capScores = trustRepo.findByActorIdAndScoreType(actorId, ScoreType.CAPABILITY);
         assertThat(capScores).isEmpty();
 
-        final ActorTrustScore global = trustRepo.findByActorId(actorId).orElseThrow();
+        final ActorTrustScoreBase global = trustRepo.findByActorId(actorId).orElseThrow();
         assertThat(global.trustScore).isGreaterThan(0.5);
     }
 
@@ -178,7 +178,7 @@ class TrustScoreCapabilityIT {
 
         trustScoreJob.runComputation();
 
-        final ActorTrustScore global = trustRepo.findByActorId(actorId).orElseThrow();
+        final ActorTrustScoreBase global = trustRepo.findByActorId(actorId).orElseThrow();
 
         final boolean result = trustGateService.meetsThreshold(actorId, "nonexistent-capability",
                 global.trustScore - 0.1);
@@ -197,10 +197,10 @@ class TrustScoreCapabilityIT {
 
         trustScoreJob.runComputation();
 
-        final ActorTrustScore global = trustRepo.findByActorId(actorId).orElseThrow();
+        final ActorTrustScoreBase global = trustRepo.findByActorId(actorId).orElseThrow();
         assertThat(global.trustScore).isCloseTo(0.5, within(0.01));
 
-        final List<ActorTrustScore> caps = trustRepo.findByActorIdAndScoreType(actorId, ScoreType.CAPABILITY);
+        final List<ActorTrustScoreBase> caps = trustRepo.findByActorIdAndScoreType(actorId, ScoreType.CAPABILITY);
         assertThat(caps).isEmpty();
     }
 
@@ -218,7 +218,7 @@ class TrustScoreCapabilityIT {
 
         trustScoreJob.runComputation();
 
-        final ActorTrustScore global = trustRepo.findByActorId(actorId).orElseThrow();
+        final ActorTrustScoreBase global = trustRepo.findByActorId(actorId).orElseThrow();
         assertThat(global.trustScore).isGreaterThan(0.7);
 
         assertThat(trustRepo.findByActorIdAndScoreType(actorId, ScoreType.CAPABILITY)).isEmpty();

@@ -7,7 +7,7 @@ import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.api.model.ScoreType;
 import io.casehub.ledger.core.trust.AllAttestationsGlobalStrategy;
 import io.casehub.ledger.core.trust.NoOpAttestorCredibilityPolicy;
-import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.casehub.ledger.core.repository.NoOpTrustScoreSnapshotRepository;
@@ -61,7 +61,7 @@ class PerActorTrustComputerTest {
 
         computer.computeForActor(actorId, List.of(entry), Map.of(), now);
 
-        final ActorTrustScore global = trustRepo.findByActorId(actorId).orElse(null);
+        final ActorTrustScoreBase global = trustRepo.findByActorId(actorId).orElse(null);
         assertThat(global).isNotNull();
         assertThat(global.scoreType).isEqualTo(ScoreType.GLOBAL);
         assertThat(global.trustScore).isCloseTo(0.5, within(0.01));
@@ -83,7 +83,7 @@ class PerActorTrustComputerTest {
         computer.computeForActor(actorId, List.of(entry),
                 Map.of(entry.id, List.of(att)), now);
 
-        final ActorTrustScore global = trustRepo.findByActorId(actorId).orElse(null);
+        final ActorTrustScoreBase global = trustRepo.findByActorId(actorId).orElse(null);
         assertThat(global).isNotNull();
         assertThat(global.trustScore).isGreaterThan(0.6);
         assertThat(global.alphaValue).isGreaterThan(global.betaValue);
@@ -104,7 +104,7 @@ class PerActorTrustComputerTest {
                 Map.of(entry.id, List.of(att)), now);
 
         // Should have both CAPABILITY and GLOBAL rows
-        final Optional<ActorTrustScore> capScore = trustRepo.findCapabilityScore(actorId, "security-review");
+        final Optional<ActorTrustScoreBase> capScore = trustRepo.findCapabilityScore(actorId, "security-review");
         assertThat(capScore).isPresent();
         assertThat(capScore.get().scoreType).isEqualTo(ScoreType.CAPABILITY);
         assertThat(capScore.get().capabilityKey).isEqualTo("security-review");
@@ -126,7 +126,7 @@ class PerActorTrustComputerTest {
         computer.computeForActor(actorId, List.of(entry),
                 Map.of(entry.id, List.of(att)), now);
 
-        final Optional<ActorTrustScore> dimScore = trustRepo.findDimensionScore(actorId, "review-thoroughness");
+        final Optional<ActorTrustScoreBase> dimScore = trustRepo.findDimensionScore(actorId, "review-thoroughness");
         assertThat(dimScore).isPresent();
         assertThat(dimScore.get().scoreType).isEqualTo(ScoreType.DIMENSION);
         assertThat(dimScore.get().dimensionKey).isEqualTo("review-thoroughness");
@@ -145,7 +145,7 @@ class PerActorTrustComputerTest {
         computer.computeForActor(actorId, List.of(entry),
                 Map.of(entry.id, List.of(att)), now);
 
-        final Optional<ActorTrustScore> cdScore =
+        final Optional<ActorTrustScoreBase> cdScore =
                 trustRepo.findCapabilityDimension(actorId, "code-review", "review-thoroughness");
         assertThat(cdScore).isPresent();
         assertThat(cdScore.get().scoreType).isEqualTo(ScoreType.CAPABILITY_DIMENSION);
@@ -171,7 +171,7 @@ class PerActorTrustComputerTest {
         computer.computeForActor(actorId, List.of(entry),
                 Map.of(entry.id, List.of(att)), now);
 
-        final Optional<ActorTrustScore> capScore = trustRepo.findCapabilityScore(actorId, "security-review");
+        final Optional<ActorTrustScoreBase> capScore = trustRepo.findCapabilityScore(actorId, "security-review");
         assertThat(capScore).isPresent();
         assertThat(capScore.get().scoreType).isEqualTo(ScoreType.CAPABILITY);
         assertThat(capScore.get().trustScore).isLessThan(0.5);
@@ -206,7 +206,7 @@ class PerActorTrustComputerTest {
 
         computer.computeForActor(actorId, decisions, attestationsByEntry, now);
 
-        final Optional<ActorTrustScore> capScore = trustRepo.findCapabilityScore(actorId, "security-review");
+        final Optional<ActorTrustScoreBase> capScore = trustRepo.findCapabilityScore(actorId, "security-review");
         assertThat(capScore).isPresent();
         assertThat(capScore.get().betaValue).as("FLAGGED must increment beta beyond prior")
                                             .isGreaterThan(1.0);
@@ -245,7 +245,7 @@ class PerActorTrustComputerTest {
 
         computer.computeForActor(actorId, decisions, attestationsByEntry, now);
 
-        final Optional<ActorTrustScore> capScore = trustRepo.findCapabilityScore(actorId, "security-review");
+        final Optional<ActorTrustScoreBase> capScore = trustRepo.findCapabilityScore(actorId, "security-review");
         assertThat(capScore).isPresent();
         // The FLAGGED attestation must increment beta — not be masked by aggregation
         assertThat(capScore.get().betaValue).as("FLAGGED on same entry must still increment beta")
@@ -305,7 +305,7 @@ class PerActorTrustComputerTest {
      */
     static class CapturingTrustScoreRepo implements ActorTrustScoreRepository {
 
-        private final java.util.concurrent.ConcurrentHashMap<String, ActorTrustScore> store =
+        private final java.util.concurrent.ConcurrentHashMap<String, ActorTrustScoreBase> store =
                 new java.util.concurrent.ConcurrentHashMap<>();
 
         private static String key(String actorId, ScoreType type, String cap, String dim) {
@@ -316,32 +316,32 @@ class PerActorTrustComputerTest {
             return s != null ? s : "";
         }
 
-        List<ActorTrustScore> allScores() {
+        List<ActorTrustScoreBase> allScores() {
             return new ArrayList<>(store.values());
         }
 
         @Override
-        public Optional<ActorTrustScore> findByActorId(String actorId) {
+        public Optional<ActorTrustScoreBase> findByActorId(String actorId) {
             return Optional.ofNullable(store.get(key(actorId, ScoreType.GLOBAL, null, null)));
         }
 
         @Override
-        public Optional<ActorTrustScore> findCapabilityScore(String actorId, String capabilityTag) {
+        public Optional<ActorTrustScoreBase> findCapabilityScore(String actorId, String capabilityTag) {
             return Optional.ofNullable(store.get(key(actorId, ScoreType.CAPABILITY, capabilityTag, null)));
         }
 
         @Override
-        public Optional<ActorTrustScore> findDimensionScore(String actorId, String dimension) {
+        public Optional<ActorTrustScoreBase> findDimensionScore(String actorId, String dimension) {
             return Optional.ofNullable(store.get(key(actorId, ScoreType.DIMENSION, null, dimension)));
         }
 
         @Override
-        public Optional<ActorTrustScore> findCapabilityDimension(String actorId, String capabilityTag, String dimension) {
+        public Optional<ActorTrustScoreBase> findCapabilityDimension(String actorId, String capabilityTag, String dimension) {
             return Optional.ofNullable(store.get(key(actorId, ScoreType.CAPABILITY_DIMENSION, capabilityTag, dimension)));
         }
 
         @Override
-        public List<ActorTrustScore> findCapabilityDimensions(String actorId, String capabilityTag) {
+        public List<ActorTrustScoreBase> findCapabilityDimensions(String actorId, String capabilityTag) {
             return store.values().stream()
                     .filter(s -> actorId.equals(s.actorId))
                     .filter(s -> ScoreType.CAPABILITY_DIMENSION.equals(s.scoreType))
@@ -350,7 +350,7 @@ class PerActorTrustComputerTest {
         }
 
         @Override
-        public List<ActorTrustScore> findByActorIdAndScoreType(String actorId, ScoreType scoreType) {
+        public List<ActorTrustScoreBase> findByActorIdAndScoreType(String actorId, ScoreType scoreType) {
             return store.values().stream()
                     .filter(s -> actorId.equals(s.actorId))
                     .filter(s -> scoreType.equals(s.scoreType))
@@ -367,7 +367,7 @@ class PerActorTrustComputerTest {
                            Instant lastComputedAt) {
             final String k = key(actorId, scoreType, capabilityKey, dimensionKey);
             store.compute(k, (key, existing) -> {
-                final ActorTrustScore score = existing != null ? existing : new ActorTrustScore();
+                final ActorTrustScoreBase score = existing != null ? existing : new ActorTrustScoreBase();
                 if (existing == null) {
                     score.id = UUID.randomUUID();
                     score.actorId = actorId;
@@ -395,12 +395,12 @@ class PerActorTrustComputerTest {
         }
 
         @Override
-        public List<ActorTrustScore> findAll() {
+        public List<ActorTrustScoreBase> findAll() {
             return new ArrayList<>(store.values());
         }
 
         @Override
-        public List<ActorTrustScore> findAllByLastComputedAtAfter(Instant since) {
+        public List<ActorTrustScoreBase> findAllByLastComputedAtAfter(Instant since) {
             return store.values().stream()
                     .filter(s -> s.lastComputedAt != null && s.lastComputedAt.isAfter(since))
                     .toList();

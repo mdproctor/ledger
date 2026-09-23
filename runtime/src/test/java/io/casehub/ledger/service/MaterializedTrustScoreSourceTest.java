@@ -12,7 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.ScoreType;
-import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.casehub.ledger.runtime.service.MaterializedTrustScoreSource;
 import io.casehub.platform.api.identity.ActorType;
@@ -141,10 +141,10 @@ class MaterializedTrustScoreSourceTest {
 
     // ── Fixture ──────────────────────────────────────────────────────────────
 
-    private static ActorTrustScore score(final String actorId, final ScoreType type,
+    private static ActorTrustScoreBase score(final String actorId, final ScoreType type,
             final String capKey, final String dimKey, final double trustScore,
             final int decisionCount) {
-        final ActorTrustScore s = new ActorTrustScore();
+        final ActorTrustScoreBase s = new ActorTrustScoreBase();
         s.actorId = actorId;
         s.scoreType = type;
         s.capabilityKey = capKey;
@@ -161,21 +161,21 @@ class MaterializedTrustScoreSourceTest {
      * persistence-memory module.
      */
     private static class StubTrustScoreRepository implements ActorTrustScoreRepository {
-        private final java.util.List<ActorTrustScore> scores = new java.util.ArrayList<>();
+        private final java.util.List<ActorTrustScoreBase> scores = new java.util.ArrayList<>();
 
-        void seed(final ActorTrustScore s) {
+        void seed(final ActorTrustScoreBase s) {
             scores.add(s);
         }
 
         @Override
-        public Optional<ActorTrustScore> findByActorId(final String actorId) {
+        public Optional<ActorTrustScoreBase> findByActorId(final String actorId) {
             return scores.stream()
                     .filter(s -> s.actorId.equals(actorId) && s.scoreType == ScoreType.GLOBAL)
                     .findFirst();
         }
 
         @Override
-        public Optional<ActorTrustScore> findCapabilityScore(final String actorId, final String tag) {
+        public Optional<ActorTrustScoreBase> findCapabilityScore(final String actorId, final String tag) {
             return scores.stream()
                     .filter(s -> s.actorId.equals(actorId) && s.scoreType == ScoreType.CAPABILITY
                             && tag.equals(s.capabilityKey))
@@ -183,7 +183,7 @@ class MaterializedTrustScoreSourceTest {
         }
 
         @Override
-        public Optional<ActorTrustScore> findDimensionScore(final String actorId, final String dim) {
+        public Optional<ActorTrustScoreBase> findDimensionScore(final String actorId, final String dim) {
             return scores.stream()
                     .filter(s -> s.actorId.equals(actorId) && s.scoreType == ScoreType.DIMENSION
                             && dim.equals(s.dimensionKey))
@@ -191,7 +191,7 @@ class MaterializedTrustScoreSourceTest {
         }
 
         @Override
-        public Optional<ActorTrustScore> findCapabilityDimension(final String actorId,
+        public Optional<ActorTrustScoreBase> findCapabilityDimension(final String actorId,
                 final String cap, final String dim) {
             return scores.stream()
                     .filter(s -> s.actorId.equals(actorId)
@@ -201,7 +201,7 @@ class MaterializedTrustScoreSourceTest {
         }
 
         @Override
-        public List<ActorTrustScore> findCapabilityDimensions(final String actorId, final String cap) {
+        public List<ActorTrustScoreBase> findCapabilityDimensions(final String actorId, final String cap) {
             return scores.stream()
                     .filter(s -> s.actorId.equals(actorId)
                             && s.scoreType == ScoreType.CAPABILITY_DIMENSION
@@ -210,7 +210,7 @@ class MaterializedTrustScoreSourceTest {
         }
 
         @Override
-        public List<ActorTrustScore> findByActorIdAndScoreType(final String actorId,
+        public List<ActorTrustScoreBase> findByActorIdAndScoreType(final String actorId,
                 final ScoreType type) {
             return scores.stream()
                     .filter(s -> s.actorId.equals(actorId) && s.scoreType == type)
@@ -222,8 +222,8 @@ class MaterializedTrustScoreSourceTest {
                 final int oc, final double al, final double be, final int ap,
                 final int an, final Instant lc) { }
         @Override public void updateGlobalTrustScore(final String a, final double g) { }
-        @Override public List<ActorTrustScore> findAll() { return scores; }
-        @Override public List<ActorTrustScore> findAllByLastComputedAtAfter(final Instant s) {
+        @Override public List<ActorTrustScoreBase> findAll() { return scores; }
+        @Override public List<ActorTrustScoreBase> findAllByLastComputedAtAfter(final Instant s) {
             return List.of();
         }
     }

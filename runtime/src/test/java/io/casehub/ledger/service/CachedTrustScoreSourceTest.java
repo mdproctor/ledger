@@ -12,7 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.ScoreType;
-import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.casehub.ledger.runtime.service.CachedTrustScoreSource;
 import io.casehub.ledger.runtime.service.routing.TrustScoreActorUpdatedEvent;
@@ -176,10 +176,10 @@ class CachedTrustScoreSourceTest {
 
     // ── Fixture ──────────────────────────────────────────────────────────────
 
-    private static ActorTrustScore score(final String actorId, final ScoreType type,
+    private static ActorTrustScoreBase score(final String actorId, final ScoreType type,
             final String capKey, final String dimKey, final double trustScore,
             final int decisionCount) {
-        final ActorTrustScore s = new ActorTrustScore();
+        final ActorTrustScoreBase s = new ActorTrustScoreBase();
         s.actorId = actorId;
         s.scoreType = type;
         s.capabilityKey = capKey;
@@ -192,19 +192,19 @@ class CachedTrustScoreSourceTest {
     }
 
     private static class StubTrustScoreRepository implements ActorTrustScoreRepository {
-        private final java.util.List<ActorTrustScore> scores = new java.util.ArrayList<>();
+        private final java.util.List<ActorTrustScoreBase> scores = new java.util.ArrayList<>();
 
-        void seed(final ActorTrustScore s) { scores.add(s); }
+        void seed(final ActorTrustScoreBase s) { scores.add(s); }
 
-        @Override public List<ActorTrustScore> findAll() { return scores; }
-        @Override public Optional<ActorTrustScore> findByActorId(final String a) { return Optional.empty(); }
-        @Override public Optional<ActorTrustScore> findCapabilityScore(final String a, final String t) { return Optional.empty(); }
-        @Override public Optional<ActorTrustScore> findDimensionScore(final String a, final String d) { return Optional.empty(); }
-        @Override public Optional<ActorTrustScore> findCapabilityDimension(final String a, final String c, final String d) { return Optional.empty(); }
-        @Override public List<ActorTrustScore> findCapabilityDimensions(final String a, final String c) { return List.of(); }
-        @Override public List<ActorTrustScore> findByActorIdAndScoreType(final String a, final ScoreType t) { return List.of(); }
+        @Override public List<ActorTrustScoreBase> findAll() { return scores; }
+        @Override public Optional<ActorTrustScoreBase> findByActorId(final String a) { return Optional.empty(); }
+        @Override public Optional<ActorTrustScoreBase> findCapabilityScore(final String a, final String t) { return Optional.empty(); }
+        @Override public Optional<ActorTrustScoreBase> findDimensionScore(final String a, final String d) { return Optional.empty(); }
+        @Override public Optional<ActorTrustScoreBase> findCapabilityDimension(final String a, final String c, final String d) { return Optional.empty(); }
+        @Override public List<ActorTrustScoreBase> findCapabilityDimensions(final String a, final String c) { return List.of(); }
+        @Override public List<ActorTrustScoreBase> findByActorIdAndScoreType(final String a, final ScoreType t) { return List.of(); }
         @Override public void upsert(final String a, final ScoreType t, final String c, final String d, final ActorType at, final double ts, final int dc, final int oc, final double al, final double be, final int ap, final int an, final Instant lc) { }
         @Override public void updateGlobalTrustScore(final String a, final double g) { }
-        @Override public List<ActorTrustScore> findAllByLastComputedAtAfter(final Instant s) { return List.of(); }
+        @Override public List<ActorTrustScoreBase> findAllByLastComputedAtAfter(final Instant s) { return List.of(); }
     }
 }

@@ -132,7 +132,7 @@ class TrustScoreRoutingIT {
         assertThat(observers.fullReceived()).hasSize(1);
         final var scores = observers.fullReceived().get(0).scores();
         org.assertj.core.api.Assertions.assertThatThrownBy(
-                () -> scores.add(new io.casehub.ledger.runtime.model.ActorTrustScore()))
+                () -> scores.add(new io.casehub.ledger.api.model.ActorTrustScoreBase()))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 

@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.ScoreType;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
-import io.casehub.ledger.runtime.model.TrustScoreSnapshot;
+import io.casehub.ledger.api.model.TrustScoreSnapshotBase;
 import io.casehub.ledger.api.spi.TrustScoreSnapshotRepository;
 import io.casehub.ledger.runtime.service.TrustScoreJob;
 import io.quarkus.test.junit.QuarkusTest;
@@ -57,7 +57,7 @@ class TrustScoreSnapshotIT {
 
         trustScoreJob.runComputation();
 
-        final List<TrustScoreSnapshot> snapshots = snapshotRepo.findGlobalSnapshots(actorId);
+        final List<TrustScoreSnapshotBase> snapshots = snapshotRepo.findGlobalSnapshots(actorId);
         assertThat(snapshots).hasSize(1);
         assertThat(snapshots.get(0).actorId).isEqualTo(actorId);
         assertThat(snapshots.get(0).scoreType).isEqualTo(ScoreType.GLOBAL);
@@ -76,7 +76,7 @@ class TrustScoreSnapshotIT {
                 AttestationVerdict.SOUND, repo, em);
         trustScoreJob.runComputation();
 
-        final List<TrustScoreSnapshot> first = snapshotRepo.findGlobalSnapshots(actorId);
+        final List<TrustScoreSnapshotBase> first = snapshotRepo.findGlobalSnapshots(actorId);
         assertThat(first).hasSize(1);
         final double firstScore = first.get(0).score;
 
@@ -84,7 +84,7 @@ class TrustScoreSnapshotIT {
                 AttestationVerdict.ENDORSED, repo, em);
         trustScoreJob.runComputation();
 
-        final List<TrustScoreSnapshot> all = snapshotRepo.findGlobalSnapshots(actorId);
+        final List<TrustScoreSnapshotBase> all = snapshotRepo.findGlobalSnapshots(actorId);
         assertThat(all).hasSize(2);
         assertThat(all.get(0).occurredAt).isAfterOrEqualTo(all.get(1).occurredAt);
         assertThat(all.get(0).previousScore).isEqualTo(firstScore);
@@ -102,7 +102,7 @@ class TrustScoreSnapshotIT {
 
         trustScoreJob.runComputation();
 
-        final List<TrustScoreSnapshot> capSnapshots =
+        final List<TrustScoreSnapshotBase> capSnapshots =
                 snapshotRepo.findCapabilitySnapshots(actorId, "code-review");
         assertThat(capSnapshots).isNotEmpty();
         assertThat(capSnapshots.get(0).scoreType).isEqualTo(ScoreType.CAPABILITY);
@@ -121,7 +121,7 @@ class TrustScoreSnapshotIT {
 
         trustScoreJob.runComputation();
 
-        final List<TrustScoreSnapshot> dimSnapshots =
+        final List<TrustScoreSnapshotBase> dimSnapshots =
                 snapshotRepo.findDimensionSnapshots(actorId, "review-thoroughness");
         assertThat(dimSnapshots).isNotEmpty();
         assertThat(dimSnapshots.get(0).scoreType).isEqualTo(ScoreType.DIMENSION);
@@ -139,7 +139,7 @@ class TrustScoreSnapshotIT {
                 AttestationVerdict.SOUND, repo, em);
         trustScoreJob.runComputation();
 
-        final List<TrustScoreSnapshot> inRange = snapshotRepo.findByActorAndTimeRange(
+        final List<TrustScoreSnapshotBase> inRange = snapshotRepo.findByActorAndTimeRange(
                 actorId, now.minus(1, ChronoUnit.HOURS), now.plus(1, ChronoUnit.HOURS));
         assertThat(inRange).isNotEmpty();
         assertThat(inRange).allSatisfy(s -> {
@@ -147,7 +147,7 @@ class TrustScoreSnapshotIT {
             assertThat(s.occurredAt).isBeforeOrEqualTo(now.plus(1, ChronoUnit.HOURS));
         });
 
-        final List<TrustScoreSnapshot> outOfRange = snapshotRepo.findByActorAndTimeRange(
+        final List<TrustScoreSnapshotBase> outOfRange = snapshotRepo.findByActorAndTimeRange(
                 actorId, now.minus(5, ChronoUnit.DAYS), now.minus(4, ChronoUnit.DAYS));
         assertThat(outOfRange).isEmpty();
     }
@@ -158,15 +158,15 @@ class TrustScoreSnapshotIT {
         final String actorId = "snapshot-retention-" + UUID.randomUUID();
         final Instant now = Instant.now();
 
-        snapshotRepo.save(new TrustScoreSnapshot(actorId, ScoreType.GLOBAL,
+        snapshotRepo.save(new TrustScoreSnapshotBase(actorId, ScoreType.GLOBAL,
                 null, null, 0.7, 0.5, now.minus(400, ChronoUnit.DAYS)));
-        snapshotRepo.save(new TrustScoreSnapshot(actorId, ScoreType.GLOBAL,
+        snapshotRepo.save(new TrustScoreSnapshotBase(actorId, ScoreType.GLOBAL,
                 null, null, 0.8, 0.7, now.minus(100, ChronoUnit.DAYS)));
 
         final int deleted = snapshotRepo.deleteOlderThan(now.minus(365, ChronoUnit.DAYS));
         assertThat(deleted).isEqualTo(1);
 
-        final List<TrustScoreSnapshot> remaining = snapshotRepo.findGlobalSnapshots(actorId);
+        final List<TrustScoreSnapshotBase> remaining = snapshotRepo.findGlobalSnapshots(actorId);
         assertThat(remaining).hasSize(1);
         assertThat(remaining.get(0).score).isEqualTo(0.8);
     }

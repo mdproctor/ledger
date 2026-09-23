@@ -12,7 +12,7 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.casehub.ledger.runtime.service.TrustScoreJob;
 import io.quarkus.test.junit.QuarkusTest;
@@ -47,8 +47,8 @@ class EigenTrustMeshIT {
 
     @Test
     void agentA_hasTrustScoreHigherThanAgentC() {
-        final Optional<ActorTrustScore> scoreA = trustRepo.findByActorId(MeshTrustService.AGENT_A);
-        final Optional<ActorTrustScore> scoreC = trustRepo.findByActorId(MeshTrustService.AGENT_C);
+        final Optional<ActorTrustScoreBase> scoreA = trustRepo.findByActorId(MeshTrustService.AGENT_A);
+        final Optional<ActorTrustScoreBase> scoreC = trustRepo.findByActorId(MeshTrustService.AGENT_C);
 
         assertThat(scoreA).as("agent-a must have a computed trust score").isPresent();
         assertThat(scoreC).as("agent-c must have a computed trust score").isPresent();
@@ -62,7 +62,7 @@ class EigenTrustMeshIT {
 
     @Test
     void eigenTrust_globalScoresDifferFromDirectScores() {
-        final List<ActorTrustScore> allScores = trustRepo.findAll();
+        final List<ActorTrustScoreBase> allScores = trustRepo.findAll();
 
         // EigenTrust must have been computed — at least one actor has a non-zero globalTrustScore
         final boolean anyGlobal = allScores.stream().anyMatch(s -> s.globalTrustScore > 0.0);
@@ -77,8 +77,8 @@ class EigenTrustMeshIT {
                 .isLessThanOrEqualTo(1.0 + 1e-9);
 
         // agent-a should have a higher globalTrustScore than agent-c
-        final Optional<ActorTrustScore> scoreA = trustRepo.findByActorId(MeshTrustService.AGENT_A);
-        final Optional<ActorTrustScore> scoreC = trustRepo.findByActorId(MeshTrustService.AGENT_C);
+        final Optional<ActorTrustScoreBase> scoreA = trustRepo.findByActorId(MeshTrustService.AGENT_A);
+        final Optional<ActorTrustScoreBase> scoreC = trustRepo.findByActorId(MeshTrustService.AGENT_C);
         assertThat(scoreA).isPresent();
         assertThat(scoreC).isPresent();
 
@@ -107,8 +107,8 @@ class EigenTrustMeshIT {
         // so a gets the highest globalTrustScore. c has the worst (FLAGGED from both).
         // The transitive path through the graph should keep agent-a globally above agent-c.
 
-        final Optional<ActorTrustScore> scoreA = trustRepo.findByActorId(MeshTrustService.AGENT_A);
-        final Optional<ActorTrustScore> scoreC = trustRepo.findByActorId(MeshTrustService.AGENT_C);
+        final Optional<ActorTrustScoreBase> scoreA = trustRepo.findByActorId(MeshTrustService.AGENT_A);
+        final Optional<ActorTrustScoreBase> scoreC = trustRepo.findByActorId(MeshTrustService.AGENT_C);
 
         assertThat(scoreA).isPresent();
         assertThat(scoreC).isPresent();
@@ -144,7 +144,7 @@ class EigenTrustMeshIT {
 
     @Test
     void globalTrustScores_sumToAtMostOne() {
-        final List<ActorTrustScore> allScores = trustRepo.findAll();
+        final List<ActorTrustScoreBase> allScores = trustRepo.findAll();
         final double total = allScores.stream().mapToDouble(s -> s.globalTrustScore).sum();
 
         assertThat(total)
@@ -156,9 +156,9 @@ class EigenTrustMeshIT {
 
     @Test
     void unreliableAgent_hasLowestGlobalScore() {
-        final Optional<ActorTrustScore> scoreA = trustRepo.findByActorId(MeshTrustService.AGENT_A);
-        final Optional<ActorTrustScore> scoreB = trustRepo.findByActorId(MeshTrustService.AGENT_B);
-        final Optional<ActorTrustScore> scoreC = trustRepo.findByActorId(MeshTrustService.AGENT_C);
+        final Optional<ActorTrustScoreBase> scoreA = trustRepo.findByActorId(MeshTrustService.AGENT_A);
+        final Optional<ActorTrustScoreBase> scoreB = trustRepo.findByActorId(MeshTrustService.AGENT_B);
+        final Optional<ActorTrustScoreBase> scoreC = trustRepo.findByActorId(MeshTrustService.AGENT_C);
 
         assertThat(scoreA).as("agent-a must have a computed trust score").isPresent();
         assertThat(scoreB).as("agent-b must have a computed trust score").isPresent();
@@ -178,7 +178,7 @@ class EigenTrustMeshIT {
 
     @Test
     void reliableAgent_hasBothHighDirectAndTransitiveScore() {
-        final Optional<ActorTrustScore> scoreA = trustRepo.findByActorId(MeshTrustService.AGENT_A);
+        final Optional<ActorTrustScoreBase> scoreA = trustRepo.findByActorId(MeshTrustService.AGENT_A);
 
         assertThat(scoreA).as("agent-a must have a computed trust score").isPresent();
 

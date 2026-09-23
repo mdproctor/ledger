@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 import io.casehub.ledger.api.model.ScoreType;
 import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.CapabilityTag;
-import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.ledger.core.trust.TrustGateService;
@@ -77,7 +77,7 @@ class TrustScoreCapabilityDimensionIT {
 
         trustScoreJob.runComputation();
 
-        final List<ActorTrustScore> rows =
+        final List<ActorTrustScoreBase> rows =
                 trustRepo.findByActorIdAndScoreType(actorId, ScoreType.CAPABILITY_DIMENSION);
         assertThat(rows).hasSize(3);
     }

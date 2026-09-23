@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 import io.casehub.ledger.api.model.ScoreType;
 import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.CapabilityTag;
-import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import io.casehub.ledger.api.spi.CrossTenantLedgerEntryRepository;
@@ -70,15 +70,15 @@ class TrustScoreDimensionIT {
 
         trustScoreJob.runComputation();
 
-        final List<ActorTrustScore> dimScores = trustRepo.findByActorIdAndScoreType(actorId, ScoreType.DIMENSION);
+        final List<ActorTrustScoreBase> dimScores = trustRepo.findByActorIdAndScoreType(actorId, ScoreType.DIMENSION);
         assertThat(dimScores).hasSize(2);
 
-        final ActorTrustScore thoroughness = dimScores.stream()
+        final ActorTrustScoreBase thoroughness = dimScores.stream()
                 .filter(s -> "review-thoroughness".equals(s.dimensionKey)).findFirst().orElseThrow();
         assertThat(thoroughness.trustScore).isGreaterThan(0.7);
         assertThat(thoroughness.trustScore).isLessThan(1.0);
 
-        final ActorTrustScore fpr = dimScores.stream()
+        final ActorTrustScoreBase fpr = dimScores.stream()
                 .filter(s -> "false-positive-rate".equals(s.dimensionKey)).findFirst().orElseThrow();
         assertThat(fpr.trustScore).isCloseTo(0.1, within(0.05));
     }

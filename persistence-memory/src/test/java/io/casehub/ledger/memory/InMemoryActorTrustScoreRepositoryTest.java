@@ -12,7 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.ScoreType;
-import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.platform.api.identity.ActorType;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -91,7 +91,7 @@ class InMemoryActorTrustScoreRepositoryTest {
         upsert(actorId, ScoreType.CAPABILITY_DIMENSION, "review", "speed", 0.6);
         upsert(actorId, ScoreType.CAPABILITY_DIMENSION, "other", "accuracy", 0.7);
 
-        List<ActorTrustScore> results = repo.findCapabilityDimensions(actorId, "review");
+        List<ActorTrustScoreBase> results = repo.findCapabilityDimensions(actorId, "review");
         assertThat(results).hasSize(2);
     }
 
@@ -108,7 +108,7 @@ class InMemoryActorTrustScoreRepositoryTest {
         upsertAt("a1", ScoreType.GLOBAL, null, null, 0.5, Instant.parse("2026-01-01T00:00:00Z"));
         upsertAt("a2", ScoreType.GLOBAL, null, null, 0.6, Instant.parse("2026-12-01T00:00:00Z"));
 
-        List<ActorTrustScore> results = repo.findAllByLastComputedAtAfter(threshold);
+        List<ActorTrustScoreBase> results = repo.findAllByLastComputedAtAfter(threshold);
         assertThat(results).hasSize(1);
         assertThat(results.get(0).actorId).isEqualTo("a2");
     }
@@ -120,7 +120,7 @@ class InMemoryActorTrustScoreRepositoryTest {
         upsert(actorId, ScoreType.CAPABILITY, "review", null, 0.7);
         upsert(actorId, ScoreType.CAPABILITY, "code", null, 0.8);
 
-        List<ActorTrustScore> results = repo.findByActorIdAndScoreType(actorId, ScoreType.CAPABILITY);
+        List<ActorTrustScoreBase> results = repo.findByActorIdAndScoreType(actorId, ScoreType.CAPABILITY);
         assertThat(results).hasSize(2);
     }
 

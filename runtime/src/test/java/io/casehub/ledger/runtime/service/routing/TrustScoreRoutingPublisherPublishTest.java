@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import io.casehub.ledger.runtime.config.LedgerConfig;
-import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 
 @SuppressWarnings("unchecked")
 class TrustScoreRoutingPublisherPublishTest {
@@ -86,8 +86,8 @@ class TrustScoreRoutingPublisherPublishTest {
         verify(fullEvent, never()).fireAsync(any());
     }
 
-    private static ActorTrustScore score(final String actorId, final double trust, final double global) {
-        final ActorTrustScore s = new ActorTrustScore();
+    private static ActorTrustScoreBase score(final String actorId, final double trust, final double global) {
+        final ActorTrustScoreBase s = new ActorTrustScoreBase();
         s.actorId = actorId;
         s.trustScore = trust;
         s.globalTrustScore = global;

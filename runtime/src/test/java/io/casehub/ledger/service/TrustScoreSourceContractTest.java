@@ -1,23 +1,23 @@
 package io.casehub.ledger.service;
 
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.api.model.ScoreType;
-import io.casehub.ledger.api.spi.TrustScoreSource;
-import io.casehub.ledger.core.trust.NoOpAttestorCredibilityPolicy;
-import io.casehub.ledger.runtime.model.ActorTrustScore;
-import io.casehub.ledger.runtime.model.LedgerAttestation;
+import io.casehub.ledger.api.model.SubjectSequenceStats;
 import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.casehub.ledger.api.spi.CrossTenantLedgerEntryRepository;
+import io.casehub.ledger.api.spi.TrustScoreSource;
 import io.casehub.ledger.core.trust.AllAttestationsGlobalStrategy;
-import io.casehub.ledger.runtime.service.CachedTrustScoreSource;
-import io.casehub.ledger.runtime.service.ComputedTrustScoreSource;
 import io.casehub.ledger.core.trust.DecayFunction;
-import io.casehub.ledger.runtime.service.MaterializedTrustScoreSource;
+import io.casehub.ledger.core.trust.NoOpAttestorCredibilityPolicy;
 import io.casehub.ledger.core.trust.TrustScoreCalculator;
 import io.casehub.ledger.core.trust.TrustScoreCalculator.ComputedScores;
-import io.casehub.ledger.api.model.SubjectSequenceStats;
+import io.casehub.ledger.api.model.LedgerAttestation;
+import io.casehub.ledger.runtime.service.CachedTrustScoreSource;
+import io.casehub.ledger.runtime.service.ComputedTrustScoreSource;
+import io.casehub.ledger.runtime.service.MaterializedTrustScoreSource;
 import io.casehub.platform.api.identity.ActorType;
 import org.junit.jupiter.api.Named;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -322,7 +322,7 @@ class TrustScoreSourceContractTest {
     // ── Inline repositories ──────────────────────────────────────────────────
 
     private static class InlineRepo implements ActorTrustScoreRepository {
-        private final List<ActorTrustScore> scores = new ArrayList<>();
+        private final List<ActorTrustScoreBase> scores = new ArrayList<>();
 
         @Override
         public void upsert(final String actorId, final ScoreType scoreType,
@@ -335,7 +335,7 @@ class TrustScoreSourceContractTest {
             scores.removeIf(s -> s.actorId.equals(actorId) && s.scoreType == scoreType
                     && java.util.Objects.equals(s.capabilityKey, capabilityKey)
                     && java.util.Objects.equals(s.dimensionKey, dimensionKey));
-            final ActorTrustScore s = new ActorTrustScore();
+            final ActorTrustScoreBase s = new ActorTrustScoreBase();
             s.id = UUID.randomUUID();
             s.actorId = actorId;
             s.scoreType = scoreType;
@@ -353,27 +353,27 @@ class TrustScoreSourceContractTest {
             scores.add(s);
         }
 
-        @Override public Optional<ActorTrustScore> findByActorId(final String id) {
+        @Override public Optional<ActorTrustScoreBase> findByActorId(final String id) {
             return scores.stream().filter(s -> s.actorId.equals(id) && s.scoreType == ScoreType.GLOBAL).findFirst();
         }
-        @Override public Optional<ActorTrustScore> findCapabilityScore(final String id, final String t) {
+        @Override public Optional<ActorTrustScoreBase> findCapabilityScore(final String id, final String t) {
             return scores.stream().filter(s -> s.actorId.equals(id) && s.scoreType == ScoreType.CAPABILITY && t.equals(s.capabilityKey)).findFirst();
         }
-        @Override public Optional<ActorTrustScore> findDimensionScore(final String id, final String d) {
+        @Override public Optional<ActorTrustScoreBase> findDimensionScore(final String id, final String d) {
             return scores.stream().filter(s -> s.actorId.equals(id) && s.scoreType == ScoreType.DIMENSION && d.equals(s.dimensionKey)).findFirst();
         }
-        @Override public Optional<ActorTrustScore> findCapabilityDimension(final String id, final String c, final String d) {
+        @Override public Optional<ActorTrustScoreBase> findCapabilityDimension(final String id, final String c, final String d) {
             return scores.stream().filter(s -> s.actorId.equals(id) && s.scoreType == ScoreType.CAPABILITY_DIMENSION && c.equals(s.capabilityKey) && d.equals(s.dimensionKey)).findFirst();
         }
-        @Override public List<ActorTrustScore> findCapabilityDimensions(final String id, final String c) {
+        @Override public List<ActorTrustScoreBase> findCapabilityDimensions(final String id, final String c) {
             return scores.stream().filter(s -> s.actorId.equals(id) && s.scoreType == ScoreType.CAPABILITY_DIMENSION && c.equals(s.capabilityKey)).toList();
         }
-        @Override public List<ActorTrustScore> findByActorIdAndScoreType(final String id, final ScoreType t) {
+        @Override public List<ActorTrustScoreBase> findByActorIdAndScoreType(final String id, final ScoreType t) {
             return scores.stream().filter(s -> s.actorId.equals(id) && s.scoreType == t).toList();
         }
         @Override public void updateGlobalTrustScore(final String a, final double g) { }
-        @Override public List<ActorTrustScore> findAll() { return scores; }
-        @Override public List<ActorTrustScore> findAllByLastComputedAtAfter(final Instant s) { return List.of(); }
+        @Override public List<ActorTrustScoreBase> findAll() { return scores; }
+        @Override public List<ActorTrustScoreBase> findAllByLastComputedAtAfter(final Instant s) { return List.of(); }
     }
 
     private static class InlineLedgerRepo implements CrossTenantLedgerEntryRepository {
@@ -405,5 +405,8 @@ class TrustScoreSourceContractTest {
         @Override public List<LedgerEntry> findAllEvents() { return entries.stream().filter(e -> e.entryType == LedgerEntryType.EVENT).toList(); }
         @Override public List<LedgerEntry> findByTimeRange(final Instant f, final Instant t) { return List.of(); }
         @Override public List<SubjectSequenceStats> findSequenceStats() { return List.of(); }
+
+        @Override
+        public long countByActorId(final String actorId, final String tenancyId) {return 0L;}
     }
 }

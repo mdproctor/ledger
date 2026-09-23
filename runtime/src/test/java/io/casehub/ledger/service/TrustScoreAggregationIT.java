@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
@@ -55,7 +55,7 @@ class TrustScoreAggregationIT {
 
         trustScoreJob.runComputation();
 
-        final ActorTrustScore globalScore = trustRepo.findByActorId(actorId).orElseThrow();
+        final ActorTrustScoreBase globalScore = trustRepo.findByActorId(actorId).orElseThrow();
         // WEIGHTED_MAJORITY collapses to one SOUND attestation — score > 0.5
         assertThat(globalScore.trustScore).isGreaterThan(0.5);
     }
@@ -72,7 +72,7 @@ class TrustScoreAggregationIT {
 
         trustScoreJob.runComputation();
 
-        final ActorTrustScore score = trustRepo.findByActorId(actorId).orElseThrow();
+        final ActorTrustScoreBase score = trustRepo.findByActorId(actorId).orElseThrow();
         assertThat(score.trustScore).isGreaterThan(0.5);
     }
 
@@ -92,8 +92,8 @@ class TrustScoreAggregationIT {
 
         trustScoreJob.runComputation();
 
-        final ActorTrustScore codeReviewScore = trustRepo.findCapabilityScore(actorId, "code-review").orElseThrow();
-        final ActorTrustScore securityScore = trustRepo.findCapabilityScore(actorId, "security-review").orElseThrow();
+        final ActorTrustScoreBase codeReviewScore = trustRepo.findCapabilityScore(actorId, "code-review").orElseThrow();
+        final ActorTrustScoreBase securityScore = trustRepo.findCapabilityScore(actorId, "security-review").orElseThrow();
 
         assertThat(codeReviewScore.trustScore).isGreaterThan(0.5);
         assertThat(securityScore.trustScore).isLessThan(0.5);
