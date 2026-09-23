@@ -13,7 +13,7 @@ import jakarta.inject.Inject;
 
 import io.casehub.ledger.api.model.ScoreType;
 import io.casehub.ledger.api.spi.TrustScoreSource;
-import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.casehub.ledger.runtime.service.routing.TrustScoreActorUpdatedEvent;
 import io.casehub.ledger.runtime.service.routing.TrustScoreFullPayload;
@@ -68,7 +68,7 @@ public class CachedTrustScoreSource implements TrustScoreSource {
         event.scores().forEach(this::index);
     }
 
-    private void index(final ActorTrustScore s) {
+    private void index(final ActorTrustScoreBase s) {
         switch (s.scoreType) {
             case GLOBAL -> globalScores.put(s.actorId, s.trustScore);
             case CAPABILITY -> {

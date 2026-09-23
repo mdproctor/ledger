@@ -1,22 +1,22 @@
 package io.casehub.ledger.runtime.repository.jpa;
 
-import java.time.Instant;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
+import io.casehub.ledger.api.model.ScoreType;
+import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
+import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
+import io.casehub.platform.api.identity.ActorType;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
-import io.casehub.ledger.api.model.ScoreType;
-import io.casehub.platform.api.identity.ActorType;
-import io.casehub.ledger.runtime.model.ActorTrustScore;
-import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
-import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
+import java.time.Instant;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * JPA / EntityManager implementation of {@link ActorTrustScoreRepository}.
@@ -42,36 +42,39 @@ public class JpaActorTrustScoreRepository implements ActorTrustScoreRepository {
     EntityManager em;
 
     @Override
-    public Optional<ActorTrustScore> findByActorId(final String actorId) {
+    public Optional<ActorTrustScoreBase> findByActorId(final String actorId) {
         return em.createNamedQuery("ActorTrustScore.findGlobalByActorId", ActorTrustScore.class)
                 .setParameter("actorId", actorId)
                 .setParameter("scoreType", ScoreType.GLOBAL)
                 .getResultStream()
+                .<ActorTrustScoreBase>map(s -> s)
                 .findFirst();
     }
 
     @Override
-    public Optional<ActorTrustScore> findCapabilityScore(final String actorId, final String capabilityTag) {
+    public Optional<ActorTrustScoreBase> findCapabilityScore(final String actorId, final String capabilityTag) {
         return em.createNamedQuery("ActorTrustScore.findCapabilityByActorIdAndTag", ActorTrustScore.class)
                 .setParameter("actorId", actorId)
                 .setParameter("scoreType", ScoreType.CAPABILITY)
                 .setParameter("capabilityKey", capabilityTag)
                 .getResultStream()
+                .<ActorTrustScoreBase>map(s -> s)
                 .findFirst();
     }
 
     @Override
-    public Optional<ActorTrustScore> findDimensionScore(final String actorId, final String dimension) {
+    public Optional<ActorTrustScoreBase> findDimensionScore(final String actorId, final String dimension) {
         return em.createNamedQuery("ActorTrustScore.findDimensionByActorIdAndKey", ActorTrustScore.class)
                 .setParameter("actorId", actorId)
                 .setParameter("scoreType", ScoreType.DIMENSION)
                 .setParameter("dimensionKey", dimension)
                 .getResultStream()
+                .<ActorTrustScoreBase>map(s -> s)
                 .findFirst();
     }
 
     @Override
-    public Optional<ActorTrustScore> findCapabilityDimension(final String actorId,
+    public Optional<ActorTrustScoreBase> findCapabilityDimension(final String actorId,
             final String capabilityTag, final String dimension) {
         return em.createNamedQuery("ActorTrustScore.findCapabilityDimensionByKeys", ActorTrustScore.class)
                 .setParameter("actorId", actorId)
@@ -79,25 +82,26 @@ public class JpaActorTrustScoreRepository implements ActorTrustScoreRepository {
                 .setParameter("capabilityKey", capabilityTag)
                 .setParameter("dimensionKey", dimension)
                 .getResultStream()
+                .<ActorTrustScoreBase>map(s -> s)
                 .findFirst();
     }
 
     @Override
-    public List<ActorTrustScore> findCapabilityDimensions(final String actorId, final String capabilityTag) {
+    public List<ActorTrustScoreBase> findCapabilityDimensions(final String actorId, final String capabilityTag) {
         return em.createNamedQuery("ActorTrustScore.findCapabilityDimensionsByCapability", ActorTrustScore.class)
                 .setParameter("actorId", actorId)
                 .setParameter("scoreType", ScoreType.CAPABILITY_DIMENSION)
                 .setParameter("capabilityKey", capabilityTag)
-                .getResultList();
+                .getResultStream().<ActorTrustScoreBase>map(s -> s).toList();
     }
 
     @Override
-    public List<ActorTrustScore> findByActorIdAndScoreType(
+    public List<ActorTrustScoreBase> findByActorIdAndScoreType(
             final String actorId, final ScoreType scoreType) {
         return em.createNamedQuery("ActorTrustScore.findByActorIdAndScoreType", ActorTrustScore.class)
                 .setParameter("actorId", actorId)
                 .setParameter("scoreType", scoreType)
-                .getResultList();
+                .getResultStream().<ActorTrustScoreBase>map(s -> s).toList();
     }
 
     @Override
@@ -132,12 +136,12 @@ public class JpaActorTrustScoreRepository implements ActorTrustScoreRepository {
     }
 
     private ActorTrustScore findExisting(final String actorId, final ScoreType scoreType,
-            final String capabilityKey, final String dimensionKey) {
+                                         final String capabilityKey, final String dimensionKey) {
         return switch (scoreType) {
-            case GLOBAL -> findByActorId(actorId).orElse(null);
-            case CAPABILITY -> findCapabilityScore(actorId, capabilityKey).orElse(null);
-            case DIMENSION -> findDimensionScore(actorId, dimensionKey).orElse(null);
-            case CAPABILITY_DIMENSION -> findCapabilityDimension(actorId, capabilityKey, dimensionKey).orElse(null);
+            case GLOBAL -> (ActorTrustScore) findByActorId(actorId).orElse(null);
+            case CAPABILITY -> (ActorTrustScore) findCapabilityScore(actorId, capabilityKey).orElse(null);
+            case DIMENSION -> (ActorTrustScore) findDimensionScore(actorId, dimensionKey).orElse(null);
+            case CAPABILITY_DIMENSION -> (ActorTrustScore) findCapabilityDimension(actorId, capabilityKey, dimensionKey).orElse(null);
         };
     }
 
@@ -151,20 +155,20 @@ public class JpaActorTrustScoreRepository implements ActorTrustScoreRepository {
     }
 
     @Override
-    public List<ActorTrustScore> findAll() {
+    public List<ActorTrustScoreBase> findAll() {
         return em.createNamedQuery("ActorTrustScore.findAll", ActorTrustScore.class)
-                .getResultList();
+                .getResultStream().<ActorTrustScoreBase>map(s -> s).toList();
     }
 
     @Override
-    public List<ActorTrustScore> findAllByLastComputedAtAfter(final Instant since) {
+    public List<ActorTrustScoreBase> findAllByLastComputedAtAfter(final Instant since) {
         return em.createNamedQuery("ActorTrustScore.findAllByLastComputedAtAfter", ActorTrustScore.class)
                 .setParameter("since", since)
-                .getResultList();
+                .getResultStream().<ActorTrustScoreBase>map(s -> s).toList();
     }
 
     @Override
-    public List<ActorTrustScore> findCapabilityScoresByActorIds(final Collection<String> actorIds,
+    public List<ActorTrustScoreBase> findCapabilityScoresByActorIds(final Collection<String> actorIds,
             final String capabilityTag) {
         if (actorIds.isEmpty()) {
             return List.of();
@@ -173,6 +177,6 @@ public class JpaActorTrustScoreRepository implements ActorTrustScoreRepository {
                 .setParameter("actorIds", actorIds)
                 .setParameter("scoreType", ScoreType.CAPABILITY)
                 .setParameter("capabilityKey", capabilityTag)
-                .getResultList();
+                .getResultStream().<ActorTrustScoreBase>map(s -> s).toList();
     }
 }

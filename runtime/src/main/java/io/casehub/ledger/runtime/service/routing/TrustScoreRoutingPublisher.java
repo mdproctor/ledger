@@ -14,7 +14,7 @@ import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
 
 import io.casehub.ledger.runtime.config.LedgerConfig;
-import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 
 /**
  * Dispatches CDI routing signals after each {@link io.casehub.ledger.runtime.service.TrustScoreJob}
@@ -71,8 +71,8 @@ public class TrustScoreRoutingPublisher {
         return hasDeltaObservers;
     }
 
-    public void publish(final List<ActorTrustScore> current,
-            final Map<String, ActorTrustScore> previousSnapshot,
+    public void publish(final List<ActorTrustScoreBase> current,
+            final Map<String, ActorTrustScoreBase> previousSnapshot,
             final Instant computedAt) {
 
         if (!config.trustScore().routingEnabled()) {
@@ -139,13 +139,13 @@ public class TrustScoreRoutingPublisher {
     }
 
     public static List<TrustScoreDelta> computeDeltas(
-            final List<ActorTrustScore> current,
-            final Map<String, ActorTrustScore> previousSnapshot,
+            final List<ActorTrustScoreBase> current,
+            final Map<String, ActorTrustScoreBase> previousSnapshot,
             final double threshold) {
 
         final List<TrustScoreDelta> deltas = new ArrayList<>();
-        for (final ActorTrustScore score : current) {
-            final ActorTrustScore prev = previousSnapshot.get(score.actorId);
+        for (final ActorTrustScoreBase score : current) {
+            final ActorTrustScoreBase prev = previousSnapshot.get(score.actorId);
             final double prevTrust = prev != null ? prev.trustScore : 0.0;
             final double prevGlobal = prev != null ? prev.globalTrustScore : 0.0;
             if (Math.abs(score.trustScore - prevTrust) >= threshold) {

@@ -17,7 +17,7 @@ import jakarta.transaction.Transactional;
 
 import io.casehub.ledger.api.model.ScoreType;
 import io.casehub.ledger.runtime.config.LedgerConfig;
-import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
@@ -92,7 +92,7 @@ public class TrustScoreJob {
         // Entities are detached so subsequent upserts do not mutate the snapshot values.
         // GLOBAL rows only — CAPABILITY/DIMENSION rows have multiple rows per actor and would
         // cause Collectors.toMap to throw on duplicate actorId keys.
-        final Map<String, ActorTrustScore> previousSnapshot;
+        final Map<String, ActorTrustScoreBase> previousSnapshot;
         if (routingPublisher.needsPreviousSnapshot()) {
             previousSnapshot = trustRepo.findAll().stream()
                     .filter(s -> s.scoreType == ScoreType.GLOBAL)
@@ -154,7 +154,7 @@ public class TrustScoreJob {
 
         // Routing signals — after all writes, within the same transaction
         // Detach before publish so observers receive value snapshots, not managed entities
-        final List<ActorTrustScore> currentScores = trustRepo.findAll().stream()
+        final List<ActorTrustScoreBase> currentScores = trustRepo.findAll().stream()
                 .peek(em::detach)
                 .collect(Collectors.toList());
         routingPublisher.publish(currentScores, previousSnapshot, now);

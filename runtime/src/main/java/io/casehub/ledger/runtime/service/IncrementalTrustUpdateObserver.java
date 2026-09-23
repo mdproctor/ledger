@@ -16,7 +16,7 @@ import jakarta.transaction.Transactional.TxType;
 import org.jboss.logging.Logger;
 
 import io.casehub.ledger.runtime.config.LedgerConfig;
-import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.core.model.AttestationRecordedEvent;
@@ -86,7 +86,7 @@ public class IncrementalTrustUpdateObserver {
             final Map<UUID, List<LedgerAttestation>> attestationsByEntry =
                     (Map<UUID, List<LedgerAttestation>>) (Map<?,?>) ledgerRepo.findAttestationsByActorId(event.actorId());
 
-            final List<ActorTrustScore> scores =
+            final List<ActorTrustScoreBase> scores =
                     perActorComputer.computeForActor(event.actorId(), decisions, attestationsByEntry, now);
 
             final TrustScoreActorUpdatedEvent payload = new TrustScoreActorUpdatedEvent(event.actorId(), scores, now);

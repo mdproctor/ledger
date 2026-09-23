@@ -6,7 +6,7 @@ import io.casehub.ledger.core.trust.DecayFunction;
 import io.casehub.ledger.core.trust.GlobalScoreStrategy;
 import io.casehub.ledger.core.trust.TrustScoreCalculator;
 import io.casehub.ledger.core.trust.TrustScoreComputer;
-import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.runtime.model.TrustScoreSnapshot;
 import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
@@ -55,7 +55,7 @@ class PerActorTrustComputer {
         this.snapshotRepo = snapshotRepo;
     }
 
-    List<ActorTrustScore> computeForActor(final String actorId,
+    List<ActorTrustScoreBase> computeForActor(final String actorId,
                                           final List<LedgerEntry> decisions,
                                           final Map<UUID, List<LedgerAttestation>> attestationsByEntry,
                                           final Instant now) {
@@ -68,7 +68,7 @@ class PerActorTrustComputer {
         final TrustScoreCalculator.ComputedScores computed =
                 calculator.computeAll(decisions, attestationsByEntry, now);
 
-        final List<ActorTrustScore> results = new ArrayList<>();
+        final List<ActorTrustScoreBase> results = new ArrayList<>();
 
         // ── Persist capability scores ────────────────────────────────────────
         for (final Map.Entry<String, TrustScoreComputer.ActorScore> entry :
@@ -138,12 +138,12 @@ class PerActorTrustComputer {
         return results;
     }
 
-    private static ActorTrustScore buildScore(final String actorId,
+    private static ActorTrustScoreBase buildScore(final String actorId,
             final ScoreType scoreType,
             final String capabilityKey, final String dimensionKey,
             final ActorType actorType,
             final TrustScoreComputer.ActorScore score, final Instant now) {
-        final ActorTrustScore s = new ActorTrustScore();
+        final ActorTrustScoreBase s = new ActorTrustScoreBase();
         s.actorId = actorId;
         s.scoreType = scoreType;
         s.capabilityKey = capabilityKey;
@@ -160,12 +160,12 @@ class PerActorTrustComputer {
         return s;
     }
 
-    private static ActorTrustScore buildDimensionScore(final String actorId,
+    private static ActorTrustScoreBase buildDimensionScore(final String actorId,
             final String capabilityKey, final String dimensionKey,
             final ActorType actorType,
             final double score, final int decisionCount,
             final int positive, final int negative, final Instant now) {
-        final ActorTrustScore s = new ActorTrustScore();
+        final ActorTrustScoreBase s = new ActorTrustScoreBase();
         s.actorId = actorId;
         s.scoreType = capabilityKey != null
                 ? ScoreType.CAPABILITY_DIMENSION

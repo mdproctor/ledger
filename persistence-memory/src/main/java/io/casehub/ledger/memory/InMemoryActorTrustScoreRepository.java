@@ -12,7 +12,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
 
 import io.casehub.ledger.api.model.ScoreType;
-import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.casehub.platform.api.identity.ActorType;
 
@@ -21,7 +21,7 @@ import io.casehub.platform.api.identity.ActorType;
 @ApplicationScoped
 public class InMemoryActorTrustScoreRepository implements ActorTrustScoreRepository {
 
-    private final ConcurrentHashMap<String, ActorTrustScore> store = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, ActorTrustScoreBase> store = new ConcurrentHashMap<>();
 
     private static String key(String actorId, ScoreType type, String cap, String dim) {
         return actorId + "|" + type + "|" + nvl(cap) + "|" + nvl(dim);
@@ -32,31 +32,31 @@ public class InMemoryActorTrustScoreRepository implements ActorTrustScoreReposit
     }
 
     @Override
-    public Optional<ActorTrustScore> findByActorId(final String actorId) {
+    public Optional<ActorTrustScoreBase> findByActorId(final String actorId) {
         return Optional.ofNullable(store.get(key(actorId, ScoreType.GLOBAL, null, null)));
     }
 
     @Override
-    public Optional<ActorTrustScore> findCapabilityScore(final String actorId,
+    public Optional<ActorTrustScoreBase> findCapabilityScore(final String actorId,
             final String capabilityTag) {
         return Optional.ofNullable(store.get(key(actorId, ScoreType.CAPABILITY, capabilityTag, null)));
     }
 
     @Override
-    public Optional<ActorTrustScore> findDimensionScore(final String actorId,
+    public Optional<ActorTrustScoreBase> findDimensionScore(final String actorId,
             final String dimension) {
         return Optional.ofNullable(store.get(key(actorId, ScoreType.DIMENSION, null, dimension)));
     }
 
     @Override
-    public Optional<ActorTrustScore> findCapabilityDimension(final String actorId,
+    public Optional<ActorTrustScoreBase> findCapabilityDimension(final String actorId,
             final String capabilityTag, final String dimension) {
         return Optional.ofNullable(
                 store.get(key(actorId, ScoreType.CAPABILITY_DIMENSION, capabilityTag, dimension)));
     }
 
     @Override
-    public List<ActorTrustScore> findCapabilityDimensions(final String actorId,
+    public List<ActorTrustScoreBase> findCapabilityDimensions(final String actorId,
             final String capabilityTag) {
         return store.values().stream()
                 .filter(s -> actorId.equals(s.actorId))
@@ -66,7 +66,7 @@ public class InMemoryActorTrustScoreRepository implements ActorTrustScoreReposit
     }
 
     @Override
-    public List<ActorTrustScore> findByActorIdAndScoreType(final String actorId,
+    public List<ActorTrustScoreBase> findByActorIdAndScoreType(final String actorId,
             final ScoreType scoreType) {
         return store.values().stream()
                 .filter(s -> actorId.equals(s.actorId))
@@ -85,7 +85,7 @@ public class InMemoryActorTrustScoreRepository implements ActorTrustScoreReposit
 
         final String k = key(actorId, scoreType, capabilityKey, dimensionKey);
         store.compute(k, (key, existing) -> {
-            final ActorTrustScore score = existing != null ? existing : new ActorTrustScore();
+            final ActorTrustScoreBase score = existing != null ? existing : new ActorTrustScoreBase();
             if (existing == null) {
                 score.id = UUID.randomUUID();
                 score.actorId = actorId;
@@ -113,12 +113,12 @@ public class InMemoryActorTrustScoreRepository implements ActorTrustScoreReposit
     }
 
     @Override
-    public List<ActorTrustScore> findAll() {
+    public List<ActorTrustScoreBase> findAll() {
         return new ArrayList<>(store.values());
     }
 
     @Override
-    public List<ActorTrustScore> findAllByLastComputedAtAfter(final Instant since) {
+    public List<ActorTrustScoreBase> findAllByLastComputedAtAfter(final Instant since) {
         return store.values().stream()
                 .filter(s -> s.lastComputedAt != null && s.lastComputedAt.isAfter(since))
                 .toList();
