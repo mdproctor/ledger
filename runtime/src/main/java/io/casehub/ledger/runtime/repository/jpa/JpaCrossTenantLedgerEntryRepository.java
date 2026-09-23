@@ -1,5 +1,17 @@
 package io.casehub.ledger.runtime.repository.jpa;
 
+import io.casehub.ledger.api.model.LedgerEntry;
+import io.casehub.ledger.api.model.LedgerEntryType;
+import io.casehub.ledger.api.model.SubjectSequenceStats;
+import io.casehub.ledger.api.spi.ActorIdentityProvider;
+import io.casehub.ledger.api.spi.CrossTenantLedgerEntryRepository;
+import io.casehub.ledger.runtime.model.LedgerAttestation;
+import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
+import io.casehub.ledger.runtime.qualifier.CrossTenant;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
@@ -8,19 +20,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import jakarta.persistence.EntityManager;
-
-import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.runtime.model.LedgerAttestation;
-import io.casehub.ledger.api.model.LedgerEntry;
-import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
-import io.casehub.ledger.api.spi.ActorIdentityProvider;
-import io.casehub.ledger.runtime.qualifier.CrossTenant;
-import io.casehub.ledger.api.spi.CrossTenantLedgerEntryRepository;
-import io.casehub.ledger.api.model.SubjectSequenceStats;
 
 /**
  * JPA implementation of {@link CrossTenantLedgerEntryRepository}.
@@ -118,4 +117,20 @@ public class JpaCrossTenantLedgerEntryRepository implements CrossTenantLedgerEnt
         return em.createNamedQuery("LedgerEntry.findSequenceStats", SubjectSequenceStats.class)
                 .getResultList();
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long countByActorId(final String actorId, final String tenancyId) {
+        final Optional<String> tokenOpt = actorIdentityProvider.tokeniseForQuery(actorId);
+        if (tokenOpt.isEmpty()) {
+            return 0L;
+        }
+        return em.createQuery("SELECT COUNT(e) FROM JpaLedgerEntry e WHERE e.actorId = :actorId AND e.tenancyId = :tenancyId", Long.class)
+                 .setParameter("actorId", tokenOpt.get())
+                 .setParameter("tenancyId", tenancyId)
+                 .getSingleResult();
+    }
+
 }

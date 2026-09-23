@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.ScoreType;
 import io.casehub.platform.api.identity.ActorType;
-import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
+import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;

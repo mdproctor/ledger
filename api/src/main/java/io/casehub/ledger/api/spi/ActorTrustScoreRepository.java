@@ -1,13 +1,13 @@
 package io.casehub.ledger.api.spi;
 
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
+import io.casehub.ledger.api.model.ScoreType;
+import io.casehub.platform.api.identity.ActorType;
+
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-
-import io.casehub.ledger.api.model.ScoreType;
-import io.casehub.platform.api.identity.ActorType;
-import io.casehub.ledger.api.model.ActorTrustScoreBase;
 
 /** SPI for persisting and querying {@link ActorTrustScoreBase ActorTrustScore} records. */
 public interface ActorTrustScoreRepository {
@@ -65,6 +65,17 @@ public interface ActorTrustScoreRepository {
      * Return all computed trust scores across all actors and score types.
      */
     List<ActorTrustScoreBase> findAll();
+
+    /**
+     * Return all trust scores, detached from any persistence context.
+     *
+     * <p>JPA implementations should call {@code em.detach()} on each entity before
+     * returning. The default implementation delegates to {@link #findAll()}.
+     */
+    default List<ActorTrustScoreBase> findAllDetached() {
+        return findAll();
+    }
+
 
     /**
      * Return all trust scores whose {@code lastComputedAt} timestamp is strictly after {@code since}.

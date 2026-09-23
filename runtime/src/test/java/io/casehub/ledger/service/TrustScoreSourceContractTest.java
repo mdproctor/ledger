@@ -8,7 +8,7 @@ import io.casehub.ledger.api.spi.TrustScoreSource;
 import io.casehub.ledger.core.trust.NoOpAttestorCredibilityPolicy;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
-import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
+import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.casehub.ledger.api.spi.CrossTenantLedgerEntryRepository;
 import io.casehub.ledger.core.trust.AllAttestationsGlobalStrategy;
 import io.casehub.ledger.runtime.service.CachedTrustScoreSource;

@@ -1,5 +1,16 @@
 package io.casehub.ledger.memory;
 
+import io.casehub.ledger.api.model.LedgerEntry;
+import io.casehub.ledger.api.model.LedgerEntryType;
+import io.casehub.ledger.api.model.SubjectSequenceStats;
+import io.casehub.ledger.api.spi.CrossTenantLedgerEntryRepository;
+import io.casehub.ledger.runtime.model.LedgerAttestation;
+import io.casehub.ledger.runtime.qualifier.CrossTenant;
+import jakarta.annotation.Priority;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Alternative;
+import jakarta.inject.Inject;
+
 import java.time.Instant;
 import java.util.Collections;
 import java.util.Comparator;
@@ -8,18 +19,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
-import jakarta.annotation.Priority;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
-import jakarta.inject.Inject;
-
-import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.runtime.model.LedgerAttestation;
-import io.casehub.ledger.api.model.LedgerEntry;
-import io.casehub.ledger.runtime.qualifier.CrossTenant;
-import io.casehub.ledger.api.spi.CrossTenantLedgerEntryRepository;
-import io.casehub.ledger.api.model.SubjectSequenceStats;
 
 /**
  * In-memory implementation of {@link CrossTenantLedgerEntryRepository}.
@@ -107,4 +106,12 @@ public class InMemoryCrossTenantLedgerEntryRepository implements CrossTenantLedg
                 })
                 .toList();
     }
+
+    @Override
+    public long countByActorId(final String actorId, final String tenancyId) {
+        return blocking.allEntries().stream()
+                       .filter(e -> actorId.equals(e.actorId) && tenancyId.equals(e.tenancyId))
+                       .count();
+    }
+
 }

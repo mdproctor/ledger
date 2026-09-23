@@ -17,13 +17,13 @@ import io.casehub.ledger.core.federation.GlobalScoreExport;
 import io.casehub.ledger.core.federation.TrustExportPayload;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.runtime.config.LedgerConfig;
-import io.casehub.ledger.runtime.model.ActorTrustScore;
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 /**
- * Structured read-model over {@link ActorTrustScore}.
+ * Structured read-model over {@link ActorTrustScoreBase}.
  *
  * <p>
  * Consumed by upper layers (dashboard, compliance reports) and future cross-deployment
@@ -43,12 +43,12 @@ public class TrustExportService {
      * Actors with no GLOBAL row are excluded regardless of threshold.
      */
     public TrustExportPayload exportAll(final double minTrustScore) {
-        final List<ActorTrustScore> all = trustRepo.findAll();
+        final List<ActorTrustScoreBase> all = trustRepo.findAll();
         final Set<String> qualifying = all.stream()
                 .filter(s -> s.scoreType == ScoreType.GLOBAL && s.trustScore >= minTrustScore)
                 .map(s -> s.actorId)
                 .collect(Collectors.toSet());
-        final List<ActorTrustScore> scores = all.stream()
+        final List<ActorTrustScoreBase> scores = all.stream()
                 .filter(s -> qualifying.contains(s.actorId))
                 .collect(Collectors.toList());
         return buildPayload(scores);
@@ -60,7 +60,7 @@ public class TrustExportService {
      * @return empty if the actor has no computed trust scores
      */
     public Optional<TrustExportPayload> exportActor(final String actorId) {
-        final List<ActorTrustScore> scores = new ArrayList<>();
+        final List<ActorTrustScoreBase> scores = new ArrayList<>();
         scores.addAll(trustRepo.findByActorIdAndScoreType(actorId, ScoreType.GLOBAL));
         scores.addAll(trustRepo.findByActorIdAndScoreType(actorId, ScoreType.CAPABILITY));
         scores.addAll(trustRepo.findByActorIdAndScoreType(actorId, ScoreType.DIMENSION));
@@ -76,21 +76,21 @@ public class TrustExportService {
      * Returns an empty actors list if no scores have changed.
      */
     public TrustExportPayload exportDelta(final Instant since) {
-        final List<ActorTrustScore> changed = trustRepo.findAllByLastComputedAtAfter(since);
+        final List<ActorTrustScoreBase> changed = trustRepo.findAllByLastComputedAtAfter(since);
         if (changed.isEmpty()) {
             return buildPayload(List.of());
         }
         final Set<String> changedActors = changed.stream()
                 .map(s -> s.actorId)
                 .collect(Collectors.toSet());
-        final List<ActorTrustScore> allForChanged = trustRepo.findAll().stream()
+        final List<ActorTrustScoreBase> allForChanged = trustRepo.findAll().stream()
                 .filter(s -> changedActors.contains(s.actorId))
                 .collect(Collectors.toList());
         return buildPayload(allForChanged);
     }
 
-    private TrustExportPayload buildPayload(final List<ActorTrustScore> scores) {
-        final Map<String, List<ActorTrustScore>> byActor = scores.stream()
+    private TrustExportPayload buildPayload(final List<ActorTrustScoreBase> scores) {
+        final Map<String, List<ActorTrustScoreBase>> byActor = scores.stream()
                 .collect(Collectors.groupingBy(s -> s.actorId));
         final List<ActorExport> actors = byActor.values().stream()
                 .map(this::toActorExport)
@@ -101,7 +101,7 @@ public class TrustExportService {
                 actors);
     }
 
-    private ActorExport toActorExport(final List<ActorTrustScore> scores) {
+    private ActorExport toActorExport(final List<ActorTrustScoreBase> scores) {
         final String actorId = scores.get(0).actorId;
         final ActorType actorType = scores.stream()
                 .map(s -> s.actorType)

@@ -18,7 +18,7 @@ import io.casehub.ledger.api.model.ScoreType;
 import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.CapabilityTag;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
-import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
+import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.ledger.core.trust.TrustGateService;
 import io.casehub.ledger.runtime.service.TrustScoreJob;

@@ -3,7 +3,7 @@ package io.casehub.ledger.rest.api;
 import io.casehub.ledger.api.view.CapabilityScoreView;
 import io.casehub.ledger.api.view.TrustRoutingProfileView;
 import io.casehub.ledger.api.view.TrustScoreView;
-import io.casehub.ledger.runtime.repository.NoOpActorTrustScoreRepository;
+import io.casehub.ledger.core.repository.NoOpActorTrustScoreRepository;
 import io.casehub.ledger.runtime.service.MaterializedTrustScoreSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

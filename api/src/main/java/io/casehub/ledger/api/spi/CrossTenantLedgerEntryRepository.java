@@ -87,4 +87,16 @@ public interface CrossTenantLedgerEntryRepository {
      * @return one {@link SubjectSequenceStats} per (subject, tenant) pair; empty if no entries exist
      */
     List<SubjectSequenceStats> findSequenceStats();
+
+    /**
+     * Count the number of ledger entries for the given actor within the given tenant.
+     *
+     * <p>Used by erasure services to report how many entries were affected.
+     *
+     * @param actorId   the actor identity to count
+     * @param tenancyId the tenant scope
+     * @return number of entries; 0 if none exist
+     */
+    long countByActorId(String actorId, String tenancyId);
+
 }

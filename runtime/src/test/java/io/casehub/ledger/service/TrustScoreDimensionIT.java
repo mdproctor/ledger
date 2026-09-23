@@ -19,7 +19,7 @@ import io.casehub.ledger.api.model.ScoreType;
 import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.CapabilityTag;
 import io.casehub.ledger.runtime.model.ActorTrustScore;
-import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
+import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import io.casehub.ledger.api.spi.CrossTenantLedgerEntryRepository;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;

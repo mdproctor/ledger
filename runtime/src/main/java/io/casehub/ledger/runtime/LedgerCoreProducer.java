@@ -2,6 +2,9 @@ package io.casehub.ledger.runtime;
 
 import io.casehub.ledger.api.spi.AttestorCredibilityPolicy;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
+import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
+import io.casehub.ledger.api.spi.LedgerMerkleFrontierRepository;
+import io.casehub.ledger.api.spi.TrustScoreSnapshotRepository;
 import io.casehub.ledger.api.spi.TrustScoreSource;
 import io.casehub.ledger.core.federation.NoOpTrustBootstrapSource;
 import io.casehub.ledger.core.federation.NoOpTrustImportService;
@@ -19,9 +22,9 @@ import io.casehub.ledger.core.trust.NoOpAttestorCredibilityPolicy;
 import io.casehub.ledger.core.trust.TrustGateService;
 import io.casehub.ledger.core.trust.TrustScoreCalculator;
 import io.casehub.ledger.runtime.config.LedgerConfig;
+import io.quarkus.arc.DefaultBean;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
-import io.quarkus.arc.DefaultBean;
 
 @ApplicationScoped
 public class LedgerCoreProducer {
@@ -88,5 +91,24 @@ public class LedgerCoreProducer {
     @DefaultBean
     public TrustBootstrapSource noOpTrustBootstrapSource() {
         return new NoOpTrustBootstrapSource();
+    }
+
+    @Produces
+    @DefaultBean
+    public ActorTrustScoreRepository noOpActorTrustScoreRepository() {
+        return new io.casehub.ledger.core.repository.NoOpActorTrustScoreRepository();
+    }
+
+    @Produces
+    @DefaultBean
+    public LedgerMerkleFrontierRepository noOpLedgerMerkleFrontierRepository() {
+        return new io.casehub.ledger.core.repository.NoOpLedgerMerkleFrontierRepository();
+    }
+
+
+    @Produces
+    @DefaultBean
+    public TrustScoreSnapshotRepository noOpTrustScoreSnapshotRepository() {
+        return new io.casehub.ledger.core.repository.NoOpTrustScoreSnapshotRepository();
     }
 }

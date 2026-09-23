@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.ScoreType;
 import io.casehub.platform.api.identity.ActorType;
-import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
+import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.casehub.ledger.core.federation.ActorExport;
 import io.casehub.ledger.core.federation.CapabilityDimensionScoreExport;
 import io.casehub.ledger.core.federation.CapabilityScoreExport;
