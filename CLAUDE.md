@@ -401,7 +401,8 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── LedgerAnomalyDetected.java   — sealed interface: base type for all health-job anomaly CDI events (see #139)
 │       │   ├── LedgerSequenceGapDetected.java — record: (UUID subjectId, String tenancyId, long expectedCount, long actualCount) implements LedgerAnomalyDetected; fired on per-(subject,tenant) sequence gap
 │       │   ├── LedgerReconciliationMismatchDetected.java — record: (String entityType, long domainCount, long ledgerCount) implements LedgerAnomalyDetected; fired on reconciliation source count discrepancy
-│       │   ├── LedgerComplianceReportService.java — CDI bean: reportForActor / reportForSubject → ComplianceReport
+│       │   ├── MerkleVerificationBundleService.java — CDI bean: generates offline verification bundles (entry digests, MMR frontier, Python script)
+│       │   ├── LedgerComplianceReportService.java — CDI bean: reportForActor / reportForSubject / reportForTenancy → ComplianceReport
 │       │   ├── ComplianceReport.java        — value type: DecisionRecord list + Merkle anchor + format(ReportFormat)
 │       │   ├── DecisionRecord.java          — single automated decision entry in a compliance report
 │       │   ├── ReportFormat.java            — PLAIN_JSON | JSON_LD | CSV
