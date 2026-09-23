@@ -17,6 +17,7 @@ import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.ScoreType;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.ledger.api.model.TrustScoreSnapshotBase;
+import io.casehub.ledger.runtime.model.TrustScoreSnapshot;
 import io.casehub.ledger.api.spi.TrustScoreSnapshotRepository;
 import io.casehub.ledger.runtime.service.TrustScoreJob;
 import io.quarkus.test.junit.QuarkusTest;
@@ -158,9 +159,9 @@ class TrustScoreSnapshotIT {
         final String actorId = "snapshot-retention-" + UUID.randomUUID();
         final Instant now = Instant.now();
 
-        snapshotRepo.save(new TrustScoreSnapshotBase(actorId, ScoreType.GLOBAL,
+        snapshotRepo.save(new TrustScoreSnapshot(actorId, ScoreType.GLOBAL,
                 null, null, 0.7, 0.5, now.minus(400, ChronoUnit.DAYS)));
-        snapshotRepo.save(new TrustScoreSnapshotBase(actorId, ScoreType.GLOBAL,
+        snapshotRepo.save(new TrustScoreSnapshot(actorId, ScoreType.GLOBAL,
                 null, null, 0.8, 0.7, now.minus(100, ChronoUnit.DAYS)));
 
         final int deleted = snapshotRepo.deleteOlderThan(now.minus(365, ChronoUnit.DAYS));
