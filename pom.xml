@@ -28,6 +28,7 @@
     <module>reporting</module>
     <module>ledger-spring</module>
     <module>ledger-spring-jpa</module>
+    <module>ledger-signing-spring</module>
   </modules>
 
   <repositories>

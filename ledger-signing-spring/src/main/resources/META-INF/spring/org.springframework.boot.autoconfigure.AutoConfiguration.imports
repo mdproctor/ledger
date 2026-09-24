@@ -1,0 +1,4 @@
+io.casehub.ledger.signing.spring.VaultTransitAutoConfiguration
+io.casehub.ledger.signing.spring.AwsKmsAutoConfiguration
+io.casehub.ledger.signing.spring.GcpKmsAutoConfiguration
+io.casehub.ledger.signing.spring.AzureKeyVaultAutoConfiguration
