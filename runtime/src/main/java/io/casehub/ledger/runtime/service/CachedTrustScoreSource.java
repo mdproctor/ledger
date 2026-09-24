@@ -11,12 +11,11 @@ import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 
-import io.casehub.ledger.api.model.ScoreType;
 import io.casehub.ledger.api.spi.TrustScoreSource;
 import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
-import io.casehub.ledger.runtime.service.routing.TrustScoreActorUpdatedEvent;
-import io.casehub.ledger.runtime.service.routing.TrustScoreFullPayload;
+import io.casehub.ledger.core.event.TrustScoreActorUpdatedEvent;
+import io.casehub.ledger.core.event.TrustScoreFullPayload;
 
 /**
  * Cached {@link TrustScoreSource}: in-memory maps hydrated at startup and refreshed

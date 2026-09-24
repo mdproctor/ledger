@@ -1,4 +1,4 @@
-package io.casehub.ledger.runtime.service.routing;
+package io.casehub.ledger.core.event;
 
 import java.time.Instant;
 import java.util.List;

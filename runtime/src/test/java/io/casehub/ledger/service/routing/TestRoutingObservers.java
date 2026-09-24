@@ -10,9 +10,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.event.ObservesAsync;
 
-import io.casehub.ledger.runtime.service.routing.TrustScoreComputedAt;
-import io.casehub.ledger.runtime.service.routing.TrustScoreDeltaPayload;
-import io.casehub.ledger.runtime.service.routing.TrustScoreFullPayload;
+import io.casehub.ledger.core.event.TrustScoreComputedAt;
+import io.casehub.ledger.core.event.TrustScoreDeltaPayload;
+import io.casehub.ledger.core.event.TrustScoreFullPayload;
 
 @ApplicationScoped
 public class TestRoutingObservers {

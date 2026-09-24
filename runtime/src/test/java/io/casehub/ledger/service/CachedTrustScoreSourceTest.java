@@ -6,7 +6,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,8 +14,8 @@ import io.casehub.ledger.api.model.ScoreType;
 import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.casehub.ledger.runtime.service.CachedTrustScoreSource;
-import io.casehub.ledger.runtime.service.routing.TrustScoreActorUpdatedEvent;
-import io.casehub.ledger.runtime.service.routing.TrustScoreFullPayload;
+import io.casehub.ledger.core.event.TrustScoreActorUpdatedEvent;
+import io.casehub.ledger.core.event.TrustScoreFullPayload;
 import io.casehub.platform.api.identity.ActorType;
 
 /**

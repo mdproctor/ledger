@@ -13,6 +13,11 @@ import jakarta.inject.Inject;
 
 import org.jboss.logging.Logger;
 
+import io.casehub.ledger.core.event.TrustScoreActorUpdatedEvent;
+import io.casehub.ledger.core.event.TrustScoreComputedAt;
+import io.casehub.ledger.core.event.TrustScoreDelta;
+import io.casehub.ledger.core.event.TrustScoreDeltaPayload;
+import io.casehub.ledger.core.event.TrustScoreFullPayload;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.api.model.ActorTrustScoreBase;
 

@@ -9,7 +9,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.ActorTrustScoreBase;
-import io.casehub.ledger.runtime.service.routing.TrustScoreDelta;
+import io.casehub.ledger.core.event.TrustScoreDelta;
 import io.casehub.ledger.runtime.service.routing.TrustScoreRoutingPublisher;
 
 class TrustScoreRoutingPublisherTest {

@@ -22,7 +22,7 @@ import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.core.model.AttestationRecordedEvent;
 import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import io.casehub.ledger.api.spi.CrossTenantLedgerEntryRepository;
-import io.casehub.ledger.runtime.service.routing.TrustScoreActorUpdatedEvent;
+import io.casehub.ledger.core.event.TrustScoreActorUpdatedEvent;
 
 /**
  * CDI observer that triggers immediate per-actor trust score recomputation

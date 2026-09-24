@@ -20,6 +20,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import io.casehub.ledger.core.event.TrustScoreComputedAt;
+import io.casehub.ledger.core.event.TrustScoreDeltaPayload;
+import io.casehub.ledger.core.event.TrustScoreFullPayload;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.api.model.ActorTrustScoreBase;
 
