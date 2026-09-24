@@ -1,141 +1,35 @@
 package io.casehub.ledger.runtime.service.federation;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import io.casehub.ledger.api.model.ScoreType;
-import io.casehub.ledger.core.federation.ActorExport;
-import io.casehub.ledger.core.federation.CapabilityDimensionScoreExport;
-import io.casehub.ledger.core.federation.CapabilityScoreExport;
-import io.casehub.ledger.core.federation.DimensionScoreExport;
-import io.casehub.ledger.core.federation.GlobalScoreExport;
-import io.casehub.ledger.core.federation.TrustExportPayload;
-import io.casehub.platform.api.identity.ActorType;
-import io.casehub.ledger.runtime.config.LedgerConfig;
-import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
+import io.casehub.ledger.core.federation.TrustExportPayload;
+import io.casehub.ledger.runtime.config.LedgerConfig;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
-/**
- * Structured read-model over {@link ActorTrustScoreBase}.
- *
- * <p>
- * Consumed by upper layers (dashboard, compliance reports) and future cross-deployment
- * trust federation. See design spec 2026-05-12-trust-federation-bootstrap-design.md.
- */
+import java.time.Instant;
+import java.util.Optional;
+
 @ApplicationScoped
 public class TrustExportService {
 
-    @Inject
-    ActorTrustScoreRepository trustRepo;
+    private final io.casehub.ledger.core.federation.TrustExportServiceCore core;
 
     @Inject
-    LedgerConfig config;
-
-    /**
-     * Export all actors whose GLOBAL trust score meets or exceeds {@code minTrustScore}.
-     * Actors with no GLOBAL row are excluded regardless of threshold.
-     */
-    public TrustExportPayload exportAll(final double minTrustScore) {
-        final List<ActorTrustScoreBase> all = trustRepo.findAll();
-        final Set<String> qualifying = all.stream()
-                .filter(s -> s.scoreType == ScoreType.GLOBAL && s.trustScore >= minTrustScore)
-                .map(s -> s.actorId)
-                .collect(Collectors.toSet());
-        final List<ActorTrustScoreBase> scores = all.stream()
-                .filter(s -> qualifying.contains(s.actorId))
-                .collect(Collectors.toList());
-        return buildPayload(scores);
+    TrustExportService(ActorTrustScoreRepository trustRepo, LedgerConfig config) {
+        var exportProps = new io.casehub.ledger.core.config.TrustScoreProperties.ExportProperties(
+                config.trustScore().export().deploymentId());
+        this.core = new io.casehub.ledger.core.federation.TrustExportServiceCore(trustRepo, exportProps);
     }
 
-    /**
-     * Export a single actor's complete trust profile.
-     *
-     * @return empty if the actor has no computed trust scores
-     */
-    public Optional<TrustExportPayload> exportActor(final String actorId) {
-        final List<ActorTrustScoreBase> scores = new ArrayList<>();
-        scores.addAll(trustRepo.findByActorIdAndScoreType(actorId, ScoreType.GLOBAL));
-        scores.addAll(trustRepo.findByActorIdAndScoreType(actorId, ScoreType.CAPABILITY));
-        scores.addAll(trustRepo.findByActorIdAndScoreType(actorId, ScoreType.DIMENSION));
-        scores.addAll(trustRepo.findByActorIdAndScoreType(actorId, ScoreType.CAPABILITY_DIMENSION));
-        if (scores.isEmpty()) {
-            return Optional.empty();
-        }
-        return Optional.of(buildPayload(scores));
+    public TrustExportPayload exportAll(double minTrustScore) {
+        return core.exportAll(minTrustScore);
     }
 
-    /**
-     * Export complete profiles for all actors with any score change after {@code since}.
-     * Returns an empty actors list if no scores have changed.
-     */
-    public TrustExportPayload exportDelta(final Instant since) {
-        final List<ActorTrustScoreBase> changed = trustRepo.findAllByLastComputedAtAfter(since);
-        if (changed.isEmpty()) {
-            return buildPayload(List.of());
-        }
-        final Set<String> changedActors = changed.stream()
-                .map(s -> s.actorId)
-                .collect(Collectors.toSet());
-        final List<ActorTrustScoreBase> allForChanged = trustRepo.findAll().stream()
-                .filter(s -> changedActors.contains(s.actorId))
-                .collect(Collectors.toList());
-        return buildPayload(allForChanged);
+    public Optional<TrustExportPayload> exportActor(String actorId) {
+        return core.exportActor(actorId);
     }
 
-    private TrustExportPayload buildPayload(final List<ActorTrustScoreBase> scores) {
-        final Map<String, List<ActorTrustScoreBase>> byActor = scores.stream()
-                .collect(Collectors.groupingBy(s -> s.actorId));
-        final List<ActorExport> actors = byActor.values().stream()
-                .map(this::toActorExport)
-                .collect(Collectors.toList());
-        return new TrustExportPayload(
-                Instant.now(),
-                config.trustScore().export().deploymentId().orElse(""),
-                actors);
-    }
-
-    private ActorExport toActorExport(final List<ActorTrustScoreBase> scores) {
-        final String actorId = scores.get(0).actorId;
-        final ActorType actorType = scores.stream()
-                .map(s -> s.actorType)
-                .filter(t -> t != null)
-                .findFirst()
-                .orElse(ActorType.HUMAN);
-
-        final GlobalScoreExport global = scores.stream()
-                .filter(s -> s.scoreType == ScoreType.GLOBAL)
-                .findFirst()
-                .map(s -> new GlobalScoreExport(s.alphaValue, s.betaValue, s.trustScore,
-                                                s.decisionCount, s.attestationPositive, s.attestationNegative,
-                                                s.lastComputedAt))
-                .orElse(null);
-
-        final List<CapabilityScoreExport> capabilities = scores.stream()
-                .filter(s -> s.scoreType == ScoreType.CAPABILITY)
-                .map(s -> new CapabilityScoreExport(s.capabilityKey, s.alphaValue, s.betaValue, s.trustScore,
-                                                    s.decisionCount, s.attestationPositive, s.attestationNegative,
-                                                    s.lastComputedAt))
-                .collect(Collectors.toList());
-
-        final List<DimensionScoreExport> dimensions = scores.stream()
-                .filter(s -> s.scoreType == ScoreType.DIMENSION)
-                .map(s -> new DimensionScoreExport(s.dimensionKey, s.trustScore,
-                        s.attestationPositive + s.attestationNegative, s.lastComputedAt))
-                .collect(Collectors.toList());
-
-        final List<CapabilityDimensionScoreExport> capabilityDimensions = scores.stream()
-                .filter(s -> s.scoreType == ScoreType.CAPABILITY_DIMENSION)
-                .map(s -> new CapabilityDimensionScoreExport(s.capabilityKey, s.dimensionKey,
-                        s.trustScore, s.attestationPositive + s.attestationNegative, s.lastComputedAt))
-                .collect(Collectors.toList());
-
-        return new ActorExport(actorId, actorType, global, capabilities, dimensions, capabilityDimensions);
+    public TrustExportPayload exportDelta(Instant since) {
+        return core.exportDelta(since);
     }
 }

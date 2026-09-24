@@ -21,7 +21,14 @@ public class JpaTrustScoreSnapshotRepository implements TrustScoreSnapshotReposi
 
     @Override
     public void save(final TrustScoreSnapshotBase snapshot) {
-        em.persist(snapshot);
+        if (snapshot instanceof io.casehub.ledger.jpa.TrustScoreSnapshot entity) {
+            em.persist(entity);
+        } else {
+            em.persist(new io.casehub.ledger.jpa.TrustScoreSnapshot(
+                    snapshot.actorId, snapshot.scoreType,
+                    snapshot.capabilityTag, snapshot.dimensionKey,
+                    snapshot.score, snapshot.previousScore, snapshot.occurredAt));
+        }
     }
 
     @Override

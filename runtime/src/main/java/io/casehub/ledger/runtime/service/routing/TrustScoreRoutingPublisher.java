@@ -1,44 +1,25 @@
 package io.casehub.ledger.runtime.service.routing;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import jakarta.annotation.PostConstruct;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.event.Event;
-import jakarta.enterprise.inject.spi.BeanManager;
-import jakarta.inject.Inject;
-
-import org.jboss.logging.Logger;
-
-import io.casehub.ledger.core.event.TrustScoreActorUpdatedEvent;
+import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.core.event.TrustScoreComputedAt;
 import io.casehub.ledger.core.event.TrustScoreDelta;
 import io.casehub.ledger.core.event.TrustScoreDeltaPayload;
 import io.casehub.ledger.core.event.TrustScoreFullPayload;
 import io.casehub.ledger.runtime.config.LedgerConfig;
-import io.casehub.ledger.api.model.ActorTrustScoreBase;
+import jakarta.annotation.PostConstruct;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
+import jakarta.enterprise.inject.spi.BeanManager;
+import jakarta.inject.Inject;
+import org.jboss.logging.Logger;
 
-/**
- * Dispatches CDI routing signals after each {@link io.casehub.ledger.runtime.service.TrustScoreJob}
- * computation run. Consumers observe the payload type that matches their granularity:
- * {@link TrustScoreFullPayload} (all scores), {@link TrustScoreDeltaPayload} (changed actors only),
- * or {@link TrustScoreComputedAt} (lightweight notification).
- *
- * <p>
- * Observer presence is detected once at startup via {@link jakarta.enterprise.inject.spi.BeanManager}
- * and cached — no per-run reflection. Delta computation (pre-read of previous scores) is skipped
- * entirely when no {@link TrustScoreDeltaPayload} observer is registered.
- *
- * <p>
- * All three event types fire both {@code fire()} and {@code fireAsync()} — CDI 4.x does not
- * deliver {@code fire()} to async observers or vice versa. Dual-channel firing ensures both
- * {@code @Observes} and {@code @ObservesAsync} consumers receive every signal.
- */
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 @ApplicationScoped
-public class TrustScoreRoutingPublisher {
+public class TrustScoreRoutingPublisher implements io.casehub.ledger.core.event.TrustScoreEventPublisher {
 
     private static final Logger log = Logger.getLogger(TrustScoreRoutingPublisher.class);
 
@@ -63,96 +44,111 @@ public class TrustScoreRoutingPublisher {
 
     @PostConstruct
     void detectObservers() {
-        hasFullObservers = !beanManager
-                .resolveObserverMethods(new TrustScoreFullPayload(List.of())).isEmpty();
-        hasDeltaObservers = !beanManager
-                .resolveObserverMethods(new TrustScoreDeltaPayload(List.of())).isEmpty();
+        hasFullObservers   = !beanManager
+                                      .resolveObserverMethods(new TrustScoreFullPayload(List.of())).isEmpty();
+        hasDeltaObservers  = !beanManager
+                                      .resolveObserverMethods(new TrustScoreDeltaPayload(List.of())).isEmpty();
         hasNotifyObservers = !beanManager
-                .resolveObserverMethods(new TrustScoreComputedAt(Instant.EPOCH, 0)).isEmpty();
+                                      .resolveObserverMethods(new TrustScoreComputedAt(Instant.EPOCH, 0)).isEmpty();
     }
 
-    /** True when at least one TrustScoreDeltaPayload observer is registered. */
+    @Override
+    public boolean needsDeltaPayload() {
+        return hasDeltaObservers;
+    }
+
+    @Override
+    public void publishFull(TrustScoreFullPayload payload) {
+        if (!hasFullObservers) {return;}
+        try {
+            fullEvent.fire(payload);
+        } catch (Exception e) {
+            log.warnf(e, "TrustScoreFullPayload sync observer failed");
+        }
+        try {
+            fullEvent.fireAsync(payload)
+                     .exceptionally(ex -> {
+                         log.warnf(ex, "TrustScoreFullPayload async observer failed");
+                         return null;
+                     });
+        } catch (Exception e) {
+            log.warnf(e, "TrustScoreFullPayload fireAsync failed");
+        }
+    }
+
+    @Override
+    public void publishDelta(TrustScoreDeltaPayload payload) {
+        if (!hasDeltaObservers) {return;}
+        try {
+            deltaEvent.fire(payload);
+        } catch (Exception e) {
+            log.warnf(e, "TrustScoreDeltaPayload sync observer failed");
+        }
+        try {
+            deltaEvent.fireAsync(payload)
+                      .exceptionally(ex -> {
+                          log.warnf(ex, "TrustScoreDeltaPayload async observer failed");
+                          return null;
+                      });
+        } catch (Exception e) {
+            log.warnf(e, "TrustScoreDeltaPayload fireAsync failed");
+        }
+    }
+
+    @Override
+    public void publishNotify(TrustScoreComputedAt payload) {
+        if (!hasNotifyObservers) {return;}
+        try {
+            notifyEvent.fire(payload);
+        } catch (Exception e) {
+            log.warnf(e, "TrustScoreComputedAt sync observer failed");
+        }
+        try {
+            notifyEvent.fireAsync(payload)
+                       .exceptionally(ex -> {
+                           log.warnf(ex, "TrustScoreComputedAt async observer failed");
+                           return null;
+                       });
+        } catch (Exception e) {
+            log.warnf(e, "TrustScoreComputedAt fireAsync failed");
+        }
+    }
+
+    /**
+     * True when at least one TrustScoreDeltaPayload observer is registered.
+     */
     public boolean needsPreviousSnapshot() {
         return hasDeltaObservers;
     }
 
-    public void publish(final List<ActorTrustScoreBase> current,
-            final Map<String, ActorTrustScoreBase> previousSnapshot,
-            final Instant computedAt) {
+    public void publish(List<ActorTrustScoreBase> current,
+                        Map<String, ActorTrustScoreBase> previousSnapshot,
+                        Instant computedAt) {
 
         if (!config.trustScore().routingEnabled()) {
             return;
         }
 
-        if (hasNotifyObservers) {
-            final TrustScoreComputedAt notifyPayload = new TrustScoreComputedAt(computedAt, current.size());
-            try {
-                // fire() reaches @Observes (sync) observers
-                notifyEvent.fire(notifyPayload);
-            } catch (final Exception e) {
-                log.warnf(e, "TrustScoreComputedAt sync observer failed — routing signal skipped");
-            }
-            try {
-                // fireAsync() reaches @ObservesAsync (async) observers
-                notifyEvent.fireAsync(notifyPayload)
-                        .exceptionally(ex -> {
-                            log.warnf(ex, "TrustScoreComputedAt async observer failed — routing signal skipped");
-                            return null;
-                        });
-            } catch (final Exception e) {
-                log.warnf(e, "TrustScoreComputedAt fireAsync failed — routing signal skipped");
-            }
-        }
-
-        if (hasFullObservers) {
-            final TrustScoreFullPayload fullPayload = new TrustScoreFullPayload(List.copyOf(current));
-            try {
-                fullEvent.fire(fullPayload);
-            } catch (final Exception e) {
-                log.warnf(e, "TrustScoreFullPayload sync observer failed — routing signal skipped");
-            }
-            try {
-                fullEvent.fireAsync(fullPayload)
-                        .exceptionally(ex -> {
-                            log.warnf(ex, "TrustScoreFullPayload async observer failed — routing signal skipped");
-                            return null;
-                        });
-            } catch (final Exception e) {
-                log.warnf(e, "TrustScoreFullPayload fireAsync failed — routing signal skipped");
-            }
-        }
+        publishNotify(new TrustScoreComputedAt(computedAt, current.size()));
+        publishFull(new TrustScoreFullPayload(List.copyOf(current)));
 
         if (hasDeltaObservers) {
-            try {
-                final double threshold = config.trustScore().routingDeltaThreshold();
-                final List<TrustScoreDelta> deltas = computeDeltas(current, previousSnapshot, threshold);
-                final TrustScoreDeltaPayload deltaPayload = new TrustScoreDeltaPayload(deltas);
-                deltaEvent.fire(deltaPayload);
-                try {
-                    deltaEvent.fireAsync(deltaPayload)
-                            .exceptionally(ex -> {
-                                log.warnf(ex, "TrustScoreDeltaPayload async observer failed — routing signal skipped");
-                                return null;
-                            });
-                } catch (final Exception e) {
-                    log.warnf(e, "TrustScoreDeltaPayload fireAsync failed — routing signal skipped");
-                }
-            } catch (final Exception e) {
-                log.warnf(e, "TrustScoreDeltaPayload observer failed — routing signal skipped");
-            }
+            double                threshold = config.trustScore().routingDeltaThreshold();
+            List<TrustScoreDelta> deltas    = computeDeltas(current, previousSnapshot, threshold);
+            publishDelta(new TrustScoreDeltaPayload(deltas));
         }
     }
 
     public static List<TrustScoreDelta> computeDeltas(
-            final List<ActorTrustScoreBase> current,
-            final Map<String, ActorTrustScoreBase> previousSnapshot,
-            final double threshold) {
+            List<ActorTrustScoreBase> current,
+            Map<String, ActorTrustScoreBase> previousSnapshot,
+            double threshold) {
 
-        final List<TrustScoreDelta> deltas = new ArrayList<>();
-        for (final ActorTrustScoreBase score : current) {
-            final ActorTrustScoreBase prev = previousSnapshot.get(score.actorId);
-            final double prevTrust = prev != null ? prev.trustScore : 0.0;
-            final double prevGlobal = prev != null ? prev.globalTrustScore : 0.0;
+        List<TrustScoreDelta> deltas = new ArrayList<>();
+        for (ActorTrustScoreBase score : current) {
+            ActorTrustScoreBase prev       = previousSnapshot.get(score.actorId);
+            double              prevTrust  = prev != null ? prev.trustScore : 0.0;
+            double              prevGlobal = prev != null ? prev.globalTrustScore : 0.0;
             if (Math.abs(score.trustScore - prevTrust) >= threshold) {
                 deltas.add(new TrustScoreDelta(
                         score.actorId, prevTrust, score.trustScore,

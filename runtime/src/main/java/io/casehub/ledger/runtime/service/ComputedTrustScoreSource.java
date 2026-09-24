@@ -1,169 +1,58 @@
 package io.casehub.ledger.runtime.service;
 
-import java.time.Instant;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.OptionalDouble;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
-
+import io.casehub.ledger.api.spi.CrossTenantLedgerEntryRepository;
+import io.casehub.ledger.api.spi.TrustScoreSource;
 import io.casehub.ledger.core.model.AttestationRecordedEvent;
 import io.casehub.ledger.core.trust.TrustScoreCalculator;
-import io.casehub.ledger.core.trust.TrustScoreComputer;
+import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.event.TransactionPhase;
 import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 
-import io.casehub.ledger.api.spi.TrustScoreSource;
-import io.casehub.ledger.api.model.LedgerAttestation;
-import io.casehub.ledger.api.model.LedgerEntry;
-import io.casehub.ledger.runtime.qualifier.CrossTenant;
-import io.casehub.ledger.api.spi.CrossTenantLedgerEntryRepository;
+import java.util.Map;
+import java.util.OptionalDouble;
 
-/**
- * On-read {@link TrustScoreSource}: computes trust scores from raw attestation history
- * on each query. No materialized store, zero staleness.
- *
- * <p>A per-actor computation cache eliminates multiplicative query cost when the engine's
- * {@code TrustCandidateClassifier} calls multiple SPI methods for the same actor within
- * a single routing decision. The cache is invalidated on {@link AttestationRecordedEvent}
- * for the affected decision-maker — zero-staleness is preserved because invalidation
- * happens exactly when the underlying data changes.
- *
- * <p>No size bound on the cache — acceptable for lightweight deployments with bounded
- * actor counts (the target use case). If future use cases require unbounded actor sets,
- * add LRU eviction.
- *
- * <p>Activate via
- * {@code quarkus.arc.selected-alternatives=io.casehub.ledger.runtime.service.ComputedTrustScoreSource}.
- */
 @ApplicationScoped
 @Alternative
 public class ComputedTrustScoreSource implements TrustScoreSource {
 
-    private final        CrossTenantLedgerEntryRepository    ledgerRepo;
-    private final        TrustScoreCalculator                calculator;
-    private static final TrustScoreCalculator.ComputedScores EMPTY_SENTINEL =
-            new TrustScoreCalculator.ComputedScores(Map.of(), Map.of(), Map.of(),
-                    new TrustScoreComputer.ActorScore(0, 0, 0, 0, 0, 0, 0, 1.0));
-
-    private final ConcurrentHashMap<String, TrustScoreCalculator.ComputedScores> cache =
-            new ConcurrentHashMap<>();
+    private final io.casehub.ledger.core.trust.ComputedTrustSourceCore core;
 
     @Inject
-    public ComputedTrustScoreSource(@CrossTenant final CrossTenantLedgerEntryRepository ledgerRepo,
-                                    final TrustScoreCalculator calculator) {
-        this.ledgerRepo = ledgerRepo;
-        this.calculator = calculator;
+    public ComputedTrustScoreSource(@CrossTenant CrossTenantLedgerEntryRepository ledgerRepo,
+                                    TrustScoreCalculator calculator) {
+        this.core = new io.casehub.ledger.core.trust.ComputedTrustSourceCore(ledgerRepo, calculator);
     }
 
-    public void invalidateActor(final String actorId) {
-        cache.remove(actorId);
-    }
+    public void invalidateActor(String actorId) {core.invalidateActor(actorId);}
 
-    void onAttestationRecorded(
-            @Observes(during = TransactionPhase.AFTER_SUCCESS)
-            final AttestationRecordedEvent event) {
-        invalidateActor(event.actorId());
+    void onAttestationRecorded(@Observes(during = TransactionPhase.AFTER_SUCCESS) AttestationRecordedEvent event) {
+        core.invalidateActor(event.actorId());
     }
 
     @Override
-    public OptionalDouble globalScore(final String actorId) {
-        final TrustScoreCalculator.ComputedScores scores = computeIfAbsent(actorId);
-        return scores != null
-                ? OptionalDouble.of(scores.globalScore().trustScore())
-                : OptionalDouble.empty();
-    }
+    public OptionalDouble globalScore(String actorId) {return core.globalScore(actorId);}
 
     @Override
-    public OptionalDouble capabilityScore(final String actorId, final String capabilityTag) {
-        final TrustScoreCalculator.ComputedScores scores = computeIfAbsent(actorId);
-        if (scores == null) {
-            return OptionalDouble.empty();
-        }
-        final TrustScoreComputer.ActorScore cap = scores.capabilityScores().get(capabilityTag);
-        return cap != null ? OptionalDouble.of(cap.trustScore()) : OptionalDouble.empty();
-    }
+    public OptionalDouble capabilityScore(String actorId, String capabilityTag) {return core.capabilityScore(actorId, capabilityTag);}
 
     @Override
-    public OptionalDouble dimensionScore(final String actorId, final String dimensionKey) {
-        final TrustScoreCalculator.ComputedScores scores = computeIfAbsent(actorId);
-        if (scores == null) {
-            return OptionalDouble.empty();
-        }
-        final Double dim = scores.dimensionScores().get(dimensionKey);
-        return dim != null ? OptionalDouble.of(dim) : OptionalDouble.empty();
-    }
+    public OptionalDouble dimensionScore(String actorId, String dimensionKey) {return core.dimensionScore(actorId, dimensionKey);}
 
     @Override
-    public OptionalDouble capabilityDimensionScore(final String actorId, final String capabilityTag,
-            final String dimensionKey) {
-        final TrustScoreCalculator.ComputedScores scores = computeIfAbsent(actorId);
-        if (scores == null) {
-            return OptionalDouble.empty();
-        }
-        final Map<String, Double> dims = scores.capabilityDimensionScores().get(capabilityTag);
-        if (dims == null) {
-            return OptionalDouble.empty();
-        }
-        final Double val = dims.get(dimensionKey);
-        return val != null ? OptionalDouble.of(val) : OptionalDouble.empty();
-    }
+    public OptionalDouble capabilityDimensionScore(String actorId, String capabilityTag, String dimensionKey) {return core.capabilityDimensionScore(actorId, capabilityTag, dimensionKey);}
 
     @Override
-    public int decisionCount(final String actorId, final String capabilityTag) {
-        final TrustScoreCalculator.ComputedScores scores = computeIfAbsent(actorId);
-        if (scores == null) {
-            return 0;
-        }
-        final TrustScoreComputer.ActorScore cap = scores.capabilityScores().get(capabilityTag);
-        return cap != null ? cap.decisionCount() : 0;
-    }
+    public int decisionCount(String actorId, String capabilityTag) {return core.decisionCount(actorId, capabilityTag);}
 
     @Override
-    public Map<String, Double> allCapabilityScores(final String actorId) {
-        final TrustScoreCalculator.ComputedScores scores = computeIfAbsent(actorId);
-        if (scores == null) {
-            return Map.of();
-        }
-        return scores.capabilityScores().entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().trustScore()));
-    }
+    public Map<String, Double> allCapabilityScores(String actorId) {return core.allCapabilityScores(actorId);}
 
     @Override
-    public Map<String, Double> allDimensionScores(final String actorId) {
-        final TrustScoreCalculator.ComputedScores scores = computeIfAbsent(actorId);
-        return scores != null ? Collections.unmodifiableMap(scores.dimensionScores()) : Map.of();
-    }
+    public Map<String, Double> allDimensionScores(String actorId) {return core.allDimensionScores(actorId);}
 
     @Override
-    public Map<String, Double> qualityScores(final String actorId, final String capabilityTag) {
-        final TrustScoreCalculator.ComputedScores scores = computeIfAbsent(actorId);
-        if (scores == null) {
-            return Map.of();
-        }
-        final Map<String, Double> dims = scores.capabilityDimensionScores().get(capabilityTag);
-        return dims != null ? Collections.unmodifiableMap(dims) : Map.of();
-    }
-
-    private TrustScoreCalculator.ComputedScores computeIfAbsent(final String actorId) {
-        final TrustScoreCalculator.ComputedScores scores =
-                cache.computeIfAbsent(actorId, this::computeFresh);
-        return scores == EMPTY_SENTINEL ? null : scores;
-    }
-
-    private TrustScoreCalculator.ComputedScores computeFresh(final String actorId) {
-        final List<LedgerEntry> decisions = ledgerRepo.findEventsByActorId(actorId);
-        if (decisions.isEmpty()) {
-            return EMPTY_SENTINEL;
-        }
-        @SuppressWarnings("unchecked")
-        final Map<UUID, List<LedgerAttestation>> attestationsByEntry =
-                (Map<UUID, List<LedgerAttestation>>) (Map<?,?>) ledgerRepo.findAttestationsByActorId(actorId);
-        return calculator.computeAll(decisions, attestationsByEntry, Instant.now());
-    }
+    public Map<String, Double> qualityScores(String actorId, String capabilityTag) {return core.qualityScores(actorId, capabilityTag);}
 }
