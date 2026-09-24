@@ -27,6 +27,7 @@
     <module>graphql</module>
     <module>reporting</module>
     <module>ledger-spring</module>
+    <module>ledger-spring-jpa</module>
   </modules>
 
   <repositories>
