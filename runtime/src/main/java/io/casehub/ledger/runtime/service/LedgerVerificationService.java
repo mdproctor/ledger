@@ -1,87 +1,36 @@
 package io.casehub.ledger.runtime.service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-
-import io.casehub.ledger.core.merkle.LedgerMerkleTree;
+import io.casehub.ledger.api.spi.LedgerEntryRepository;
+import io.casehub.ledger.api.spi.LedgerMerkleFrontierRepository;
+import io.casehub.ledger.core.merkle.InclusionProof;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
-import io.casehub.ledger.api.model.LedgerEntry;
-import io.casehub.ledger.api.model.LedgerMerkleFrontier;
-import io.casehub.ledger.api.spi.LedgerEntryRepository;
-import io.casehub.ledger.api.spi.LedgerMerkleFrontierRepository;
-import io.casehub.ledger.core.merkle.InclusionProof;
+import java.util.UUID;
 
-/**
- * CDI bean exposing Merkle tree verification operations.
- * Auto-activated — no consumer configuration required.
- *
- * <p>
- * For agent signature verification see {@link AgentSignatureVerificationService}.
- */
 @ApplicationScoped
 public class LedgerVerificationService {
 
-    @Inject
-    LedgerEntryRepository ledgerRepo;
+    private final io.casehub.ledger.core.service.VerificationServiceCore core;
 
     @Inject
-    LedgerMerkleFrontierRepository frontierRepo;
-
-    /** Return the current Merkle tree root for a subject. */
-    @Transactional
-    public String treeRoot(final UUID subjectId, final String tenancyId) {
-        final List<LedgerMerkleFrontier> frontier = frontierRepo.findBySubjectId(subjectId, tenancyId);
-        if (frontier.isEmpty()) {
-            throw new IllegalStateException("No entries for subject " + subjectId);
-        }
-        return LedgerMerkleTree.treeRoot(frontier);
+    LedgerVerificationService(LedgerEntryRepository ledgerRepo, LedgerMerkleFrontierRepository frontierRepo) {
+        this.core = new io.casehub.ledger.core.service.VerificationServiceCore(ledgerRepo, frontierRepo);
     }
 
-    /**
-     * Generate an inclusion proof for the given entry.
-     * Fetches all leaf hashes for the subject from the database (ordered by sequenceNumber).
-     * The returned proof carries the authoritative root from the stored frontier.
-     */
     @Transactional
-    public InclusionProof inclusionProof(final UUID entryId, final String tenancyId) {
-        final LedgerEntry entry = ledgerRepo.findEntryById(entryId, tenancyId).orElse(null);
-        if (entry == null)
-            throw new IllegalArgumentException("Entry not found: " + entryId);
-
-        final List<LedgerEntry> allForSubject = ledgerRepo.findBySubjectId(entry.subjectId, tenancyId);
-        final List<String> leafHashes = allForSubject.stream()
-                .map(e -> e.digest)
-                .toList();
-        final int k = entry.sequenceNumber - 1;
-        final String root = treeRoot(entry.subjectId, tenancyId);
-        final InclusionProof proof = LedgerMerkleTree.inclusionProof(
-                entryId, k, leafHashes.size(), leafHashes);
-        return new InclusionProof(entryId, k, leafHashes.size(),
-                proof.leafHash(), proof.siblings(), root);
+    public String treeRoot(UUID subjectId, String tenancyId) {
+        return core.treeRoot(subjectId, tenancyId);
     }
 
-    /**
-     * Verify that all stored digests are consistent with recomputed leaf hashes.
-     * Returns false if any entry's stored digest doesn't match its canonical hash.
-     */
     @Transactional
-    public boolean verify(final UUID subjectId, final String tenancyId) {
-        final List<LedgerEntry> entries = ledgerRepo.findBySubjectId(subjectId, tenancyId);
-        List<io.casehub.ledger.api.model.LedgerMerkleFrontier> frontier = new ArrayList<>();
-        for (final LedgerEntry entry : entries) {
-            final String expected = LedgerMerkleTree.leafHash(entry);
-            if (!expected.equals(entry.digest))
-                return false;
-            frontier = LedgerMerkleTree.append(expected, frontier, subjectId);
-        }
-        if (frontier.isEmpty())
-            return true;
-        final String computed = LedgerMerkleTree.treeRoot(frontier);
-        final String stored = treeRoot(subjectId, tenancyId);
-        return computed.equals(stored);
+    public InclusionProof inclusionProof(UUID entryId, String tenancyId) {
+        return core.inclusionProof(entryId, tenancyId);
+    }
+
+    @Transactional
+    public boolean verify(UUID subjectId, String tenancyId) {
+        return core.verify(subjectId, tenancyId);
     }
 }
