@@ -12,6 +12,7 @@ import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.NativeImageResourcePatternsBuildItem;
 import io.quarkus.deployment.pkg.builditem.ArtifactResultBuildItem;
 import io.quarkus.flyway.runtime.FlywayBuildTimeConfig;
+import io.quarkus.hibernate.orm.deployment.AdditionalJpaModelBuildItem;
 import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.DotName;
 import org.jboss.jandex.FieldInfo;
@@ -61,6 +62,26 @@ class LedgerProcessor {
                 .includeGlob("db/ledger/migration/*.sql")
                 .build();
     }
+
+    @BuildStep
+    void registerJpaCommonEntities(BuildProducer<AdditionalJpaModelBuildItem> producer) {
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.jpa.JpaLedgerEntry"));
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.jpa.PlainLedgerEntry"));
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.jpa.ErasureReceiptLedgerEntry"));
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.jpa.KeyRotationEntry"));
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.jpa.ActorIdentityBindingEntry"));
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.jpa.ActorTrustScore"));
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.jpa.TrustScoreSnapshot"));
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.jpa.LedgerMerkleFrontier"));
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.jpa.LedgerAttestation"));
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.jpa.LedgerEntryArchiveRecord"));
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.jpa.ActorIdentity"));
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.jpa.JpaComplianceSupplement"));
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.jpa.JpaProvenanceSupplement"));
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.jpa.JpaCompensationSupplement"));
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.jpa.DomainDataConverter"));
+    }
+
 
     /**
      * Warns at build time if no Flyway datasource is configured with

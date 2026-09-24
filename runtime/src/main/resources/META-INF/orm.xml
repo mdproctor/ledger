@@ -5,11 +5,300 @@
                                      https://jakarta.ee/xml/ns/persistence/orm/orm_3_2.xsd"
                  version="3.2">
 
-    <entity class="io.casehub.ledger.jpa.JpaLedgerEntry">
-        <entity-listeners>
-            <entity-listener class="io.casehub.ledger.runtime.service.LedgerTraceListener"/>
-            <entity-listener class="io.casehub.ledger.runtime.service.identity.LedgerIdentityEnforcementListener"/>
-        </entity-listeners>
-    </entity>
+    <!-- LedgerEntry: api-tier domain model — fields mapped here instead of annotations -->
+    <mapped-superclass class="io.casehub.ledger.api.model.LedgerEntry" access="FIELD">
+        <attributes>
+            <id name="id"/>
+            <basic name="subjectId">
+                <column name="subject_id" nullable="false"/>
+            </basic>
+            <basic name="tenancyId">
+                <column name="tenancy_id" nullable="false"/>
+            </basic>
+            <basic name="sequenceNumber">
+                <column name="sequence_number" nullable="false"/>
+            </basic>
+            <basic name="entryType">
+                <column name="entry_type" nullable="false"/>
+                <enumerated>STRING</enumerated>
+            </basic>
+            <basic name="actorId">
+                <column name="actor_id"/>
+            </basic>
+            <basic name="actorType">
+                <column name="actor_type"/>
+                <enumerated>STRING</enumerated>
+            </basic>
+            <basic name="actorRole">
+                <column name="actor_role"/>
+            </basic>
+            <basic name="occurredAt">
+                <column name="occurred_at" nullable="false"/>
+            </basic>
+            <basic name="digest"/>
+            <basic name="traceId">
+                <column name="trace_id" length="255"/>
+            </basic>
+            <basic name="causedByEntryId">
+                <column name="caused_by_entry_id"/>
+            </basic>
+            <basic name="agentSignature">
+                <column name="agent_signature"/>
+            </basic>
+            <basic name="agentPublicKey">
+                <column name="agent_public_key"/>
+            </basic>
+            <basic name="agentKeyRef">
+                <column name="agent_key_ref"/>
+            </basic>
+            <basic name="actorDid">
+                <column name="actor_did"/>
+            </basic>
+            <basic name="metadata">
+                <column name="metadata" column-definition="TEXT"/>
+            </basic>
+            <basic name="domainData">
+                <column name="domain_data" column-definition="TEXT"/>
+                <convert converter="io.casehub.ledger.jpa.DomainDataConverter"/>
+            </basic>
+            <transient name="supplements"/>
+            <basic name="supplementJson">
+                <column name="supplement_json" column-definition="TEXT"/>
+            </basic>
+        </attributes>
+    </mapped-superclass>
+
+    <!-- LedgerAttestation: api-tier attestation model -->
+    <mapped-superclass class="io.casehub.ledger.api.model.LedgerAttestation" access="FIELD">
+        <attributes>
+            <id name="id"/>
+            <basic name="ledgerEntryId">
+                <column name="ledger_entry_id" nullable="false"/>
+            </basic>
+            <basic name="subjectId">
+                <column name="subject_id" nullable="false"/>
+            </basic>
+            <basic name="attestorId">
+                <column name="attestor_id" nullable="false"/>
+            </basic>
+            <basic name="attestorType">
+                <column name="attestor_type" nullable="false"/>
+                <enumerated>STRING</enumerated>
+            </basic>
+            <basic name="attestorRole">
+                <column name="attestor_role"/>
+            </basic>
+            <basic name="verdict">
+                <column nullable="false"/>
+                <enumerated>STRING</enumerated>
+            </basic>
+            <basic name="evidence">
+                <column column-definition="TEXT"/>
+            </basic>
+            <basic name="confidence">
+                <column nullable="false"/>
+            </basic>
+            <basic name="capabilityTag">
+                <column name="capability_tag" nullable="false"/>
+            </basic>
+            <basic name="trustDimension">
+                <column name="trust_dimension"/>
+            </basic>
+            <basic name="dimensionScore">
+                <column name="dimension_score"/>
+            </basic>
+            <basic name="occurredAt">
+                <column name="occurred_at" nullable="false"/>
+            </basic>
+        </attributes>
+    </mapped-superclass>
+
+    <!-- LedgerSupplement: api-tier supplement base -->
+    <mapped-superclass class="io.casehub.ledger.api.model.supplement.LedgerSupplement" access="FIELD">
+        <attributes>
+            <id name="id"/>
+            <basic name="supplementType">
+                <column name="supplement_type"/>
+            </basic>
+        </attributes>
+    </mapped-superclass>
+
+    <!-- ComplianceSupplement: api-tier compliance fields -->
+    <mapped-superclass class="io.casehub.ledger.api.model.supplement.ComplianceSupplement" access="FIELD">
+        <attributes>
+            <basic name="planRef">
+                <column name="plan_ref" length="500"/>
+            </basic>
+            <basic name="rationale">
+                <column column-definition="TEXT"/>
+            </basic>
+            <basic name="evidence">
+                <column column-definition="TEXT"/>
+            </basic>
+            <basic name="detail">
+                <column column-definition="TEXT"/>
+            </basic>
+            <basic name="decisionContext">
+                <column name="decision_context" column-definition="TEXT"/>
+            </basic>
+            <basic name="algorithmRef">
+                <column name="algorithm_ref" length="500"/>
+            </basic>
+            <basic name="confidenceScore">
+                <column name="confidence_score"/>
+            </basic>
+            <basic name="contestationUri">
+                <column name="contestation_uri" length="2000"/>
+            </basic>
+            <basic name="humanOverrideAvailable">
+                <column name="human_override_available"/>
+            </basic>
+        </attributes>
+    </mapped-superclass>
+
+    <!-- ProvenanceSupplement: api-tier provenance fields -->
+    <mapped-superclass class="io.casehub.ledger.api.model.supplement.ProvenanceSupplement" access="FIELD">
+        <attributes>
+            <basic name="sourceEntityId">
+                <column name="source_entity_id" length="255"/>
+            </basic>
+            <basic name="sourceEntityType">
+                <column name="source_entity_type" length="255"/>
+            </basic>
+            <basic name="sourceEntitySystem">
+                <column name="source_entity_system" length="100"/>
+            </basic>
+            <basic name="agentConfigHash">
+                <column name="agent_config_hash" length="64"/>
+            </basic>
+        </attributes>
+    </mapped-superclass>
+
+    <!-- LedgerMerkleFrontier: api-tier Merkle frontier node -->
+    <mapped-superclass class="io.casehub.ledger.api.model.LedgerMerkleFrontier" access="FIELD">
+        <attributes>
+            <id name="id"/>
+            <basic name="subjectId">
+                <column name="subject_id" nullable="false"/>
+            </basic>
+            <basic name="tenancyId">
+                <column name="tenancy_id" nullable="false"/>
+            </basic>
+            <basic name="level">
+                <column nullable="false"/>
+            </basic>
+            <basic name="hash">
+                <column nullable="false"/>
+            </basic>
+        </attributes>
+    </mapped-superclass>
+
+    <!-- ActorTrustScoreBase: api-tier trust score fields -->
+    <mapped-superclass class="io.casehub.ledger.api.model.ActorTrustScoreBase" access="FIELD">
+        <attributes>
+            <id name="id"/>
+            <basic name="actorId">
+                <column name="actor_id" nullable="false"/>
+            </basic>
+            <basic name="scoreType">
+                <column name="score_type" nullable="false"/>
+                <enumerated>STRING</enumerated>
+            </basic>
+            <basic name="capabilityKey">
+                <column name="capability_key"/>
+            </basic>
+            <basic name="dimensionKey">
+                <column name="dimension_key"/>
+            </basic>
+            <basic name="actorType">
+                <column name="actor_type"/>
+                <enumerated>STRING</enumerated>
+            </basic>
+            <basic name="trustScore">
+                <column name="trust_score"/>
+            </basic>
+            <basic name="alphaValue">
+                <column name="alpha_value"/>
+            </basic>
+            <basic name="betaValue">
+                <column name="beta_value"/>
+            </basic>
+            <basic name="decisionCount">
+                <column name="decision_count"/>
+            </basic>
+            <basic name="overturnedCount">
+                <column name="overturned_count"/>
+            </basic>
+            <basic name="attestationPositive">
+                <column name="attestation_positive"/>
+            </basic>
+            <basic name="attestationNegative">
+                <column name="attestation_negative"/>
+            </basic>
+            <basic name="lastComputedAt">
+                <column name="last_computed_at"/>
+            </basic>
+            <basic name="globalTrustScore">
+                <column name="global_trust_score"/>
+            </basic>
+        </attributes>
+    </mapped-superclass>
+
+    <!-- TrustScoreSnapshotBase: api-tier snapshot fields -->
+    <mapped-superclass class="io.casehub.ledger.api.model.TrustScoreSnapshotBase" access="FIELD">
+        <attributes>
+            <id name="id"/>
+            <basic name="actorId">
+                <column name="actor_id" nullable="false"/>
+            </basic>
+            <basic name="scoreType">
+                <column name="score_type" nullable="false"/>
+                <enumerated>STRING</enumerated>
+            </basic>
+            <basic name="capabilityTag">
+                <column name="capability_tag"/>
+            </basic>
+            <basic name="dimensionKey">
+                <column name="dimension_key"/>
+            </basic>
+            <basic name="score">
+                <column name="score" nullable="false"/>
+            </basic>
+            <basic name="previousScore">
+                <column name="previous_score" nullable="false"/>
+            </basic>
+            <basic name="occurredAt">
+                <column name="occurred_at" nullable="false"/>
+            </basic>
+        </attributes>
+    </mapped-superclass>
+
+    <!-- CompensationSupplement: api-tier compensation fields -->
+    <mapped-superclass class="io.casehub.ledger.api.model.supplement.CompensationSupplement" access="FIELD">
+        <attributes>
+            <basic name="originalEntryId">
+                <column name="original_entry_id"/>
+            </basic>
+            <basic name="compensationReason">
+                <column name="compensation_reason" column-definition="TEXT"/>
+            </basic>
+            <basic name="regulatoryBasis">
+                <column name="regulatory_basis" length="100"/>
+            </basic>
+            <basic name="compensationMode">
+                <column name="compensation_mode" length="20"/>
+            </basic>
+        </attributes>
+    </mapped-superclass>
+
+
+    <persistence-unit-metadata>
+        <persistence-unit-defaults>
+            <entity-listeners>
+                <entity-listener class="io.casehub.ledger.runtime.service.LedgerTraceListener"/>
+                <entity-listener class="io.casehub.ledger.runtime.service.identity.LedgerIdentityEnforcementListener"/>
+            </entity-listeners>
+        </persistence-unit-defaults>
+    </persistence-unit-metadata>
 
 </entity-mappings>

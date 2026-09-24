@@ -1,6 +1,7 @@
 package io.casehub.ledger.runtime.persistence;
 
 import io.casehub.ledger.jpa.LedgerPersistenceUnit;
+import io.casehub.ledger.jpa.LedgerSequenceAllocator;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.quarkus.hibernate.orm.PersistenceUnit;
 import jakarta.enterprise.context.ApplicationScoped;

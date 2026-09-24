@@ -1,6 +1,13 @@
 package io.casehub.ledger.memory;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import io.casehub.ledger.api.model.LedgerAttestation;
+import io.casehub.ledger.api.model.LedgerEntry;
+import io.casehub.ledger.api.model.LedgerEntryType;
+import io.casehub.ledger.runtime.qualifier.CrossTenant;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.List;
@@ -9,17 +16,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-import io.casehub.ledger.runtime.qualifier.CrossTenant;
-import jakarta.inject.Inject;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.api.model.LedgerAttestation;
-import io.casehub.ledger.api.model.LedgerEntry;
-import io.quarkus.test.junit.QuarkusTest;
 import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Integration tests for {@link InMemoryLedgerEntryRepository}.
@@ -261,7 +259,7 @@ class InMemoryLedgerEntryRepositoryTest {
         repo.saveAttestation(attestation(e1.getId(), e1.getSubjectId(), "a2", "*"), DEFAULT_TENANT_ID);
         repo.saveAttestation(attestation(e2.getId(), e2.getSubjectId(), "a3", "*"), DEFAULT_TENANT_ID);
 
-        Map<UUID, List<io.casehub.ledger.jpa.LedgerAttestation>> grouped =
+        Map<UUID, List<io.casehub.ledger.api.model.LedgerAttestation>> grouped =
                 crossTenantRepo.findAttestationsForEntries(Set.of(e1.getId(), e2.getId()));
         assertThat(grouped.get(e1.getId())).hasSize(2);
         assertThat(grouped.get(e2.getId())).hasSize(1);
