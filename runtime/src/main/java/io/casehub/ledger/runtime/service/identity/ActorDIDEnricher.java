@@ -1,38 +1,32 @@
 package io.casehub.ledger.runtime.service.identity;
 
-import io.casehub.platform.api.identity.ActorDIDProvider;
-import io.casehub.ledger.jpa.ActorIdentityBindingEntry;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.core.enricher.LedgerEntryEnricher;
+import io.casehub.ledger.jpa.ActorIdentityBindingEntry;
+import io.casehub.platform.api.identity.ActorDIDProvider;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.jboss.logging.Logger;
 
-/**
- * Populates {@link LedgerEntry#actorDid} from the configured {@link ActorDIDProvider}.
- * No-op when the actor has no DID configured. Non-fatal — exceptions are logged and swallowed.
- */
 @ApplicationScoped
 @Priority(40)
 public class ActorDIDEnricher implements LedgerEntryEnricher {
 
-    private static final Logger LOG = Logger.getLogger(ActorDIDEnricher.class);
-    private final ActorDIDProvider provider;
+    private final io.casehub.ledger.core.service.identity.ActorDIDEnricherCore core;
 
     @Inject
-    public ActorDIDEnricher(final ActorDIDProvider provider) {
-        this.provider = provider;
+    public ActorDIDEnricher(ActorDIDProvider provider) {
+        this.core = new io.casehub.ledger.core.service.identity.ActorDIDEnricherCore(
+                provider, e -> e instanceof ActorIdentityBindingEntry);
     }
 
     @Override
-    public void enrich(final LedgerEntry entry) {
-        if (entry.actorId == null || entry.actorDid != null) return;
-        if (entry instanceof ActorIdentityBindingEntry) return;
-        try {
-            provider.didFor(entry.actorId).ifPresent(did -> entry.actorDid = did);
-        } catch (final Exception e) {
-            LOG.warnf("ActorDIDEnricher failed for actor %s: %s", entry.actorId, e.getMessage());
-        }
+    public void enrich(LedgerEntry entry) {
+        core.enrich(entry);
+    }
+
+    @Override
+    public int priority() {
+        return core.priority();
     }
 }

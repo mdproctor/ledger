@@ -1,37 +1,30 @@
 package io.casehub.ledger.runtime.service;
 
+import io.casehub.ledger.api.model.LedgerEntry;
+import io.casehub.ledger.api.spi.LedgerTraceIdProvider;
+import io.casehub.ledger.core.enricher.LedgerEntryEnricher;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
-import io.casehub.ledger.api.spi.LedgerTraceIdProvider;
-import io.casehub.ledger.api.model.LedgerEntry;
-import io.casehub.ledger.core.enricher.LedgerEntryEnricher;
-
-/**
- * Enricher that auto-populates {@link LedgerEntry#traceId} from the active OTel span.
- * Extracted from {@code LedgerTraceListener} — same behaviour, now as a pipeline participant.
- */
 @ApplicationScoped
 @Priority(10)
 public class TraceIdEnricher implements LedgerEntryEnricher {
 
-    private final LedgerTraceIdProvider traceIdProvider;
+    private final io.casehub.ledger.core.service.TraceIdEnricherCore core;
 
     @Inject
-    public TraceIdEnricher(final LedgerTraceIdProvider traceIdProvider) {
-        this.traceIdProvider = traceIdProvider;
+    public TraceIdEnricher(LedgerTraceIdProvider traceIdProvider) {
+        this.core = new io.casehub.ledger.core.service.TraceIdEnricherCore(traceIdProvider);
     }
 
-    /**
-     * Idempotent — if {@code traceId} is already set, does nothing.
-     * Safe to call multiple times on the same entry under retried transactions.
-     */
     @Override
-    public void enrich(final LedgerEntry entry) {
-        if (entry.traceId != null) {
-            return;
-        }
-        traceIdProvider.currentTraceId().ifPresent(id -> entry.traceId = id);
+    public void enrich(LedgerEntry entry) {
+        core.enrich(entry);
+    }
+
+    @Override
+    public int priority() {
+        return core.priority();
     }
 }
