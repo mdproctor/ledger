@@ -1,6 +1,6 @@
 # casehub-ledger -- Consumer Guide
 
-> Domain-agnostic, immutable, cryptographically tamper-evident audit ledger for any Quarkus application.
+> Domain-agnostic, immutable, cryptographically tamper-evident audit ledger for Quarkus and Spring Boot applications.
 
 **GitHub:** [casehubio/casehub-ledger](https://github.com/casehubio/casehub-ledger)
 **Tier:** Foundation
@@ -9,7 +9,7 @@
 
 ## Purpose
 
-Zero knowledge of business domain. Consumers extend it; it never extends them. Any Quarkus app adds `io.casehub:casehub-ledger` as a dependency and immediately gets:
+Zero knowledge of business domain. Consumers extend it; it never extends them. Any Quarkus or Spring Boot app adds the appropriate dependency and immediately gets:
 
 - Immutable append-only audit log (`LedgerEntry` base entity with JPA JOINED inheritance)
 - Merkle Mountain Range tamper evidence (RFC 9162 stored frontier -- O(log N) inclusion proofs, Ed25519 signed checkpoints)
@@ -39,6 +39,100 @@ Zero knowledge of business domain. Consumers extend it; it never extends them. A
 | `reporting/` | `casehub-ledger-reporting` | Opt-in compliance reporting: Qute HTML templates, PDF rendering via platform `PdfGenerator` SPI, content negotiation (`OutputFormat`, `ReportMediaType`). Renders `ComplianceReport` and `AuditTrailExport` to JSON/CSV/HTML/PDF. Add `platform-pdf` to classpath for PDF output. |
 | `examples/` | (reactor POM) | Runnable example applications demonstrating each ledger capability. Not deployed. `maven.deploy.skip=true`. |
 | `consumer-compat-test/` | `casehub-ledger-consumer-compat-test` | Boot guard for CDI graph integrity. Standalone POM (not a child of ledger parent). Single `@QuarkusTest` with empty body -- if CDI boots with no persistence infrastructure and no `quarkus.arc.exclude-types`, every injection point is satisfied by `@DefaultBean` no-ops. `maven.deploy.skip=true`. |
+| `ledger-core/` | `casehub-ledger-core` | Framework-neutral POJOs -- zero CDI, zero Spring. Constructor-injected service core classes, config records, enricher pipeline. Both Quarkus runtime and Spring modules delegate to these. |
+| `ledger-jpa-common/` | `casehub-ledger-jpa-common` | Shared JPA entities, Flyway migrations, `LedgerSequenceAllocator`. Both Quarkus and Spring JPA modules depend on this. |
+| `ledger-spring/` | `casehub-ledger-spring` | Spring Boot auto-configuration: `LedgerConfigurationProperties`, scheduling, event publishing, enricher pipeline, core service beans. Add as compile dependency for Spring Boot deployment. |
+| `ledger-spring-jpa/` | `casehub-ledger-spring-jpa` | Spring Data JPA repositories implementing ledger persistence SPIs. Shares entities from `jpa-common`, Flyway migrations from `jpa-common`. Requires PostgreSQL. |
+| `ledger-signing-spring/` | `casehub-ledger-signing-spring` | Consolidated Spring Boot auto-configuration for all 4 signing backends (Vault Transit, AWS KMS, GCP KMS, Azure Key Vault). Each backend activates via `@ConditionalOnClass` on its core signing client. |
+
+---
+
+## Spring Boot Deployment
+
+Add these dependencies for a Spring Boot application:
+
+```xml
+<dependency>
+    <groupId>io.casehub</groupId>
+    <artifactId>casehub-ledger-spring</artifactId>
+    <version>${casehub-ledger.version}</version>
+</dependency>
+<dependency>
+    <groupId>io.casehub</groupId>
+    <artifactId>casehub-ledger-spring-jpa</artifactId>
+    <version>${casehub-ledger.version}</version>
+</dependency>
+```
+
+For cloud KMS signing, add the consolidated signing module plus the provider-specific core:
+
+```xml
+<dependency>
+    <groupId>io.casehub</groupId>
+    <artifactId>casehub-ledger-signing-spring</artifactId>
+    <version>${casehub-ledger.version}</version>
+</dependency>
+<!-- Add ONE of: casehub-ledger-vault-transit, casehub-ledger-aws-kms,
+     casehub-ledger-gcp-kms, casehub-ledger-azure-keyvault -->
+```
+
+### Configuration
+
+All properties are under `casehub.ledger.*`:
+
+```yaml
+casehub:
+  ledger:
+    enabled: true
+    hash-chain:
+      enabled: true
+    trust-score:
+      enabled: false
+    retention:
+      enabled: false
+      operational-days: 180
+    metadata:
+      max-size: 65536
+```
+
+Signing backend config (e.g., Vault Transit):
+
+```yaml
+casehub:
+  ledger:
+    vault-transit:
+      address: http://vault:8200
+      key-mapping:
+        "agent:reviewer@v1": reviewer-key
+      auth:
+        method: token
+        token: ${VAULT_TOKEN}
+```
+
+### Auto-detected beans
+
+`ledger-spring` provides `@ConditionalOnMissingBean` fallbacks for all SPIs. Override by registering your own `@Bean`:
+
+| SPI | Default | Override to |
+|-----|---------|-------------|
+| `LedgerEntryRepository` | NoOp (empty results) | `ledger-spring-jpa` (JPA), or custom |
+| `DecayFunction` | Exponential (90d half-life) | Custom decay curve |
+| `GlobalScoreStrategy` | All attestations | Custom trust computation |
+| `ActorIdentityProvider` | Passthrough (no pseudonymisation) | GDPR-compliant tokenisation |
+| `AgentSigner` | None | `ledger-signing-spring` + provider core module |
+
+### Flyway migrations
+
+Both Quarkus and Spring JPA modules share migrations from `jpa-common`. Configure Flyway:
+
+```yaml
+spring:
+  flyway:
+    locations: classpath:db/ledger/migration
+  jpa:
+    hibernate:
+      ddl-auto: validate
+```
 
 ---
 
