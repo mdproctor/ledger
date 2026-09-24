@@ -18,6 +18,13 @@
 
   <dependencies>
 
+    <!-- Core signing types — AbstractCachingAgentSigner, AgentSignature -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-ledger-core</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
     <!-- AWS KMS SDK -->
     <dependency>
       <groupId>software.amazon.awssdk</groupId>

@@ -25,10 +25,10 @@
       <version>${project.version}</version>
     </dependency>
 
-    <!-- casehub-ledger runtime — AbstractCachingAgentSigner, AgentSignature, AgentKeyRotatedEvent -->
+    <!-- casehub-ledger-core — AgentKeyRotatedEvent (transitively via azure-keyvault) -->
     <dependency>
       <groupId>io.casehub</groupId>
-      <artifactId>casehub-ledger</artifactId>
+      <artifactId>casehub-ledger-core</artifactId>
       <version>${project.version}</version>
     </dependency>
 

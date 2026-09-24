@@ -33,10 +33,10 @@ import org.junit.jupiter.api.io.TempDir;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 
-import io.casehub.ledger.runtime.service.AgentKeyMaterial;
-import io.casehub.ledger.runtime.service.AgentKeyRotatedEvent;
-import io.casehub.ledger.runtime.service.AgentSignature;
-import io.casehub.ledger.runtime.service.AgentSigner;
+import io.casehub.ledger.core.model.AgentKeyRotatedEvent;
+import io.casehub.ledger.core.signing.AgentKeyMaterial;
+import io.casehub.ledger.core.signing.AgentSignature;
+import io.casehub.ledger.core.signing.AgentSigner;
 import io.casehub.ledger.signing.vault.VaultAuthenticationException;
 import io.casehub.ledger.signing.vault.quarkus.VaultTransitConfig.AuthConfig;
 import io.casehub.ledger.signing.vault.quarkus.VaultTransitConfig.AuthMethod;
