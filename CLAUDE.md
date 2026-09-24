@@ -546,7 +546,18 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
     └── azure-keyvault-quarkus/           → io.casehub:casehub-ledger-azure-keyvault-quarkus (CDI adapter)
 ```
 
-**Signing module architecture:** Two-layer per provider: pure Java client (zero framework deps, usable from Spring/Micronaut/plain Java) + Quarkus CDI adapter (extends `AbstractCachingAgentSigner`, `@Alternative @Priority(1)`). EC keys only — RSA out of scope. Consumer activation: `quarkus.arc.selected-alternatives=<adapter class>`.
+**Signing module architecture:** Three-layer per provider: pure Java client (zero framework deps) → `*AgentSignerCore` (extends `AbstractCachingAgentSigner`, contains `loadContext`/`performSign`/`contextPublicKey` + auth routing) → framework lifecycle shell (Quarkus CDI `@Alternative @Priority(1)` or Spring `@AutoConfiguration`). EC keys only — RSA out of scope. Quarkus activation: `quarkus.arc.selected-alternatives=<adapter class>`. Spring activation: add `casehub-ledger-signing-spring` + provider core module (auto-detects via `@ConditionalOnClass`).
+
+### Spring Boot Modules
+
+```
+├── ledger-core/                          → io.casehub:casehub-ledger-core (framework-neutral POJOs, constructor injection)
+├── ledger-jpa-common/                    → io.casehub:casehub-ledger-jpa-common (shared JPA entities, Flyway, LedgerSequenceAllocator)
+├── ledger-spring/                        → io.casehub:casehub-ledger-spring (Spring Boot auto-configuration: config, scheduling, events, enricher pipeline)
+├── ledger-spring-jpa/                    → io.casehub:casehub-ledger-spring-jpa (Spring Data JPA repositories — 5 SPIs implemented)
+├── ledger-signing-spring/                → io.casehub:casehub-ledger-signing-spring (consolidated signing auto-config — 4 backends)
+└── ledger-spring-integration-test/       → io.casehub:casehub-ledger-spring-integration-test (@SpringBootTest with PostgreSQL Testcontainers)
+```
 
 **Vault Transit auth methods:** `VaultTransitConfig.AuthConfig` supports `AuthMethod.TOKEN` (static token), `AuthMethod.APPROLE` (AppRole auth with role-id + secret-id), `AuthMethod.KUBERNETES` (Kubernetes auth with service account token), and `AuthMethod.JWT` (JWT/OIDC auth with `role` + `jwt` from file/env). `JwtVaultTokenSource` handles JWT auth via `/v1/auth/jwt/login` endpoint. Browser-based OIDC flow (two-step auth URL + callback) deferred to #171.
 
