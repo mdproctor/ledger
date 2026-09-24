@@ -29,6 +29,7 @@
     <module>ledger-spring</module>
     <module>ledger-spring-jpa</module>
     <module>ledger-signing-spring</module>
+    <module>ledger-spring-integration-test</module>
   </modules>
 
   <repositories>

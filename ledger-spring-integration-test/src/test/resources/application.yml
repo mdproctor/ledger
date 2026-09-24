@@ -1,0 +1,23 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    locations: classpath:db/ledger/migration
+
+casehub:
+  ledger:
+    enabled: true
+    hash-chain:
+      enabled: true
+    trust-score:
+      enabled: false
+    retention:
+      enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
