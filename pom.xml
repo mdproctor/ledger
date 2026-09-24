@@ -26,6 +26,7 @@
     <module>rest</module>
     <module>graphql</module>
     <module>reporting</module>
+    <module>ledger-spring</module>
   </modules>
 
   <repositories>
