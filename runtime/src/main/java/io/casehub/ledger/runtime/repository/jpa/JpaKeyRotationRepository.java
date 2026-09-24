@@ -6,8 +6,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 
-import io.casehub.ledger.runtime.model.KeyRotationEntry;
-import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
+import io.casehub.ledger.jpa.KeyRotationEntry;
+import io.casehub.ledger.jpa.LedgerPersistenceUnit;
 import io.casehub.ledger.runtime.repository.KeyRotationRepository;
 import io.quarkus.arc.DefaultBean;
 

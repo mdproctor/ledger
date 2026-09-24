@@ -2,7 +2,7 @@ package io.casehub.ledger.runtime.repository;
 
 import java.util.List;
 
-import io.casehub.ledger.runtime.model.ErasureReceiptLedgerEntry;
+import io.casehub.ledger.jpa.ErasureReceiptLedgerEntry;
 
 /**
  * SPI for querying {@link ErasureReceiptLedgerEntry} records.

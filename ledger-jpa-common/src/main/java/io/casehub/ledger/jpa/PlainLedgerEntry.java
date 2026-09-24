@@ -1,10 +1,8 @@
-package io.casehub.ledger.runtime.model;
+package io.casehub.ledger.jpa;
 
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
-
-import io.casehub.ledger.runtime.model.jpa.JpaLedgerEntry;
 
 /**
  * Concrete {@link JpaLedgerEntry} subclass for domain-agnostic event writes.

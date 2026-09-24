@@ -1,4 +1,4 @@
-package io.casehub.ledger.runtime.model;
+package io.casehub.ledger.jpa;
 
 import java.time.Instant;
 
@@ -12,7 +12,6 @@ import jakarta.persistence.NamedQuery;
 import jakarta.persistence.Table;
 
 import io.casehub.ledger.api.model.KeyRotationReason;
-import io.casehub.ledger.runtime.model.jpa.JpaLedgerEntry;
 
 /**
  * A first-class immutable ledger entry recording a signing key rotation or revocation.

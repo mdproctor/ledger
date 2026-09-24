@@ -17,7 +17,7 @@ import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.ScoreType;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.ledger.api.model.TrustScoreSnapshotBase;
-import io.casehub.ledger.runtime.model.TrustScoreSnapshot;
+import io.casehub.ledger.jpa.TrustScoreSnapshot;
 import io.casehub.ledger.api.spi.TrustScoreSnapshotRepository;
 import io.casehub.ledger.runtime.service.TrustScoreJob;
 import io.quarkus.test.junit.QuarkusTest;

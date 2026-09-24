@@ -1,4 +1,4 @@
-package io.casehub.ledger.runtime.model;
+package io.casehub.ledger.jpa;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorValue;
@@ -11,7 +11,6 @@ import jakarta.persistence.Table;
 
 import io.casehub.platform.api.identity.CredentialValidationResult;
 import io.casehub.platform.api.identity.IdentityBindingStatus;
-import io.casehub.ledger.runtime.model.jpa.JpaLedgerEntry;
 
 /**
  * A first-class immutable ledger entry recording an actor DID identity binding event.

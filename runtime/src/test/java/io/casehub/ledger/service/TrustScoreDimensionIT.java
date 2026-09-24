@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import io.casehub.ledger.jpa.LedgerAttestation;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
@@ -225,8 +226,8 @@ class TrustScoreDimensionIT {
         final var myEntry = entries.stream()
                 .filter(e -> actorId.equals(e.actorId)).findFirst().orElseThrow();
 
-        final io.casehub.ledger.runtime.model.LedgerAttestation badAtt =
-                new io.casehub.ledger.runtime.model.LedgerAttestation();
+        final LedgerAttestation badAtt =
+                new LedgerAttestation();
         badAtt.id = UUID.randomUUID();
         badAtt.ledgerEntryId = myEntry.id;
         badAtt.subjectId = myEntry.subjectId;

@@ -2,7 +2,7 @@ package io.casehub.ledger.runtime.repository;
 
 import java.util.List;
 
-import io.casehub.ledger.runtime.model.KeyRotationEntry;
+import io.casehub.ledger.jpa.KeyRotationEntry;
 
 /**
  * SPI for querying {@link KeyRotationEntry} records.

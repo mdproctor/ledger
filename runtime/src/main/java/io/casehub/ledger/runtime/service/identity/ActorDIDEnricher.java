@@ -1,7 +1,7 @@
 package io.casehub.ledger.runtime.service.identity;
 
 import io.casehub.platform.api.identity.ActorDIDProvider;
-import io.casehub.ledger.runtime.model.ActorIdentityBindingEntry;
+import io.casehub.ledger.jpa.ActorIdentityBindingEntry;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.core.enricher.LedgerEntryEnricher;
 import jakarta.annotation.Priority;

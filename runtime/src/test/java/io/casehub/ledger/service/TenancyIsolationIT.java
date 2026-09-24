@@ -2,8 +2,8 @@ package io.casehub.ledger.service;
 
 import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.runtime.model.LedgerAttestation;
-import io.casehub.ledger.runtime.model.PlainLedgerEntry;
+import io.casehub.ledger.jpa.LedgerAttestation;
+import io.casehub.ledger.jpa.PlainLedgerEntry;
 import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import io.casehub.ledger.api.spi.CrossTenantLedgerEntryRepository;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;

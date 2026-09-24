@@ -6,11 +6,12 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import io.casehub.ledger.jpa.JpaProvenanceSupplement;
 import jakarta.enterprise.util.Nonbinding;
 import jakarta.interceptor.InterceptorBinding;
 
 /**
- * CDI interceptor binding that automatically attaches a {@link io.casehub.ledger.runtime.model.supplement.JpaProvenanceSupplement}
+ * CDI interceptor binding that automatically attaches a {@link JpaProvenanceSupplement}
  * to any {@link io.casehub.ledger.api.model.LedgerEntry} persisted during the annotated method's execution.
  *
  * <p>

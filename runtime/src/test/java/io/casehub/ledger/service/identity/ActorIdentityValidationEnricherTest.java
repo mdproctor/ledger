@@ -6,7 +6,7 @@ import io.casehub.platform.api.identity.AgentCredentialValidator;
 import io.casehub.platform.api.identity.DIDDocument;
 import io.casehub.platform.api.identity.VerificationMethod;
 import io.casehub.platform.api.identity.DIDResolver;
-import io.casehub.ledger.runtime.model.jpa.JpaLedgerEntry;
+import io.casehub.ledger.jpa.JpaLedgerEntry;
 import io.casehub.ledger.runtime.service.identity.ActorIdentityValidationEnricher;
 import io.casehub.platform.api.identity.AgentIdentityValidatedEvent;
 import io.casehub.platform.api.identity.AgentIdentityViolationEvent;

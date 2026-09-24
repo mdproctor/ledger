@@ -16,7 +16,7 @@ import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.api.model.supplement.ProvenanceSupplement;
-import io.casehub.ledger.runtime.model.supplement.JpaProvenanceSupplement;
+import io.casehub.ledger.jpa.JpaProvenanceSupplement;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.ledger.runtime.service.intercept.ProvenanceCapture;
 import io.casehub.ledger.runtime.service.intercept.ProvenanceContext;

@@ -408,8 +408,8 @@ public class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
      * {@code runtime.model.LedgerAttestation} instances (passed in via {@code saveAttestation}).
      */
     @SuppressWarnings("unchecked")
-    Collection<io.casehub.ledger.runtime.model.LedgerAttestation> allAttestations() {
-        return (Collection<io.casehub.ledger.runtime.model.LedgerAttestation>) (Collection<?>) attestations.values();
+    Collection<io.casehub.ledger.jpa.LedgerAttestation> allAttestations() {
+        return (Collection<io.casehub.ledger.jpa.LedgerAttestation>) (Collection<?>) attestations.values();
     }
 
     /**

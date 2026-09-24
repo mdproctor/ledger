@@ -3,8 +3,8 @@ package io.casehub.ledger.runtime.service.federation;
 import java.util.Set;
 
 import io.casehub.ledger.core.federation.TrustBootstrapSource;
-import io.casehub.ledger.core.federation.TrustExportPayload;
 import io.casehub.ledger.core.federation.TrustImportService;
+import io.casehub.ledger.jpa.ActorTrustScore;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -30,7 +30,7 @@ public class TrustBootstrapService {
      * and import it via {@link TrustImportService}. Actors for which the source returns empty
      * are silently skipped — they start from Beta(1,1).
      *
-     * @param newActorIds actor IDs with no existing {@link io.casehub.ledger.runtime.model.ActorTrustScore} row
+     * @param newActorIds actor IDs with no existing {@link ActorTrustScore} row
      */
     public void bootstrapIfNew(final Set<String> newActorIds) {
         for (final String actorId : newActorIds) {

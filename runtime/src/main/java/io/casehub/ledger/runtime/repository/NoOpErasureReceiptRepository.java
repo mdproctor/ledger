@@ -5,7 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.List;
 
-import io.casehub.ledger.runtime.model.ErasureReceiptLedgerEntry;
+import io.casehub.ledger.jpa.ErasureReceiptLedgerEntry;
 
 
 /**

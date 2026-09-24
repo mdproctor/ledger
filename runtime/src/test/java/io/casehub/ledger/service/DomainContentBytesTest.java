@@ -2,8 +2,8 @@ package io.casehub.ledger.service;
 
 import io.casehub.ledger.api.model.KeyRotationReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.runtime.model.ActorIdentityBindingEntry;
-import io.casehub.ledger.runtime.model.KeyRotationEntry;
+import io.casehub.ledger.jpa.ActorIdentityBindingEntry;
+import io.casehub.ledger.jpa.KeyRotationEntry;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.platform.api.identity.CredentialValidationResult;

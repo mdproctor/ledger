@@ -1,4 +1,4 @@
-package io.casehub.ledger.runtime.persistence;
+package io.casehub.ledger.jpa;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

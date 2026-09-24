@@ -60,4 +60,4 @@ Chosen option: **Option A (`PlainLedgerEntry`)**, because it is the narrowest ch
 
 * casehubio/ledger#114 — OutcomeRecorder implementation
 * `runtime/src/main/resources/db/ledger/migration/V1009__plain_ledger_entry.sql`
-* `runtime/src/main/java/io/casehub/ledger/runtime/model/PlainLedgerEntry.java`
+* `../../ledger-jpa-common/src/main/java/io/casehub/ledger/jpa/PlainLedgerEntry.java`

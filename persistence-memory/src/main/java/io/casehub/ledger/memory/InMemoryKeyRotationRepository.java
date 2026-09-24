@@ -10,7 +10,7 @@ import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 
 import io.casehub.ledger.api.model.KeyRotationReason;
-import io.casehub.ledger.runtime.model.KeyRotationEntry;
+import io.casehub.ledger.jpa.KeyRotationEntry;
 import io.casehub.ledger.runtime.repository.KeyRotationRepository;
 
 @Alternative

@@ -9,7 +9,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 
-import io.casehub.ledger.runtime.model.ErasureReceiptLedgerEntry;
+import io.casehub.ledger.jpa.ErasureReceiptLedgerEntry;
 import io.casehub.ledger.runtime.repository.ErasureReceiptRepository;
 
 @Alternative

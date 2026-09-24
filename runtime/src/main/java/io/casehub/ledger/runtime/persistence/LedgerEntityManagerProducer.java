@@ -1,5 +1,8 @@
 package io.casehub.ledger.runtime.persistence;
 
+import io.casehub.ledger.jpa.LedgerPersistenceUnit;
+import io.casehub.ledger.runtime.config.LedgerConfig;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Default;
@@ -8,9 +11,6 @@ import jakarta.enterprise.inject.Produces;
 import jakarta.enterprise.util.AnnotationLiteral;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
-
-import io.casehub.ledger.runtime.config.LedgerConfig;
-import io.quarkus.hibernate.orm.PersistenceUnit;
 
 /**
  * CDI producer for the {@link LedgerPersistenceUnit}-qualified {@link EntityManager}.
@@ -36,6 +36,13 @@ public class LedgerEntityManagerProducer {
         }
         return instance.select(new PersistenceUnitLiteral(datasource)).get();
     }
+
+    @Produces
+    @ApplicationScoped
+    public LedgerSequenceAllocator sequenceAllocator(@LedgerPersistenceUnit EntityManager em) {
+        return new LedgerSequenceAllocator(em);
+    }
+
 
     /** AnnotationLiteral for {@link io.quarkus.hibernate.orm.PersistenceUnit}. */
     @SuppressWarnings("ClassExplicitlyAnnotation")

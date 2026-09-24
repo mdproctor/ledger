@@ -17,10 +17,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.runtime.model.ActorIdentityBindingEntry;
+import io.casehub.ledger.jpa.ActorIdentityBindingEntry;
 import io.casehub.ledger.api.model.LedgerEntry;
-import io.casehub.ledger.runtime.model.jpa.JpaLedgerEntry;
-import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
+import io.casehub.ledger.jpa.JpaLedgerEntry;
+import io.casehub.ledger.jpa.LedgerPersistenceUnit;
 import io.casehub.ledger.runtime.repository.ActorIdentityBindingRepository;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.platform.api.identity.IdentityBindingStatus;

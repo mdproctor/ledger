@@ -1,4 +1,4 @@
-package io.casehub.ledger.runtime.model.supplement;
+package io.casehub.ledger.jpa;
 
 import java.util.UUID;
 
@@ -11,7 +11,6 @@ import jakarta.persistence.NamedQuery;
 import jakarta.persistence.Table;
 
 import io.casehub.ledger.api.model.supplement.ProvenanceSupplement;
-import io.casehub.ledger.runtime.model.jpa.JpaLedgerEntry;
 
 /**
  * JPA entity for provenance supplements.

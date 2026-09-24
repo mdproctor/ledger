@@ -7,8 +7,8 @@ import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 
-import io.casehub.ledger.runtime.model.ErasureReceiptLedgerEntry;
-import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
+import io.casehub.ledger.jpa.ErasureReceiptLedgerEntry;
+import io.casehub.ledger.jpa.LedgerPersistenceUnit;
 import io.casehub.ledger.runtime.repository.ErasureReceiptRepository;
 
 /**

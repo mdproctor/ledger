@@ -10,7 +10,7 @@ import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.runtime.model.PlainLedgerEntry;
+import io.casehub.ledger.jpa.PlainLedgerEntry;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.ledger.core.merkle.LedgerMerkleTree;
 import io.casehub.ledger.runtime.service.intercept.ProvenanceContext;

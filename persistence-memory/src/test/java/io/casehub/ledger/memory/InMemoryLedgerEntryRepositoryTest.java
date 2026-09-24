@@ -15,11 +15,9 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.api.model.LedgerEntry;
-import io.casehub.platform.api.identity.ActorType;
 import io.quarkus.test.junit.QuarkusTest;
 import static io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID;
 
@@ -263,7 +261,7 @@ class InMemoryLedgerEntryRepositoryTest {
         repo.saveAttestation(attestation(e1.getId(), e1.getSubjectId(), "a2", "*"), DEFAULT_TENANT_ID);
         repo.saveAttestation(attestation(e2.getId(), e2.getSubjectId(), "a3", "*"), DEFAULT_TENANT_ID);
 
-        Map<UUID, List<io.casehub.ledger.runtime.model.LedgerAttestation>> grouped =
+        Map<UUID, List<io.casehub.ledger.jpa.LedgerAttestation>> grouped =
                 crossTenantRepo.findAttestationsForEntries(Set.of(e1.getId(), e2.getId()));
         assertThat(grouped.get(e1.getId())).hasSize(2);
         assertThat(grouped.get(e2.getId())).hasSize(1);

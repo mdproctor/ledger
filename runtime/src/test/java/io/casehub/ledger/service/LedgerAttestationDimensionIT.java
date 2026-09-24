@@ -79,7 +79,7 @@ class LedgerAttestationDimensionIT {
     @Transactional
     void ordinaryAttestation_nullDimensionFields() {
         final TestEntry entry = savedEntry();
-        final LedgerAttestation att = new io.casehub.ledger.runtime.model.LedgerAttestation();
+        final LedgerAttestation att = new io.casehub.ledger.jpa.LedgerAttestation();
         att.id = UUID.randomUUID();
         att.ledgerEntryId = entry.id;
         att.subjectId = entry.subjectId;
@@ -107,7 +107,7 @@ class LedgerAttestationDimensionIT {
     void dimensionAndOrdinaryAttestations_coexistOnSameEntry() {
         final TestEntry entry = savedEntry();
 
-        final LedgerAttestation ordinary = new io.casehub.ledger.runtime.model.LedgerAttestation();
+        final LedgerAttestation ordinary = new io.casehub.ledger.jpa.LedgerAttestation();
         ordinary.id = UUID.randomUUID();
         ordinary.ledgerEntryId = entry.id;
         ordinary.subjectId = entry.subjectId;
@@ -166,7 +166,7 @@ class LedgerAttestationDimensionIT {
 
     private LedgerAttestation dimensionAttestation(final UUID entryId, final UUID subjectId,
             final String dimension, final double score) {
-        final LedgerAttestation att = new io.casehub.ledger.runtime.model.LedgerAttestation();
+        final LedgerAttestation att = new io.casehub.ledger.jpa.LedgerAttestation();
         att.id = UUID.randomUUID();
         att.ledgerEntryId = entryId;
         att.subjectId = subjectId;

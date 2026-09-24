@@ -23,7 +23,7 @@ import io.casehub.platform.api.identity.IdentityBindingStatus;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.platform.api.identity.DIDDocument;
 import io.casehub.platform.api.identity.VerificationMethod;
-import io.casehub.ledger.runtime.model.ActorIdentityBindingEntry;
+import io.casehub.ledger.jpa.ActorIdentityBindingEntry;
 import io.casehub.ledger.runtime.repository.ActorIdentityBindingRepository;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.ledger.core.signing.AgentKeyMaterial;

@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.KeyRotationReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.runtime.model.KeyRotationEntry;
+import io.casehub.ledger.jpa.KeyRotationEntry;
 import io.casehub.ledger.core.model.AgentKeyRotatedEvent;
 import io.casehub.ledger.core.signing.AgentSignature;
 import io.casehub.ledger.runtime.service.KeyRotationService;

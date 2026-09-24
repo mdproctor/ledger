@@ -10,10 +10,12 @@ import io.casehub.ledger.core.merkle.LedgerMerkleTree;
 import io.casehub.ledger.core.model.AttestationRecordedEvent;
 import io.casehub.ledger.core.privacy.ContentSanitiser;
 import io.casehub.ledger.core.signing.AgentEntrySigner;
+import io.casehub.ledger.jpa.JpaLedgerEntry;
+import io.casehub.ledger.jpa.LedgerSequenceAllocator;
 import io.casehub.ledger.runtime.config.LedgerConfig;
-import io.casehub.ledger.runtime.model.supplement.JpaComplianceSupplement;
-import io.casehub.ledger.runtime.model.supplement.JpaProvenanceSupplement;
-import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
+import io.casehub.ledger.jpa.JpaComplianceSupplement;
+import io.casehub.ledger.jpa.JpaProvenanceSupplement;
+import io.casehub.ledger.jpa.LedgerPersistenceUnit;
 import io.casehub.ledger.api.spi.LedgerMerkleFrontierRepository;
 import io.casehub.ledger.runtime.service.LedgerEnricherPipeline;
 import io.casehub.ledger.runtime.service.LedgerMerklePublisher;
@@ -147,13 +149,13 @@ public class JpaLedgerEntryRepository implements LedgerEntryRepository {
         // Supplements are @Transient on api LedgerEntry — persist each JPA supplement explicitly.
         // JpaLedgerEntry has @OneToMany with cascade but we persist explicitly for entries
         // that may not have used attach() (e.g. supplements added directly to the list).
-        final io.casehub.ledger.runtime.model.jpa.JpaLedgerEntry jpaEntry =
-                (entry instanceof io.casehub.ledger.runtime.model.jpa.JpaLedgerEntry jpa) ? jpa : null;
+        final JpaLedgerEntry jpaEntry =
+                (entry instanceof JpaLedgerEntry jpa) ? jpa : null;
         for (final io.casehub.ledger.api.model.supplement.LedgerSupplement supplement : entry.supplements) {
-            if (supplement instanceof final io.casehub.ledger.runtime.model.supplement.JpaComplianceSupplement jcs) {
+            if (supplement instanceof final JpaComplianceSupplement jcs) {
                 if (jpaEntry != null) {jcs.jpaLedgerEntry = jpaEntry;}
                 em.persist(jcs);
-            } else if (supplement instanceof final io.casehub.ledger.runtime.model.supplement.JpaProvenanceSupplement jps) {
+            } else if (supplement instanceof final JpaProvenanceSupplement jps) {
                 if (jpaEntry != null) {jps.jpaLedgerEntry = jpaEntry;}
                 em.persist(jps);
             }

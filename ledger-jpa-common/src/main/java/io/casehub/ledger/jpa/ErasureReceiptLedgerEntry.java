@@ -1,4 +1,4 @@
-package io.casehub.ledger.runtime.model;
+package io.casehub.ledger.jpa;
 
 import java.nio.charset.StandardCharsets;
 
@@ -12,7 +12,6 @@ import jakarta.persistence.NamedQuery;
 import jakarta.persistence.Table;
 
 import io.casehub.ledger.api.model.ErasureReason;
-import io.casehub.ledger.runtime.model.jpa.JpaLedgerEntry;
 
 /**
  * A first-class immutable ledger entry recording a GDPR Art.17 erasure event.

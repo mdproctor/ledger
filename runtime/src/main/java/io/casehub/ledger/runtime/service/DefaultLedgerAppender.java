@@ -12,7 +12,7 @@ import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.api.spi.LedgerAppender;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.ledger.runtime.config.LedgerConfig;
-import io.casehub.ledger.runtime.model.PlainLedgerEntry;
+import io.casehub.ledger.jpa.PlainLedgerEntry;
 
 /**
  * Default blocking implementation of {@link LedgerAppender}.

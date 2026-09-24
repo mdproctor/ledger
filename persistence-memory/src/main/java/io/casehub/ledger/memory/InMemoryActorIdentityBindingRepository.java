@@ -1,6 +1,6 @@
 package io.casehub.ledger.memory;
 
-import io.casehub.ledger.runtime.model.ActorIdentityBindingEntry;
+import io.casehub.ledger.jpa.ActorIdentityBindingEntry;
 import io.casehub.ledger.runtime.repository.ActorIdentityBindingRepository;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;

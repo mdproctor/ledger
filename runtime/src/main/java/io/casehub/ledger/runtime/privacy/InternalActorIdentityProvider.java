@@ -1,8 +1,8 @@
 package io.casehub.ledger.runtime.privacy;
 
 import io.casehub.ledger.api.spi.ActorIdentityProvider;
-import io.casehub.ledger.runtime.model.ActorIdentity;
-import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
+import io.casehub.ledger.jpa.ActorIdentity;
+import io.casehub.ledger.jpa.LedgerPersistenceUnit;
 import io.casehub.platform.api.identity.ActorType;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.persistence.EntityManager;

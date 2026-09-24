@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.api.model.KeyRotationReason;
-import io.casehub.ledger.runtime.model.KeyRotationEntry;
+import io.casehub.ledger.jpa.KeyRotationEntry;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.ledger.core.merkle.LedgerMerkleTree;

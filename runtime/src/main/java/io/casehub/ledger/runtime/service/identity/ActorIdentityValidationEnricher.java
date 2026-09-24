@@ -10,7 +10,7 @@ import io.casehub.platform.api.identity.DIDResolver;
 import io.casehub.platform.api.identity.IdentityBindingStatus;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.api.model.LedgerEntry;
-import io.casehub.ledger.runtime.model.jpa.JpaLedgerEntry;
+import io.casehub.ledger.jpa.JpaLedgerEntry;
 import io.casehub.ledger.core.model.AgentKeyRotatedEvent;
 import io.casehub.ledger.core.enricher.LedgerEntryEnricher;
 import jakarta.annotation.Priority;

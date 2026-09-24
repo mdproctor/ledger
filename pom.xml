@@ -16,6 +16,7 @@
   <modules>
     <module>api</module>
     <module>ledger-core</module>
+    <module>ledger-jpa-common</module>
     <module>annotations</module>
     <module>runtime</module>
     <module>deployment</module>
@@ -77,6 +78,11 @@
       <dependency>
         <groupId>io.casehub</groupId>
         <artifactId>casehub-ledger-core</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.casehub</groupId>
+        <artifactId>casehub-ledger-jpa-common</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>

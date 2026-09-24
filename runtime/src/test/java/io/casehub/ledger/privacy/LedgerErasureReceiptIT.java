@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.ErasureReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.runtime.model.ErasureReceiptLedgerEntry;
+import io.casehub.ledger.jpa.ErasureReceiptLedgerEntry;
 import io.casehub.ledger.runtime.privacy.LedgerErasureService;
 import io.casehub.ledger.runtime.privacy.LedgerErasureService.ErasureResult;
 import io.casehub.ledger.runtime.repository.ErasureReceiptRepository;

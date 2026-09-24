@@ -1,7 +1,7 @@
 package io.casehub.ledger.runtime.repository.jpa;
 
-import io.casehub.ledger.runtime.model.ActorIdentityBindingEntry;
-import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
+import io.casehub.ledger.jpa.ActorIdentityBindingEntry;
+import io.casehub.ledger.jpa.LedgerPersistenceUnit;
 import io.casehub.ledger.runtime.repository.ActorIdentityBindingRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;

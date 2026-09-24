@@ -155,7 +155,7 @@ class LedgerAttestationCapabilityIT {
     void newAttestation_capabilityTagNotSet_defaultsToGlobalSentinel() {
         final TestEntry entry = savedEntry();
 
-        final LedgerAttestation att = new io.casehub.ledger.runtime.model.LedgerAttestation();
+        final LedgerAttestation att = new io.casehub.ledger.jpa.LedgerAttestation();
         att.ledgerEntryId = entry.id;
         att.subjectId = entry.subjectId;
         att.attestorId = "auto-reviewer-" + UUID.randomUUID();
@@ -195,7 +195,7 @@ class LedgerAttestationCapabilityIT {
 
     private LedgerAttestation attestationBy(final UUID entryId, final UUID subjectId,
             final String attestorId, final String capabilityTag) {
-        final LedgerAttestation att = new io.casehub.ledger.runtime.model.LedgerAttestation();
+        final LedgerAttestation att = new io.casehub.ledger.jpa.LedgerAttestation();
         att.ledgerEntryId = entryId;
         att.subjectId = subjectId;
         att.attestorId = attestorId;

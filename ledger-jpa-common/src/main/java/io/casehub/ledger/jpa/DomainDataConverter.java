@@ -1,4 +1,4 @@
-package io.casehub.ledger.runtime.model.converter;
+package io.casehub.ledger.jpa;
 
 import java.util.Map;
 

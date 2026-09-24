@@ -6,8 +6,8 @@ import io.casehub.ledger.core.model.AttestorDefaults;
 import io.casehub.ledger.api.model.OutcomeRecord;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.ledger.runtime.config.LedgerConfig;
-import io.casehub.ledger.runtime.model.LedgerAttestation;
-import io.casehub.ledger.runtime.model.PlainLedgerEntry;
+import io.casehub.ledger.jpa.LedgerAttestation;
+import io.casehub.ledger.jpa.PlainLedgerEntry;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 

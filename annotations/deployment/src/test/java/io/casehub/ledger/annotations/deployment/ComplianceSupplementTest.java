@@ -8,6 +8,7 @@ import io.casehub.ledger.annotations.DecisionContext;
 import io.casehub.ledger.annotations.SubjectId;
 import io.casehub.ledger.annotations.TenancyId;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
+import io.casehub.ledger.jpa.PlainLedgerEntry;
 import io.quarkus.test.QuarkusUnitTest;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -121,7 +122,7 @@ class ComplianceSupplementTest {
         public void assessStandalone(@SubjectId UUID caseId,
                                      @ActorId String agentId,
                                      @TenancyId String tenancyId) {
-            final var entry = new io.casehub.ledger.runtime.model.PlainLedgerEntry();
+            final var entry = new PlainLedgerEntry();
             entry.subjectId = caseId;
             entry.actorId   = agentId;
             entry.entryType = io.casehub.ledger.api.model.LedgerEntryType.EVENT;

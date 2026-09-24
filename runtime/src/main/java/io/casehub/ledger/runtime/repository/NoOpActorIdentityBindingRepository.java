@@ -3,7 +3,7 @@ package io.casehub.ledger.runtime.repository;
 import io.quarkus.arc.DefaultBean;
 import jakarta.enterprise.context.ApplicationScoped;
 
-import io.casehub.ledger.runtime.model.ActorIdentityBindingEntry;
+import io.casehub.ledger.jpa.ActorIdentityBindingEntry;
 
 
 import java.util.List;

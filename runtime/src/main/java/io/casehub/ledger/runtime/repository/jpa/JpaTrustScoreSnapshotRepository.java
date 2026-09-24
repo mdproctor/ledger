@@ -2,7 +2,7 @@ package io.casehub.ledger.runtime.repository.jpa;
 
 import io.casehub.ledger.api.model.TrustScoreSnapshotBase;
 import io.casehub.ledger.api.spi.TrustScoreSnapshotRepository;
-import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
+import io.casehub.ledger.jpa.LedgerPersistenceUnit;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;

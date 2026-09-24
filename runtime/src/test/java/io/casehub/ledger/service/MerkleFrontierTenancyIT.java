@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import io.casehub.ledger.jpa.KeyRotationEntry;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
@@ -22,7 +23,7 @@ import io.quarkus.test.junit.TestProfile;
 
 /**
  * Verifies that two tenants sharing a nameUUID-derived {@code subjectId} (the
- * {@link io.casehub.ledger.runtime.model.KeyRotationEntry} case) produce independent Merkle
+ * {@link KeyRotationEntry} case) produce independent Merkle
  * frontiers and that saves by one tenant do not overwrite the other's frontier.
  *
  * <p>

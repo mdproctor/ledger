@@ -11,8 +11,8 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
-import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
-import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
+import io.casehub.ledger.jpa.LedgerMerkleFrontier;
+import io.casehub.ledger.jpa.LedgerPersistenceUnit;
 import io.casehub.ledger.api.spi.LedgerMerkleFrontierRepository;
 
 @ApplicationScoped

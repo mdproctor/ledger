@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.ScoreType;
 import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.runtime.model.LedgerAttestation;
+import io.casehub.ledger.jpa.LedgerAttestation;
 import io.casehub.ledger.runtime.repository.NoOpActorIdentityBindingRepository;
 import io.casehub.ledger.core.repository.NoOpActorTrustScoreRepository;
 import io.casehub.ledger.core.repository.NoOpLedgerEntryRepository;

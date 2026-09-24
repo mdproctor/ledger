@@ -5,7 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import io.casehub.ledger.api.model.LedgerEntry;
-import io.casehub.ledger.runtime.model.supplement.JpaProvenanceSupplement;
+import io.casehub.ledger.jpa.JpaProvenanceSupplement;
 import io.casehub.ledger.core.enricher.LedgerEntryEnricher;
 
 /**

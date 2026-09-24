@@ -1,4 +1,4 @@
-package io.casehub.ledger.runtime.model;
+package io.casehub.ledger.jpa;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.NamedQuery;

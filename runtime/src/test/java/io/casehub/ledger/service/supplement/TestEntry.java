@@ -4,7 +4,7 @@ import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 
-import io.casehub.ledger.runtime.model.jpa.JpaLedgerEntry;
+import io.casehub.ledger.jpa.JpaLedgerEntry;
 
 /**
  * Minimal concrete subclass of {@link JpaLedgerEntry} for integration tests only.

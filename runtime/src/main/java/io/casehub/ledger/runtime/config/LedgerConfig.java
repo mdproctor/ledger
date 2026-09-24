@@ -1,6 +1,7 @@
 package io.casehub.ledger.runtime.config;
 
 import io.casehub.ledger.core.trust.AttestationAggregator;
+import io.casehub.ledger.jpa.ErasureReceiptLedgerEntry;
 import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.annotations.ConfigRoot;
 import io.smallrye.config.ConfigMapping;
@@ -755,7 +756,7 @@ public interface LedgerConfig {
 
         /**
          * When {@code true}, {@code LedgerErasureService.erase()} writes an
-         * {@link io.casehub.ledger.runtime.model.ErasureReceiptLedgerEntry} to the Merkle
+         * {@link ErasureReceiptLedgerEntry} to the Merkle
          * chain on every erasure call — making the act of forgetting tamper-evident.
          * The receipt is queryable via {@link io.casehub.ledger.runtime.repository.ErasureReceiptRepository}.
          *

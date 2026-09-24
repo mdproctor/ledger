@@ -7,9 +7,9 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.supplement.LedgerSupplementSerializer;
-import io.casehub.ledger.runtime.model.supplement.JpaCompensationSupplement;
-import io.casehub.ledger.runtime.model.supplement.JpaComplianceSupplement;
-import io.casehub.ledger.runtime.model.supplement.JpaProvenanceSupplement;
+import io.casehub.ledger.jpa.JpaCompensationSupplement;
+import io.casehub.ledger.jpa.JpaComplianceSupplement;
+import io.casehub.ledger.jpa.JpaProvenanceSupplement;
 
 /**
  * Unit tests for {@link LedgerSupplementSerializer} — no Quarkus runtime, no CDI.

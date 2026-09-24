@@ -20,7 +20,7 @@ import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.api.model.LedgerEntry;
-import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
+import io.casehub.ledger.jpa.LedgerPersistenceUnit;
 import io.casehub.ledger.runtime.qualifier.CrossTenant;
 import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.casehub.ledger.api.spi.CrossTenantLedgerEntryRepository;

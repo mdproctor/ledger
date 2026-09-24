@@ -6,7 +6,7 @@ import java.util.UUID;
 
 import io.casehub.ledger.api.model.KeyRotationReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.runtime.model.KeyRotationEntry;
+import io.casehub.ledger.jpa.KeyRotationEntry;
 import io.casehub.platform.api.identity.ActorType;
 
 /**

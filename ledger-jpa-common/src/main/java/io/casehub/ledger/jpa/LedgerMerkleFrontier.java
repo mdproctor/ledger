@@ -1,10 +1,8 @@
-package io.casehub.ledger.runtime.model;
+package io.casehub.ledger.jpa;
 
 import java.util.UUID;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
 import jakarta.persistence.NamedQuery;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;

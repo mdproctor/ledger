@@ -1,4 +1,4 @@
-package io.casehub.ledger.runtime.model.supplement;
+package io.casehub.ledger.jpa;
 
 import java.util.UUID;
 
@@ -10,28 +10,27 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.NamedQuery;
 import jakarta.persistence.Table;
 
-import io.casehub.ledger.api.model.supplement.CompensationSupplement;
-import io.casehub.ledger.runtime.model.jpa.JpaLedgerEntry;
+import io.casehub.ledger.api.model.supplement.ComplianceSupplement;
 
 /**
- * JPA entity for compensation supplements.
+ * JPA entity for compliance supplements.
  *
  * <p>
- * Extends the api-tier {@link CompensationSupplement} (which carries all field definitions
+ * Extends the api-tier {@link ComplianceSupplement} (which carries all field definitions
  * as {@code @MappedSuperclass}) and adds the JPA entity mapping, table name, and the
  * concrete {@code @ManyToOne} relationship to {@link JpaLedgerEntry}.
  *
  * <p>
- * Table: {@code ledger_supplement_compensation} — self-contained (no JOINED inheritance
+ * Table: {@code ledger_supplement_compliance} — self-contained (no JOINED inheritance
  * base table). Carries its own {@code id}, {@code ledger_entry_id}, {@code supplement_type},
- * plus all compensation-specific columns.
+ * plus all compliance-specific columns.
  */
 @Entity
-@Table(name = "ledger_supplement_compensation")
+@Table(name = "ledger_supplement_compliance")
 @NamedQuery(
-        name = "JpaCompensationSupplement.findByEntryIds",
-        query = "SELECT cs FROM JpaCompensationSupplement cs WHERE cs.jpaLedgerEntry.id IN :ids")
-public class JpaCompensationSupplement extends CompensationSupplement {
+        name = "JpaComplianceSupplement.findByEntryIds",
+        query = "SELECT cs FROM JpaComplianceSupplement cs WHERE cs.jpaLedgerEntry.id IN :ids")
+public class JpaComplianceSupplement extends ComplianceSupplement {
 
     /**
      * JPA relationship to the owning ledger entry.
@@ -47,7 +46,7 @@ public class JpaCompensationSupplement extends CompensationSupplement {
             id = UUID.randomUUID();
         }
         if (supplementType == null) {
-            supplementType = "COMPENSATION";
+            supplementType = "COMPLIANCE";
         }
     }
 

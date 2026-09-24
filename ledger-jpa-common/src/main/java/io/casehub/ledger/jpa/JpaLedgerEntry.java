@@ -1,17 +1,14 @@
-package io.casehub.ledger.runtime.model.jpa;
+package io.casehub.ledger.jpa;
 
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.api.model.supplement.LedgerSupplement;
-import io.casehub.ledger.runtime.model.supplement.JpaComplianceSupplement;
-import io.casehub.ledger.runtime.model.supplement.JpaProvenanceSupplement;
-import io.casehub.ledger.runtime.service.LedgerTraceListener;
-import io.casehub.ledger.runtime.service.identity.LedgerIdentityEnforcementListener;
+
 import io.casehub.platform.api.identity.IdentityBindingStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.DiscriminatorType;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EntityListeners;
+
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
@@ -108,7 +105,7 @@ import java.util.UUID;
 @Inheritance(strategy = InheritanceType.JOINED)
 @DiscriminatorColumn(name = "dtype", discriminatorType = DiscriminatorType.STRING)
 @Table(name = "ledger_entry")
-@EntityListeners({LedgerTraceListener.class, LedgerIdentityEnforcementListener.class})
+
 public abstract class JpaLedgerEntry extends LedgerEntry {
 
     /**

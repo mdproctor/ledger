@@ -8,7 +8,7 @@ import io.casehub.ledger.core.trust.TrustScoreCalculator;
 import io.casehub.ledger.core.trust.TrustScoreComputer;
 import io.casehub.ledger.api.model.ActorTrustScoreBase;
 import io.casehub.ledger.api.model.LedgerAttestation;
-import io.casehub.ledger.runtime.model.TrustScoreSnapshot;
+import io.casehub.ledger.jpa.TrustScoreSnapshot;
 import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.casehub.ledger.api.spi.TrustScoreSnapshotRepository;
 
