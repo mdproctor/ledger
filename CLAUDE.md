@@ -336,12 +336,12 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   ├── NoOpTrustScoreSnapshotRepository.java — @DefaultBean: CDI-satisfaction no-op; save() discards, find methods return empty
 │       │   ├── TrustScoreSnapshotRepository.java — SPI: save(TrustScoreSnapshot), findGlobalSnapshots(actorId), findCapabilitySnapshots(actorId, capabilityTag), findDimensionSnapshots(actorId, dimensionKey), findByActorAndTimeRange(actorId, from, to), deleteOlderThan(cutoff)
 │       │   └── jpa/                              — JPA implementations (EntityManager-based)
-│       │       ├── JpaLedgerEntryRepository.java     — @Alternative: JPA implementation of LedgerEntryRepository; activate via quarkus.arc.selected-alternatives
-│       │       ├── JpaActorIdentityBindingRepository.java — @Alternative: read-only JPA implementation (latestBindingFor, bindingHistoryFor with tenancyId); no save() — saves go through JpaLedgerEntryRepository; activate via quarkus.arc.selected-alternatives
-│       │       ├── JpaActorTrustScoreRepository.java — @Alternative @ApplicationScoped: activate via quarkus.arc.selected-alternatives; was plain @ApplicationScoped before #143 — @Alternative required so NoOpActorTrustScoreRepository @DefaultBean can fill the default slot
+│       │       ├── JpaLedgerEntryRepository.java     — @ApplicationScoped @Priority(1): JPA implementation of LedgerEntryRepository; auto-displaces @DefaultBean NoOp
+│       │       ├── JpaActorIdentityBindingRepository.java — @ApplicationScoped @Priority(1): read-only JPA implementation (latestBindingFor, bindingHistoryFor with tenancyId); no save() — saves go through JpaLedgerEntryRepository; auto-displaces @DefaultBean NoOp
+│       │       ├── JpaActorTrustScoreRepository.java — @ApplicationScoped @Priority(1): auto-displaces @DefaultBean NoOp
 │       │       ├── JpaCrossTenantLedgerEntryRepository.java
-│       │       ├── JpaErasureReceiptRepository.java — @Alternative: findByErasedActorId NamedQuery; activate via quarkus.arc.selected-alternatives
-│       │       ├── JpaTrustScoreSnapshotRepository.java — @Alternative: JPA implementation; persist + named query retrieval; activate via quarkus.arc.selected-alternatives
+│       │       ├── JpaErasureReceiptRepository.java — @ApplicationScoped @Priority(1): findByErasedActorId NamedQuery; auto-displaces @DefaultBean NoOp
+│       │       ├── JpaTrustScoreSnapshotRepository.java — @ApplicationScoped @Priority(1): JPA implementation; persist + named query retrieval; auto-displaces @DefaultBean NoOp
 │       │       └── LedgerSequenceAllocator.java     — CDI bean: atomic per-(subject, tenant) sequence allocation; dialect detected lazily via INFORMATION_SCHEMA.SETTINGS on H2 (getDatabaseProductName() returns "H2" for all modes; getMetaData().getURL() drops connection properties via Agroal — URL not reliable for mode detection); three-way Dialect enum (POSTGRESQL / H2_PG_MODE / H2_STANDARD); PostgreSQL: single-statement INSERT ON CONFLICT DO UPDATE (atomic upsert, DO UPDATE row lock serialises full save pipeline per tenant); H2+MODE=PostgreSQL: INSERT ON CONFLICT DO NOTHING + UPDATE (H2 2.4.240 rejects ON CONFLICT (col) DO UPDATE); H2 standard: full SQL-standard MERGE WHEN MATCHED UPDATE WHEN NOT MATCHED INSERT (single statement, not concurrent-safe for first inserts)
 │       ├── qualifier/
 │       │   └── CrossTenant.java              — CDI qualifier: disambiguates CrossTenantLedgerEntryRepository from LedgerEntryRepository (Category 1 only; build-time scope validation)
@@ -424,7 +424,7 @@ casehub-ledger/  (local folder: ~/claude/casehub/ledger)
 │       │   │   ├── TrustExportService.java         — CDI bean: exportAll / exportActor / exportDelta read-model
 │       │   │   ├── TrustImportService.java         — SPI: importTrust(TrustExportPayload); implementation is the merge strategy
 │       │   │   ├── NoOpTrustImportService.java     — @DefaultBean no-op (trust import is opt-in)
-│       │   │   ├── JpaTrustImportService.java      — @Alternative: seed-if-absent for all score types
+│       │   │   ├── JpaTrustImportService.java      — @ApplicationScoped @Priority(1): seed-if-absent for all score types; auto-displaces @DefaultBean NoOp
 │       │   │   ├── TrustBootstrapSource.java       — SPI: fetchPriorTrust(actorId) → Optional<TrustExportPayload>
 │       │   │   ├── NoOpTrustBootstrapSource.java   — @DefaultBean no-op (bootstrapping is opt-in)
 │       │   │   └── TrustBootstrapService.java      — CDI bean: bootstrapIfNew(Set<actorId>) — wired into TrustScoreJob pre-pass

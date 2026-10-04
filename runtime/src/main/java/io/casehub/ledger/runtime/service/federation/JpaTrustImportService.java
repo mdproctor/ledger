@@ -12,7 +12,7 @@ import io.casehub.ledger.core.federation.GlobalScoreExport;
 import io.casehub.ledger.core.federation.TrustImportService;
 import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
+import jakarta.annotation.Priority;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
@@ -42,15 +42,11 @@ import jakarta.transaction.Transactional;
  * use {@code @Transactional(REQUIRES_NEW)} in a custom implementation.
  *
  * <p>
- * Activate via:
- * {@code quarkus.arc.selected-alternatives=io.casehub.ledger.runtime.service.federation.JpaTrustImportService}
- * (alongside any other selected alternatives already configured).
- *
- * <p>
+ * Auto-displaces the {@code @DefaultBean} NoOp via {@code @Priority(1)}.
  * For custom merge behaviour, implement {@link TrustImportService} directly.
  */
-@Alternative
 @ApplicationScoped
+@Priority(1)
 public class JpaTrustImportService implements TrustImportService {
 
     @Inject

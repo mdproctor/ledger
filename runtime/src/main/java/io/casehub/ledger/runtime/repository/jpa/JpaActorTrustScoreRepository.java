@@ -7,7 +7,7 @@ import io.casehub.ledger.jpa.ActorTrustScore;
 import io.casehub.ledger.jpa.LedgerPersistenceUnit;
 import io.casehub.platform.api.identity.ActorType;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
+import jakarta.annotation.Priority;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
@@ -34,7 +34,7 @@ import java.util.UUID;
  * safe in practice.
  */
 @ApplicationScoped
-@Alternative
+@Priority(1)
 public class JpaActorTrustScoreRepository implements ActorTrustScoreRepository {
 
     @Inject

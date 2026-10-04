@@ -3,7 +3,7 @@ package io.casehub.ledger.runtime.repository.jpa;
 import java.util.List;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
+import jakarta.annotation.Priority;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 
@@ -14,12 +14,10 @@ import io.casehub.ledger.runtime.repository.ErasureReceiptRepository;
 /**
  * JPA implementation of {@link ErasureReceiptRepository}.
  *
- * <p>Activate via {@code quarkus.arc.selected-alternatives}.
- * When neither this nor the in-memory alternative is active,
- * {@link io.casehub.ledger.runtime.repository.NoOpErasureReceiptRepository} handles reads.
+ * <p>Auto-displaces the {@code @DefaultBean} NoOp via {@code @Priority(1)}.
  */
-@Alternative
 @ApplicationScoped
+@Priority(1)
 public class JpaErasureReceiptRepository implements ErasureReceiptRepository {
 
     @Inject

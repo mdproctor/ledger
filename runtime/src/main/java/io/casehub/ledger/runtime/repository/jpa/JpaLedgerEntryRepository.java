@@ -21,7 +21,7 @@ import io.casehub.ledger.runtime.service.LedgerEnricherPipeline;
 import io.casehub.ledger.runtime.service.LedgerMerklePublisher;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
-import jakarta.enterprise.inject.Alternative;
+import jakarta.annotation.Priority;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
@@ -54,25 +54,12 @@ import java.util.stream.Stream;
  * {@link EntityManager} directly.
  *
  * <p>
- * Marked {@code @Alternative} so that domain-specific extensions (e.g. Tarkus's
- * {@code JpaWorkItemLedgerEntryRepository}) can provide a single, unambiguous
- * {@code LedgerEntryRepository} bean without CDI conflicts.
- *
- * <p>
- * <b>Activation:</b> when no domain-specific repository is present (standalone deployments,
- * test modules, or extensions that use runtime services like {@code TrustScoreJob} without
- * a domain repo), activate this class via one of:
- * <ul>
- * <li>{@code quarkus.arc.selected-alternatives=io.casehub.ledger.runtime.repository.jpa.JpaLedgerEntryRepository}
- * in {@code application.properties} (Quarkus-native, preferred)</li>
- * <li>{@code <alternatives>} in {@code META-INF/beans.xml} (standard CDI)</li>
- * <li>Subclass with {@code @ApplicationScoped} (inherits all polymorphic query logic)</li>
- * </ul>
- * When a domain-specific {@code LedgerEntryRepository} is present, no activation is needed —
- * this class stays dormant.
+ * Auto-displaces the {@code @DefaultBean} NoOp via {@code @Priority(1)}.
+ * When a domain-specific {@code LedgerEntryRepository} is present (e.g. Tarkus's
+ * {@code JpaWorkItemLedgerEntryRepository}), the consumer's bean takes precedence.
  */
 @ApplicationScoped
-@Alternative
+@Priority(1)
 public class JpaLedgerEntryRepository implements LedgerEntryRepository {
 
     private static final Logger log = Logger.getLogger(JpaLedgerEntryRepository.class);

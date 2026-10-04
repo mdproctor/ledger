@@ -6,7 +6,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
+import jakarta.annotation.Priority;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
@@ -16,7 +16,7 @@ import io.casehub.ledger.jpa.LedgerPersistenceUnit;
 import io.casehub.ledger.api.spi.LedgerMerkleFrontierRepository;
 
 @ApplicationScoped
-@Alternative
+@Priority(1)
 public class JpaLedgerMerkleFrontierRepository implements LedgerMerkleFrontierRepository {
 
     @Inject

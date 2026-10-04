@@ -132,7 +132,7 @@ C4Context
 |---|---|
 | JPA JOINED inheritance for `LedgerEntry` | Consumers add domain fields via subclass join tables without modifying the base schema. Single Table rejected — column explosion across consumers. Table Per Class rejected — no polymorphic queries. |
 | Supplement system (optional joined tables) | Avoids wide-table anti-pattern. `ComplianceSupplement` and `ProvenanceSupplement` cost zero when unused. Alternative — columns on base table — forces every consumer to carry compliance fields they may not need. |
-| `@Alternative` + `@DefaultBean` layering | No-op defaults satisfy CDI without datasource. Domain-specific implementations displace them. Alternative — `@IfBuildProperty` per consumer — brittle, requires consumer-side exclude lists. |
+| `@Priority(1)` + `@DefaultBean` displacement | JPA repos are `@ApplicationScoped @Priority(1)` — auto-displace `@DefaultBean` NoOps without consumer config. NoOps remain as fallback for datasource-free deployments. Alternative — `@Alternative` + `selected-alternatives` — required explicit consumer config, silently fell back to NoOps when missing (#221). |
 | Enricher pipeline (`LedgerEntryEnricher` SPI) | Pluggable `@PrePersist` with `@Priority` ordering. Failures logged and swallowed — persist never blocked. Alternative — monolithic `@PrePersist` — not extensible, not orderable. |
 | Merkle Mountain Range (stored frontier) | O(log N) storage, immediate inclusion proofs, RFC 9162 compatible. Linear chain rejected — O(N) storage, no proofs. Full tree rejected — ~2N rows, excessive. |
 | Bayesian Beta trust scoring | Decay-weighted alpha/beta accumulation. Unattested decisions score 0.5 (unknown), not 1.0 (clean). Forgiveness formula (ADR 0001) rejected — no probabilistic foundation. |
