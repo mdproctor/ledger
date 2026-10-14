@@ -80,6 +80,20 @@ class LedgerProcessor {
         producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.jpa.JpaProvenanceSupplement"));
         producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.jpa.JpaCompensationSupplement"));
         producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.jpa.DomainDataConverter"));
+
+        // orm.xml-declared mapped superclasses — Jandex annotation scanning doesn't see
+        // these, so Quarkus's bytecode enhancer doesn't replace PUTFIELD instructions on
+        // their fields with $$_hibernate_write_* calls. Without registration, dirty tracking
+        // silently fails for any managed entity that mutates inherited fields. (#225)
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.api.model.LedgerEntry"));
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.api.model.LedgerAttestation"));
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.api.model.LedgerMerkleFrontier"));
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.api.model.ActorTrustScoreBase"));
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.api.model.TrustScoreSnapshotBase"));
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.api.model.supplement.LedgerSupplement"));
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.api.model.supplement.ComplianceSupplement"));
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.api.model.supplement.ProvenanceSupplement"));
+        producer.produce(new AdditionalJpaModelBuildItem("io.casehub.ledger.api.model.supplement.CompensationSupplement"));
     }
 
 

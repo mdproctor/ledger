@@ -6,8 +6,8 @@ import io.casehub.ledger.api.spi.ActorTrustScoreRepository;
 import io.casehub.ledger.jpa.ActorTrustScore;
 import io.casehub.ledger.jpa.LedgerPersistenceUnit;
 import io.casehub.platform.api.identity.ActorType;
-import jakarta.enterprise.context.ApplicationScoped;
 import io.quarkus.arc.DefaultBean;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
@@ -167,10 +167,11 @@ public class JpaActorTrustScoreRepository implements ActorTrustScoreRepository {
     @Override
     @Transactional
     public void updateGlobalTrustScore(final String actorId, final double globalTrustScore) {
-        findByActorId(actorId).ifPresent(score -> {
-            score.globalTrustScore = globalTrustScore;
-            em.merge(score);
-        });
+        em.createQuery("UPDATE ActorTrustScore s SET s.globalTrustScore = :gts WHERE s.actorId = :actorId AND s.scoreType = :scoreType AND s.capabilityKey IS NULL AND s.dimensionKey IS NULL")
+          .setParameter("gts", globalTrustScore)
+          .setParameter("actorId", actorId)
+          .setParameter("scoreType", ScoreType.GLOBAL)
+          .executeUpdate();
     }
 
     @Override
