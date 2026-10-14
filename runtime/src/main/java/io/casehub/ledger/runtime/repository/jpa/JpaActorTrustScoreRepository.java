@@ -151,6 +151,7 @@ public class JpaActorTrustScoreRepository implements ActorTrustScoreRepository {
                 .setParameter("lastComputedAt", lastComputedAt)
                 .setParameter("id", existing.id)
                 .executeUpdate();
+            em.detach(existing);
         }
     }
 
@@ -167,11 +168,13 @@ public class JpaActorTrustScoreRepository implements ActorTrustScoreRepository {
     @Override
     @Transactional
     public void updateGlobalTrustScore(final String actorId, final double globalTrustScore) {
-        em.createQuery("UPDATE ActorTrustScore s SET s.globalTrustScore = :gts WHERE s.actorId = :actorId AND s.scoreType = :scoreType AND s.capabilityKey IS NULL AND s.dimensionKey IS NULL")
-          .setParameter("gts", globalTrustScore)
-          .setParameter("actorId", actorId)
-          .setParameter("scoreType", ScoreType.GLOBAL)
-          .executeUpdate();
+        findByActorId(actorId).ifPresent(score -> {
+            em.createQuery("UPDATE ActorTrustScore s SET s.globalTrustScore = :gts WHERE s.id = :id")
+                .setParameter("gts", globalTrustScore)
+                .setParameter("id", score.id)
+                .executeUpdate();
+            em.detach(score);
+        });
     }
 
     @Override
