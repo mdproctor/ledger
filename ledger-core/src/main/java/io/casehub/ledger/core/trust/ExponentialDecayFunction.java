@@ -20,9 +20,10 @@ public class ExponentialDecayFunction implements DecayFunction {
 
     @Override
     public double weight(final long ageInDays, final AttestationVerdict verdict) {
-        final double base = Math.pow(2.0, -(double) ageInDays / halfLifeDays);
-        final double multiplier = isNegative(verdict) ? flaggedPersistenceMultiplier : 1.0;
-        return base * multiplier;
+        final double effectiveHalfLife = isNegative(verdict)
+                ? halfLifeDays / flaggedPersistenceMultiplier
+                : halfLifeDays;
+        return Math.pow(2.0, -(double) ageInDays / effectiveHalfLife);
     }
 
     private static boolean isNegative(final AttestationVerdict verdict) {
